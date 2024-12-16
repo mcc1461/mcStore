@@ -25,6 +25,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.15",
+    "npm": "^10.9.2",
     "redoc-express": "^2.1.0",
     "swagger-autogen": "^2.23.6",
     "swagger-ui-express": "^5.0.0"
