@@ -22,13 +22,12 @@ import CategoriesList from "./utils/CategoryList";
 import FirmList from "./utils/FirmList";
 import BrandList from "./utils/BrandList";
 import ProductList from "./utils/ProductList";
-
 import PrivateRoute from "./components/PrivateRoute";
-import AdminRoute from "./components/AdminRoute"; // <--- NEW import
+import AdminRoute from "./components/AdminRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./components/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
-import AdminPanel from "./pages/AdminPanel"; // <--- Example of an admin-only page
+import AdminPanel from "./pages/AdminPanel";
 
 import { hydrateFromStorage } from "./slices/authSlice"; // Redux action
 

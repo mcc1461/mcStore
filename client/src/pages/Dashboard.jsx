@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Link, useNavigate, Outlet } from "react-router-dom";
 import {
@@ -20,6 +20,10 @@ import axios from "axios";
 import { logout } from "../slices/authSlice";
 import logo from "../assets/logo.png";
 import defaultUser from "../assets/default-profile.png";
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(" ");
+}
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
@@ -44,45 +48,39 @@ const navigation = [
   { name: "Reports", href: "/reports", icon: ChartPieIcon, current: false },
 ];
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
-
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Get basic user info from Redux.
+  // Redux user info
   const { userInfo } = useSelector((state) => state.auth);
 
-  // We'll fetch the full profile data from the API so we can use the updated image.
+  // Fetched user profile data
   const [profileData, setProfileData] = useState(null);
 
+  // On mount or user change, fetch full profile
   useEffect(() => {
     if (userInfo) {
       const fetchProfile = async () => {
         try {
           const token = localStorage.getItem("token");
-          if (!token) {
-            throw new Error("Authentication token missing.");
-          }
+          if (!token) throw new Error("Authentication token missing.");
           const { data } = await axios.get(
             `${import.meta.env.VITE_APP_API_URL}/api/users/${userInfo._id}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          // Assuming the API returns the updated user profile in data.data
           setProfileData(data.data);
         } catch (err) {
           console.error("Error fetching profile in Dashboard:", err);
-          // Optionally, display a toast or additional error handling
         }
       };
       fetchProfile();
     }
   }, [userInfo]);
 
-  const logoutHandler = async () => {
+  // Logout
+  const logoutHandler = () => {
     dispatch(logout());
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
@@ -90,6 +88,7 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  // Navigate to profile if logged in
   const navigateToProfile = () => {
     if (userInfo) {
       navigate("/dashboard/profile");
@@ -99,182 +98,210 @@ export default function Dashboard() {
     }
   };
 
-  // Use the fetched profileData to compute the image URL.
-  // If profileData.image exists and starts with "/uploads/", prefix with the API URL.
-  // Otherwise, if a valid image URL exists, use it. If not, fall back to the default image.
+  // Final image URL or fallback
   const imageUrl = profileData?.image?.startsWith("/uploads/")
     ? `${import.meta.env.VITE_APP_API_URL}${profileData.image}`
     : profileData?.image || defaultUser;
 
   return (
-    <>
-      <div>
-        {/* Sidebar overlay for mobile */}
-        <Transition show={sidebarOpen} as={Dialog} onClose={setSidebarOpen}>
-          <Dialog.Overlay className="fixed inset-0 bg-gray-900/80" />
+    <div className="flex min-h-screen bg-gray-100">
+      {/* 
+        MOBILE SIDEBAR OVERLAY
+        Visible below 'lg:' breakpoints only
+      */}
+      <Transition.Root show={mobileMenuOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-40 lg:hidden"
+          onClose={setMobileMenuOpen}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="transition-opacity ease-linear duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-opacity ease-linear duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            {/* Dark overlay behind the sidebar */}
+            <div className="fixed inset-0 bg-gray-900/80" />
+          </Transition.Child>
+
           <div className="fixed inset-0 flex">
             <Transition.Child
-              enter="transition ease-out duration-300"
-              enterFrom="-translate-x-full opacity-0"
-              enterTo="translate-x-0 opacity-100"
-              leave="transition ease-in duration-200"
-              leaveFrom="translate-x-0 opacity-100"
-              leaveTo="-translate-x-full opacity-0"
+              as={Fragment}
+              enter="transition ease-out duration-300 transform"
+              enterFrom="-translate-x-full"
+              enterTo="translate-x-0"
+              leave="transition ease-in duration-200 transform"
+              leaveFrom="translate-x-0"
+              leaveTo="-translate-x-full"
             >
-              <Dialog.Panel className="relative flex flex-1 w-full max-w-xs bg-gray-900">
-                <div className="absolute top-0 right-0 p-2">
+              {/* Actual sidebar panel */}
+              <Dialog.Panel className="relative flex flex-col flex-1 w-full max-w-xs bg-gray-900">
+                {/* Close button top-left */}
+                <div className="flex items-center h-16 px-4">
                   <button
                     type="button"
-                    onClick={() => setSidebarOpen(false)}
-                    className="rounded-md focus:outline-none"
+                    className="ml-auto text-gray-200"
+                    onClick={() => setMobileMenuOpen(false)}
                   >
-                    <XMarkIcon className="w-6 h-6 text-white" />
+                    <XMarkIcon className="w-6 h-6" />
                   </button>
                 </div>
-                <div className="flex flex-col h-full px-6 pt-5 pb-4 bg-gray-900">
-                  <nav>
-                    <ul className="space-y-4">
-                      {navigation.map((item) => (
-                        <li key={item.name}>
-                          <Link
-                            to={{ pathname: item.href }}
-                            className={classNames(
-                              item.current
-                                ? "bg-gray-800 text-white"
-                                : "text-gray-400 hover:bg-gray-800 hover:text-white",
-                              "flex items-center px-3 py-2 rounded-md text-sm font-medium"
-                            )}
-                          >
-                            <item.icon className="w-5 h-5 mr-3" />
-                            {item.name}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
-                </div>
+                {/* Nav items */}
+                <nav className="flex-1 px-2 pb-4 mt-2 overflow-y-auto">
+                  <ul className="space-y-2">
+                    {navigation.map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          className={classNames(
+                            item.current
+                              ? "bg-gray-800 text-white"
+                              : "text-gray-300 hover:bg-gray-700 hover:text-white",
+                            "group flex items-center px-2 py-2 text-base font-medium rounded-md"
+                          )}
+                          onClick={() => setMobileMenuOpen(false)} // close on selection
+                        >
+                          <item.icon className="flex-shrink-0 w-5 h-5 mr-3" />
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
               </Dialog.Panel>
             </Transition.Child>
           </div>
-        </Transition>
+        </Dialog>
+      </Transition.Root>
 
-        {/* Static sidebar for desktop */}
-        <div className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 lg:bg-gray-900">
-          <div className="flex items-center h-16 px-6 text-white">
-            <img src={logo} alt="Logo" className="w-auto h-8 rounded-full" />
-            <h2 className="ml-2 text-xl font-bold">Musco Store</h2>
-          </div>
-          <nav className="flex-1 px-6 py-4 space-y-4 bg-gray-900">
-            <ul className="space-y-4">
-              {navigation.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={{ pathname: item.href }}
-                    className={classNames(
-                      item.current
-                        ? "bg-gray-800 text-white"
-                        : "text-gray-400 hover:bg-gray-800 hover:text-white",
-                      "flex items-center px-3 py-2 rounded-md text-sm font-medium"
-                    )}
-                  >
-                    <item.icon className="w-5 h-5 mr-3" />
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+      {/* DESKTOP SIDEBAR */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:bg-gray-900 lg:overflow-y-auto">
+        {/* Logo & Title */}
+        <div className="flex items-center h-16 px-6 text-white shrink-0">
+          <img src={logo} alt="Logo" className="w-auto h-8 rounded-full" />
+          <h2 className="ml-2 text-xl font-bold">Musco Store</h2>
         </div>
+        {/* Nav list */}
+        <nav className="flex-1 px-4 pt-2 pb-4">
+          <ul className="space-y-4">
+            {navigation.map((item) => (
+              <li key={item.name}>
+                <Link
+                  to={item.href}
+                  className={classNames(
+                    item.current
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:bg-gray-800 hover:text-white",
+                    "flex items-center px-3 py-2 rounded-md text-sm font-medium"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 mr-3" />
+                  {item.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
 
-        {/* Top navigation bar */}
-        <div className="lg:pl-72">
-          <div className="sticky top-0 z-40 flex items-center h-16 px-6 bg-white border-b">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex flex-col flex-1">
+        {/* TOP BAR */}
+        <header className="flex items-center h-16 px-4 bg-white border-b shadow-sm">
+          {/* Hamburger for mobile */}
+          <button
+            type="button"
+            className="mr-4 text-gray-500 lg:hidden"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+
+          <div className="flex-1" />
+
+          {/* Right side: Notifications, Profile, etc. */}
+          <div className="flex items-center ml-4 space-x-4">
+            {/* Notification button */}
             <button
               type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden"
+              className="text-gray-400 hover:text-gray-500 focus:outline-none"
             >
-              <Bars3Icon className="w-6 h-6 text-gray-700" />
+              <BellIcon className="w-6 h-6" />
             </button>
-            <div className="flex items-center ml-auto space-x-4">
-              <button type="button" className="text-gray-400">
-                <BellIcon className="w-6 h-6" />
-              </button>
-              <Menu as="div" className="relative">
-                <Menu.Button>
-                  <div className="flex items-center space-x-3">
-                    <h3 className="text-xl italic font-bold">Hello</h3>
-                    <span className="hidden text-xl italic font-bold text-red-800 lg:block">
-                      {userInfo?.username || "Guest"}
-                    </span>
-                    <div className="flex flex-col items-center">
-                      <img
-                        src={imageUrl}
-                        alt="Profile"
-                        className="object-cover w-16 h-16 rounded-full shadow-lg"
-                        onError={(e) => {
-                          // If the image fails to load, fall back to the default image.
-                          e.currentTarget.src = defaultUser;
-                        }}
-                      />
-                    </div>
-                    <ChevronDownIcon className="w-5 h-5 text-gray-500" />
-                  </div>
-                </Menu.Button>
-                <Transition
-                  as={Menu.Items}
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
-                >
-                  <Menu.Items className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                    {/**
-                     * MANAGE PROFILE -> Only for admins
-                     */}
-                    {userInfo?.role === "admin" && (
-                      <Menu.Item>
-                        {({ active }) => (
-                          <button
-                            onClick={navigateToProfile}
-                            className={classNames(
-                              active ? "bg-gray-100" : "",
-                              "block px-3 py-1 text-sm leading-6 text-gray-900"
-                            )}
-                          >
-                            Manage Profile
-                          </button>
-                        )}
-                      </Menu.Item>
-                    )}
+            {/* User dropdown */}
+            <Menu as="div" className="relative">
+              <Menu.Button>
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-base italic font-bold">Hello</h3>
+                  <span className="hidden text-base italic font-bold text-red-800 lg:block">
+                    {userInfo?.username || "Guest"}
+                  </span>
+                  <img
+                    src={imageUrl}
+                    alt="Profile"
+                    className="object-cover rounded-full h-9 w-9"
+                    onError={(e) => {
+                      e.currentTarget.src = defaultUser;
+                    }}
+                  />
+                  <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                </div>
+              </Menu.Button>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <Menu.Items className="absolute right-0 z-10 w-32 py-2 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black/5 focus:outline-none">
+                  {/* Admin-only manage profile */}
+                  {userInfo?.role === "admin" && (
                     <Menu.Item>
                       {({ active }) => (
                         <button
-                          onClick={logoutHandler}
+                          onClick={navigateToProfile}
                           className={classNames(
                             active ? "bg-gray-100" : "",
-                            "block px-3 py-1 text-sm leading-6 text-gray-900 underline"
+                            "block w-full px-3 py-1 text-left text-sm text-gray-700"
                           )}
                         >
-                          Logout
+                          Manage Profile
                         </button>
                       )}
                     </Menu.Item>
-                  </Menu.Items>
-                </Transition>
-              </Menu>
-            </div>
+                  )}
+                  {/* Logout */}
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={logoutHandler}
+                        className={classNames(
+                          active ? "bg-gray-100" : "",
+                          "block w-full px-3 py-1 text-left text-sm text-gray-700 underline"
+                        )}
+                      >
+                        Logout
+                      </button>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Transition>
+            </Menu>
           </div>
+        </header>
 
-          <main className="py-10">
-            <div className="px-4 sm:px-6 lg:px-8">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        {/* SCROLLABLE MAIN CONTENT */}
+        <main className="flex-1 p-4 overflow-y-auto bg-gray-100">
+          <Outlet />
+        </main>
       </div>
-    </>
+    </div>
   );
 }

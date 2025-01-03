@@ -38,7 +38,9 @@ export default function BrandsList() {
 
     fetchBrands();
     calculateItemsPerPage();
-    window.addEventListener("resize", calculateItemsPerPage);
+    window.addEventListener("resize", calculateItemsPerPage, {
+      passive: false,
+    });
 
     return () => window.removeEventListener("resize", calculateItemsPerPage);
   }, []);
@@ -179,7 +181,7 @@ export default function BrandsList() {
             {/* Magnifying glass icon for smaller screens */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)} // Toggle the search input
-              className="md:hidden text-white"
+              className="text-white md:hidden"
             >
               <FaSearch size={24} />
             </button>
@@ -191,7 +193,7 @@ export default function BrandsList() {
                 placeholder="Search brands..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block md:hidden w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
+                className="block w-full px-4 py-2 border rounded-lg md:hidden focus:ring focus:ring-indigo-200"
               />
             )}
           </div>
@@ -201,13 +203,13 @@ export default function BrandsList() {
             {/* Full button for larger screens */}
             <button
               onClick={openAddNewModal}
-              className="hidden md:flex px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
+              className="hidden px-4 py-2 text-white bg-green-500 rounded-lg md:flex hover:bg-green-600"
             >
               <FaPlusCircle className="inline-block mr-2" /> Add New Brand
             </button>
 
             {/* Plus icon for smaller screens */}
-            <button onClick={openAddNewModal} className="md:hidden text-white">
+            <button onClick={openAddNewModal} className="text-white md:hidden">
               <FaPlusCircle size={24} />
             </button>
           </div>
@@ -267,7 +269,7 @@ export default function BrandsList() {
       )}
 
       {/* Pagination */}
-      <div className="sticky bottom-0 left-0 w-full bg-white py-4 border-t">
+      <div className="sticky bottom-0 left-0 w-full py-4 bg-white border-t">
         <nav
           aria-label="Pagination"
           className="flex items-center justify-between px-4 sm:px-6"
