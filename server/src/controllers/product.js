@@ -21,14 +21,25 @@ module.exports = {
                 </ul>
             `
         */
+    try {
+      const data = await res.getModelList(Product, {}, [
+        "categoryId",
+        "brandId",
+      ]);
+      const details = await res.getModelListDetails(Product);
 
-    const data = await res.getModelList(Product, {}, ["categoryId", "brandId"]);
-
-    res.status(200).send({
-      error: false,
-      details: await res.getModelListDetails(Product),
-      data,
-    });
+      res.status(200).send({
+        error: false,
+        details,
+        data,
+      });
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      res.status(500).send({
+        error: true,
+        message: "Error fetching products",
+      });
+    }
   },
 
   create: async (req, res) => {

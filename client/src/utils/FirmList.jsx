@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEdit, FaTrashAlt, FaPlusCircle, FaSearch } from "react-icons/fa";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient"; // Ensure the path is correct
@@ -21,6 +22,9 @@ export default function FirmsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6); // Default items per page
   const [cardsPerRow, setCardsPerRow] = useState(1); // Cards that fit per row
+
+  // Navigation
+  const navigate = useNavigate();
 
   // Card dimension constants
   const CARD_WIDTH = 300; // Width of a card
@@ -61,6 +65,10 @@ export default function FirmsList() {
 
     return () => window.removeEventListener("resize", calculateItemsPerPage);
   }, []);
+
+  const navigateToDashboard = () => {
+    navigate("/dashboard", { replace: true }); // Use this to replace the current URL
+  };
 
   const confirmDeleteFirm = (firm) => {
     setSelectedFirmForDelete(firm);
@@ -222,6 +230,13 @@ export default function FirmsList() {
               />
             )}
           </div>
+
+          <button
+            onClick={navigateToDashboard}
+            className="px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:!text-custom-yellow md:flex hover:bg-blue-700"
+          >
+            ➤ Dashboard
+          </button>
 
           <button
             onClick={openAddNewModal}

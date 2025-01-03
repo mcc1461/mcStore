@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEdit, FaTrashAlt, FaPlusCircle, FaSearch } from "react-icons/fa";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
@@ -19,6 +20,9 @@ export default function BrandsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6); // Default items per page
   const [cardsPerRow, setCardsPerRow] = useState(1); // Cards that fit per row
+
+  // Navigate to Dashboard
+  const navigate = useNavigate();
 
   // Card dimension constants
   const CARD_WIDTH = 300; // Width of a card
@@ -42,6 +46,11 @@ export default function BrandsList() {
 
     return () => window.removeEventListener("resize", calculateItemsPerPage);
   }, []);
+
+  // Navigate to Dashboard
+  const navigateToDashboard = () => {
+    navigate("/dashboard");
+  };
 
   // Function to calculate itemsPerPage based on window size
   const calculateItemsPerPage = () => {
@@ -195,7 +204,12 @@ export default function BrandsList() {
               />
             )}
           </div>
-
+          <button
+            onClick={navigateToDashboard}
+            className="px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:!text-custom-yellow md:flex hover:bg-blue-700"
+          >
+            ➤ Dashboard
+          </button>
           {/* Add New Button */}
           <div className="flex items-center space-x-4">
             {/* Full button for larger screens */}

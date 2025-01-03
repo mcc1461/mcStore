@@ -1,76 +1,89 @@
-"use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | MusCo Dev
-------------------------------------------------------- */
-// app.use(findSearchSortPage):
-
 module.exports = (req, res, next) => {
-  // Searching & Sorting & Pagination:
-
-  // FILTERING: URL?filter[key1]=value1&filter[key2]=value2
   let filter = req.query?.filter || {};
-
-  // SEARCHING: URL?search[key1]=value1&search[key2]=value2
   let search = req.query?.search || {};
-  // for (let key in search) search[key] = { $regex: search[key], $options: 'i' }
-  /* toString Searching: */
-  let where = [];
-  for (let key in search)
-    where.push(`this.${key}.toString().includes('${search[key]}')`);
-  search = where.length ? { $where: where.join(" && ") } : {};
-  /* toString Searching: */
 
-  // SORTING: URL?sort[key1]=asc&sort[key2]=desc (asc: A->Z - desc: Z->A)
+  // Convert search parameters to MongoDB regex for case-insensitive matching
+  for (let key in search) {
+    search[key] = { $regex: search[key], $options: "i" };
+  }
+
   let sort = req.query?.sort || {};
+  let limit = req.query?.limit
+    ? Number(req.query.limit)
+    : Number(process.env.PAGE_SIZE) || 20;
 
-  // PAGINATION: URL?page=1&limit=10
-  // LIMIT:
-  let limit = Number(req.query?.limit);
-  limit = limit > 0 ? limit : Number(process.env?.PAGE_SIZE || 20);
-  // PAGE:
-  let page = Number(req.query?.page);
-  page = (page > 0 ? page : 1) - 1;
-  // SKIP:
-  let skip = Number(req.query?.skip);
-  skip = skip > 0 ? skip : page * limit;
+  // Handle limit: if limit is -1, fetch all records
+  if (limit === -1) {
+    limit = null; // No limit
+  } else {
+    limit = limit > 0 ? limit : 20; // Default to 20
+  }
 
-  // Run SearchingSortingPagination engine for Model:
+  // Correct page handling
+  let page = req.query?.page ? Number(req.query.page) : 1; // Default to page 1
+  page = page > 0 ? page : 1; // Ensure page is always >= 1
+
+  let skip = limit ? (page - 1) * limit : 0; // Calculate `skip`
+
+  // Debugging logs
+  console.log("Filter:", filter);
+  console.log("Search:", search);
+  console.log("Sort:", sort);
+  console.log("Limit:", limit);
+  console.log("Page:", page);
+  console.log("Skip:", skip);
+
   res.getModelList = async function (
     Model,
     modelFilters = {},
     populate = null
   ) {
-    return await Model.find({ ...modelFilters, ...filter, ...search })
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .populate(populate);
+    try {
+      const result = await Model.find({ ...modelFilters, ...filter, ...search })
+        .sort(sort)
+        .skip(skip)
+        .limit(limit || 0) // No limit applied if limit is null
+        .populate(populate);
+
+      console.log("Result count:", result.length); // Log the count of returned results
+      return result;
+    } catch (err) {
+      console.error("Error fetching model list:", err);
+      throw err;
+    }
   };
 
-  // Details:
   res.getModelListDetails = async function (Model, modelFilters = {}) {
-    const data = await Model.find({ ...modelFilters, ...filter, ...search });
-    const dataCount = data.length;
+    try {
+      const totalRecords = await Model.countDocuments({
+        ...modelFilters,
+        ...filter,
+        ...search,
+      });
 
-    let details = {
-      filter,
-      search,
-      sort,
-      skip,
-      limit,
-      page,
-      pages: {
-        previous: page > 0 ? page : false,
-        current: page + 1,
-        next: page + 2,
-        total: Math.ceil(dataCount / limit),
-      },
-      totalRecords: dataCount,
-    };
-    details.pages.next =
-      details.pages.next > details.pages.total ? false : details.pages.next;
-    if (details.totalRecords <= limit) details.pages = false;
-    return details;
+      const totalPages = limit ? Math.ceil(totalRecords / limit) : 1;
+
+      return {
+        filter,
+        search,
+        sort,
+        limit: limit || "All", // Show "All" when no limit is applied
+        skip,
+        page, // Return the correct page
+        totalRecords,
+        pages: limit
+          ? {
+              previous: page > 1 ? page - 1 : false,
+              current: page,
+              next: page < totalPages ? page + 1 : false,
+              total: totalPages,
+            }
+          : false, // No pagination when limit is null
+      };
+    } catch (err) {
+      console.error("Error fetching model list details:", err);
+      throw err;
+    }
   };
 
   next();

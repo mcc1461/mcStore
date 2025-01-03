@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEdit, FaTrashAlt, FaPlusCircle, FaSearch } from "react-icons/fa";
 import apiClient from "../services/apiClient";
 import ConfirmDialog from "./ProductListConfirm";
@@ -23,6 +24,8 @@ export default function ProductsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
   const [isSearchOpen, setIsSearchOpen] = useState(false); // Toggle for search bar in small screens
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -80,6 +83,11 @@ export default function ProductsList() {
       }
     }
   }, [selectedCategory, selectedBrand, products]);
+
+  // Navigate to Dashboard
+  const navigateToDashboard = () => {
+    navigate("/dashboard");
+  };
 
   const confirmDeleteProduct = (product) => {
     setSelectedProductForDelete(product);
@@ -222,6 +230,13 @@ export default function ProductsList() {
       <div className="fixed top-0 z-10 w-full bg-blue-500 shadow-md">
         <div className="flex items-center justify-between px-4 py-4 text-white">
           <h1 className="text-3xl font-bold">Products ({totalProducts})</h1>
+
+          <button
+            onClick={navigateToDashboard}
+            className="px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:!text-custom-yellow md:flex hover:bg-blue-700"
+          >
+            ➤ Dashboard
+          </button>
         </div>
       </div>
 
@@ -488,7 +503,6 @@ export default function ProductsList() {
           </div>
         </main>
       </div>
-
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="p-8 bg-white rounded-lg shadow-lg w-96">

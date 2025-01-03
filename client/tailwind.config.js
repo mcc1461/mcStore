@@ -1,12 +1,10 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    extend: {},
-  },
-  variants: {
     extend: {
-      display: ["group-focus"],
+      colors: {
+        "custom-yellow": "#f0f099", // Add a custom yellow color
+      },
     },
   },
   plugins: [require("@tailwindcss/forms")],
