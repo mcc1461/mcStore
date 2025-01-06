@@ -27,30 +27,30 @@ export default function FirmsList() {
   const navigate = useNavigate();
 
   // Card dimension constants
+  const CARD_HEIGHT = 320; // Height of a card
   const CARD_WIDTH = 300; // Width of a card
-  const CARD_HEIGHT = 400; // Height of a card
 
   // Calculate itemsPerPage based on window size
   const calculateItemsPerPage = () => {
-    const containerWidth = window.innerWidth - 64; // Width of the container (subtracting padding/margins)
-    const containerHeight = window.innerHeight - 200; // Height of the container (subtracting header/pagination height)
+    const containerWidth = window.innerWidth - 64; // Subtract margins/padding
+    const containerHeight = window.innerHeight - 200; // Subtract header/pagination height
 
-    // Cards per row
-    const cardsPerRow = Math.floor(containerWidth / CARD_WIDTH);
+    // Cards per row (ensure at least 1 card per row)
+    const cardsPerRow = Math.max(1, Math.floor(containerWidth / CARD_WIDTH));
     setCardsPerRow(cardsPerRow);
 
-    // Rows per page based on available height
-    const rowsPerPage = Math.floor(containerHeight / CARD_HEIGHT);
+    // Rows per page (ensure at least 1 row per page)
+    const rowsPerPage = Math.max(1, Math.floor(containerHeight / CARD_HEIGHT));
 
-    // Total items per page
+    // Update items per page
     const totalItemsPerPage = cardsPerRow * rowsPerPage;
-    setItemsPerPage(totalItemsPerPage > 0 ? totalItemsPerPage : 1);
+    setItemsPerPage(totalItemsPerPage);
   };
 
   useEffect(() => {
     const fetchFirms = async () => {
       try {
-        const response = await apiClient.get("/api/firms");
+        const response = await apiClient.get("/api/firms?limit=-1&page=1");
         setFirms(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -253,70 +253,52 @@ export default function FirmsList() {
       </div>
 
       {/* Firm Cards */}
-      <div className="px-4 py-6">
-        {currentFirms.length > 0 ? (
+      <div
+        className="grid gap-6 px-4 py-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        style={{
+          gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_WIDTH}px, 1fr))`, // Use `auto-fill` for responsive layout
+          gridAutoRows: `${CARD_HEIGHT}px`, // Ensure consistent card height
+          gap: "1rem", // Ensure consistent spacing between cards
+          minHeight: "calc(100vh - 200px)", // Ensure the cards fill the screen
+        }}
+      >
+        {currentFirms.map((firm) => (
           <div
-            className="grid gap-6"
-            style={{
-              gridTemplateColumns: `repeat(${cardsPerRow}, 1fr)`, // Dynamically set grid columns based on the calculated cardsPerRow
-            }}
+            key={firm._id}
+            className="overflow-hidden transition-transform duration-300 transform bg-gray-100 rounded-lg shadow-lg hover:scale-105"
+            onMouseLeave={() => hideDetails(firm._id)}
           >
-            {currentFirms.map((firm) => (
-              <div
-                key={firm._id}
-                className="overflow-hidden transition-transform duration-300 transform bg-gray-100 rounded-lg shadow-lg hover:scale-105"
-                onMouseLeave={() => hideDetails(firm._id)}
+            <div
+              className="flex items-center justify-center bg-white"
+              style={{ height: "100%" }} // Allow the image to fill the card
+            >
+              <img
+                src={firm.image}
+                alt={firm.name}
+                className="object-contain w-full h-full p-4"
+              />
+            </div>
+            <div className="p-6 text-center">
+              <button
+                onClick={() => toggleDetails(firm._id)}
+                className="font-semibold text-indigo-500 hover:text-indigo-600"
               >
-                <div className="flex items-center justify-center h-56 bg-white">
-                  <img
-                    src={firm.image}
-                    alt={firm.name}
-                    className="object-contain w-full h-full p-4"
-                  />
+                {expandedFirms[firm._id] ? "Hide Details" : "View Details"}
+              </button>
+              {expandedFirms[firm._id] && (
+                <div className="mt-4">
+                  <h3 className="text-2xl font-semibold text-gray-800">
+                    {firm.name}
+                  </h3>
+                  <p className="text-gray-600">{firm.address}</p>
+                  <p className="mt-4 font-medium text-gray-500">
+                    Phone: {firm.phone}
+                  </p>
                 </div>
-                <div className="p-6 text-center">
-                  <button
-                    onClick={() => toggleDetails(firm._id)}
-                    className="font-semibold text-indigo-500 hover:text-indigo-600"
-                  >
-                    {expandedFirms[firm._id] ? "Hide Details" : "View Details"}
-                  </button>
-
-                  {expandedFirms[firm._id] && (
-                    <div className="mt-4">
-                      <h3 className="text-2xl font-semibold text-gray-800">
-                        {firm.name}
-                      </h3>
-                      <p className="text-gray-600">{firm.address}</p>
-                      <p className="mt-4 font-medium text-gray-500">
-                        Phone: {firm.phone}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-center p-4">
-                  <button
-                    className="mr-3 text-blue-500 hover:text-blue-700"
-                    onClick={() => openEditModal(firm)}
-                  >
-                    <FaEdit className="w-5 h-5" />
-                  </button>
-                  <button
-                    className="text-red-500 hover:text-red-700"
-                    onClick={() => confirmDeleteFirm(firm)}
-                  >
-                    <FaTrashAlt className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        ) : (
-          <p className="text-center text-gray-600">
-            No firms found for your search.
-          </p>
-        )}
+        ))}
       </div>
 
       {/* Pagination */}

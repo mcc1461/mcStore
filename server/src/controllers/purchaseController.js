@@ -4,8 +4,8 @@
 ------------------------------------------------------- */
 // Purchase Controller:
 
-const Product = require("../models/product");
-const Purchase = require("../models/purchase");
+const Product = require("../models/productModel");
+const Purchase = require("../models/purchaseModel");
 
 module.exports = {
   list: async (req, res) => {

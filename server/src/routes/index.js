@@ -3,33 +3,40 @@
     NODEJS EXPRESS | MusCo Dev
 ------------------------------------------------------- */
 const router = require("express").Router();
+
 /* ------------------------------------------------------- */
-// routes/:
+// Base URL: /
+// Import and Register Route Modules
 
-// URL: /
+// Auth:
+router.use("/auth", require("./authRoutes"));
 
-// auth:
-router.use("/auth", require("./auth"));
-// user:
-router.use("/users", require("./user"));
-// token:
-router.use("/tokens", require("./token"));
+// User:
+router.use("/users", require("./userRoutes"));
 
-// category:
-router.use("/categories", require("./category"));
-// brand:
-router.use("/brands", require("./brand"));
-// firm:
-router.use("/firms", require("./firm"));
-// product:
-router.use("/products", require("./product"));
-// purchase:
-router.use("/purchases", require("./purchase"));
-// sale:
-router.use("/sales", require("./sale"));
+// Token:
+router.use("/tokens", require("./tokenRoutes"));
 
-// document:
-router.use("/documents", require("./document"));
+// Category:
+router.use("/categories", require("./categoryRoutes"));
+
+// Brand:
+router.use("/brands", require("./brandRoutes"));
+
+// Firm:
+router.use("/firms", require("./firmRoutes"));
+
+// Product:
+router.use("/products", require("./productRoutes"));
+
+// Purchase:
+router.use("/purchases", require("./purchaseRoutes"));
+
+// Sale:
+router.use("/sales", require("./saleRoutes"));
+
+// Document:
+router.use("/documents", require("./documentRoutes"));
 
 /* ------------------------------------------------------- */
 module.exports = router;

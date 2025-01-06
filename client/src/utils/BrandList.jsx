@@ -26,12 +26,12 @@ export default function BrandsList() {
 
   // Card dimension constants
   const CARD_WIDTH = 300; // Width of a card
-  const CARD_HEIGHT = 400; // Height of a card
+  const CARD_HEIGHT = 320; // Height of a card
 
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await apiClient.get("/api/brands");
+        const response = await apiClient.get("/api/brands?limit=-1&page=1");
         setBrands(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -166,7 +166,7 @@ export default function BrandsList() {
         {/* Title Section */}
         <div className="flex items-center justify-between px-4 py-4 text-white">
           <h1 className="text-3xl font-bold">
-            Brand Inventory ({brands.length})
+            Brands ({filteredBrands.length})
           </h1>
         </div>
 
@@ -231,9 +231,12 @@ export default function BrandsList() {
       {/* Brands List */}
       {currentBrands.length > 0 ? (
         <div
-          className="grid gap-6 px-4 py-6"
+          className="grid gap-6 px-4 py-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           style={{
-            gridTemplateColumns: `repeat(${cardsPerRow}, 1fr)`, // Dynamically set grid columns based on cardsPerRow
+            gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_WIDTH}px, 1fr))`, // Use `auto-fill` for responsive layout
+            gridAutoRows: `${CARD_HEIGHT}px`, // Ensure consistent card height
+            gap: "1rem", // Ensure consistent spacing between cards
+            minHeight: "calc(100vh - 200px)", // Ensure the cards fill the screen
           }}
         >
           {currentBrands.map((brand) => (

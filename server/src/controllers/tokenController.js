@@ -4,7 +4,7 @@
 ------------------------------------------------------- */
 // Token Controller:
 
-const Token = require("../models/token");
+const Token = require("../models/tokenModel");
 
 module.exports = {
   list: async (req, res) => {

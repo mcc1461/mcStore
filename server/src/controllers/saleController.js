@@ -4,8 +4,8 @@
 ------------------------------------------------------- */
 // Sale Controller:
 
-const Product = require("../models/product");
-const Sale = require("../models/sale");
+const Product = require("../models/productModel");
+const Sale = require("../models/saleModel");
 
 module.exports = {
   list: async (req, res) => {

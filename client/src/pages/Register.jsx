@@ -149,7 +149,7 @@ function Register() {
               onClick={() => setShowPassword(!showPassword)}
               style={{ fontSize: "1.5em" }}
             >
-              {showPassword ? "🙈" : "👁️"}
+              {showPassword ? "👁️" : "🙈"}
             </div>
           </div>
 
@@ -169,7 +169,7 @@ function Register() {
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               style={{ fontSize: "1.5em" }}
             >
-              {showConfirmPassword ? "🙈" : "👁️"}
+              {showConfirmPassword ? "👁️" : "🙈"}
             </div>
           </div>
 

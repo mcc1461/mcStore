@@ -7,29 +7,38 @@ const UserSchema = new mongoose.Schema(
     username: {
       type: String,
       trim: true,
-      required: true,
+      required: [true, "Username is required."],
       unique: true,
       index: true,
     },
     password: {
       type: String,
       trim: true,
-      required: true,
+      required: [true, "Password is required."],
     },
     email: {
       type: String,
       trim: true,
-      required: true,
+      required: [true, "Email is required."],
       unique: true,
       index: true,
+      validate: {
+        validator: function (v) {
+          const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+          return emailRegex.test(v);
+        },
+        message: (props) => `${props.value} is not a valid email address.`,
+      },
     },
     firstName: {
       type: String,
       trim: true,
+      required: [true, "First name is required."],
     },
     lastName: {
       type: String,
       trim: true,
+      required: [true, "Last name is required."],
     },
     isActive: {
       type: Boolean,
@@ -39,6 +48,17 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ["admin", "staff", "user"],
       default: "user",
+    },
+    lastLogin: {
+      type: Date,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
     resetPasswordToken: {
       type: String,
@@ -52,14 +72,16 @@ const UserSchema = new mongoose.Schema(
 
 // Password validation regex
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-// Email validation regex
-const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
 
 // Pre-save hook to hash the password
 UserSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
     if (!passwordRegex.test(this.password)) {
-      return next(new Error("Password does not meet the required criteria."));
+      return next(
+        new Error(
+          "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a number, and a special character."
+        )
+      );
     }
     try {
       const salt = await bcrypt.genSalt(10);
@@ -68,9 +90,6 @@ UserSchema.pre("save", async function (next) {
       return next(err);
     }
   }
-  if (this.email && !emailRegex.test(this.email)) {
-    return next(new Error("Email is not valid."));
-  }
   next();
 });
 
@@ -78,7 +97,11 @@ UserSchema.pre("save", async function (next) {
 UserSchema.pre("findOneAndUpdate", async function (next) {
   if (this._update.password) {
     if (!passwordRegex.test(this._update.password)) {
-      return next(new Error("Password does not meet the required criteria."));
+      return next(
+        new Error(
+          "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a number, and a special character."
+        )
+      );
     }
     try {
       const salt = await bcrypt.genSalt(10);
@@ -87,9 +110,6 @@ UserSchema.pre("findOneAndUpdate", async function (next) {
       return next(err);
     }
   }
-  if (this._update.email && !emailRegex.test(this._update.email)) {
-    return next(new Error("Email is not valid."));
-  }
   next();
 });
 
@@ -97,5 +117,13 @@ UserSchema.pre("findOneAndUpdate", async function (next) {
 UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+// Middleware to set `updatedBy` field automatically
+UserSchema.pre("findOneAndUpdate", function (next) {
+  if (this.options?.context?.updatedBy) {
+    this._update.updatedBy = this.options.context.updatedBy;
+  }
+  next();
+});
 
 module.exports = mongoose.model("User", UserSchema);

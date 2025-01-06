@@ -30,7 +30,8 @@ export default function ProductsList() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await apiClient.get("/api/products");
+        // Pass query params to fetch all products
+        const response = await apiClient.get("/api/products?limit=-1&page=1");
         setProducts(response.data.data);
         setLoading(false);
       } catch (error) {
