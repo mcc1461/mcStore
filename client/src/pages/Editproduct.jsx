@@ -1,55 +1,58 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import Loader from '../components/Loader';
+import Loader from "../components/Loader";
 import { toast } from "react-toastify";
-import { useGetProductByIdQuery, useUpdateProductMutation } from "../slices/products/productApiSlice";
 import { updateProduct } from "../slices/products/productSlice";
 import milo from "../assets/milo.png";
 
 export default function Editproducts() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   //Fetch the existing product data
-  const { data: productData, isLoading: isLoadingProduct } = useGetProductByIdQuery(id)
-  
-  //state to hold product data
-  const [updatedProductData, setUpdatedProductData] = useState(productData || {})
+  const { data: productData, isLoading: isLoadingProduct } =
+    useGetProductByIdQuery(id);
 
-  const [productUpdate, { isLoading }] = useUpdateProductMutation()
-  
+  //state to hold product data
+  const [updatedProductData, setUpdatedProductData] = useState(
+    productData || {}
+  );
+
+  const [productUpdate, { isLoading }] = useUpdateProductMutation();
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setUpdatedProductData({
-      ...updatedProductData, [name] : value
-    })
-  }
+      ...updatedProductData,
+      [name]: value,
+    });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     try {
-      const response = await productUpdate({ id, updatedProductData })
-      
+      const response = await productUpdate({ id, updatedProductData });
+
       if (response.data) {
-        toast.success("Product Updated Successfully!")
+        toast.success("Product Updated Successfully!");
 
-        dispatch(updateProduct(response.data))
+        dispatch(updateProduct(response.data));
 
-        navigate(`/dashboard/board`)
+        navigate(`/dashboard/board`);
       }
     } catch (error) {
-      console.error('Error updating product:', error)
+      console.error("Error updating product:", error);
 
-      toast.error("Error updating product, please try again later!")
+      toast.error("Error updating product, please try again later!");
     }
-  }
+  };
   if (isLoadingProduct) {
-    return <Loader/>
+    return <Loader />;
   }
-  
+
   return (
     <div className="flex flex-col justify-center w-[80vw] h-[85vh]">
       <div className="flex items-center justify-center w-[100%] h-[100%] gap-10">
@@ -58,7 +61,7 @@ export default function Editproducts() {
             <h2 className="text-2xl font-bold ">Update Product Details</h2>
 
             <form className="" onSubmit={handleSubmit}>
-              {isLoading && <Loader/>}
+              {isLoading && <Loader />}
               <div className="">
                 <label htmlFor="subject" className="font-bold">
                   Product Name :
@@ -69,7 +72,7 @@ export default function Editproducts() {
                   name="name"
                   placeholder="Product Name"
                   className="w-full border border-gray-400 p-2 rounded-lg"
-                  value={updatedProductData?.name || productData?.name || ''}
+                  value={updatedProductData?.name || productData?.name || ""}
                   onChange={handleInputChange}
                 />
                 <label htmlFor="" className="font-bold">
@@ -119,23 +122,24 @@ export default function Editproducts() {
                   rows={5}
                   placeholder="Product Description"
                   className="w-full border border-gray-400 p-2 rounded-lg"
-                  value={updatedProductData?.description || productData?.description}
+                  value={
+                    updatedProductData?.description || productData?.description
+                  }
                   onChange={handleInputChange}
                 />
               </div>
               <button
-              type="submit"
-              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
-            >
-              Update Product
+                type="submit"
+                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+              >
+                Update Product
               </button>
-              
             </form>
           </div>
         </div>
         <div className="w-[45%] h-[100%]">
           <p className="text-xl">Product Image:</p>
-          <img src={milo} alt="Image of a milo" className="w-[100%] h-[92%]"/>
+          <img src={milo} alt="Image of a milo" className="w-[100%] h-[92%]" />
         </div>
       </div>
     </div>

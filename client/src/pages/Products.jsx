@@ -1,5 +1,4 @@
 import { useParams } from "react-router-dom";
-import { useGetProductByIdQuery } from "../slices/products/productApiSlice";
 import Loader from "../components/Loader";
 import photo from "../assets/product.jfif";
 import { Link } from "react-router-dom";
@@ -8,9 +7,7 @@ export default function Products() {
   const { id } = useParams();
 
   // Fetch the product details using the product Id
-  const { data: productData, isLoading, isError } = useGetProductByIdQuery(
-    id
-  );
+  const { data: productData, isLoading, isError } = useGetProductByIdQuery(id);
 
   if (isLoading) {
     return <Loader />;
@@ -44,16 +41,22 @@ export default function Products() {
 
           <div className="h-[73vh] w-[95%]">
             <p>
-              <b className="red bg-red-500 p-1 mb-2 text-xl text-white">Name:</b>{" "}
+              <b className="red bg-red-500 p-1 mb-2 text-xl text-white">
+                Name:
+              </b>{" "}
               <span>{name}</span>
             </p>
             <p>
               <b>SKU: {sku}</b>{" "}
-              <span className="text-gray-500 font-semibold">-183547496489307</span>
+              <span className="text-gray-500 font-semibold">
+                -183547496489307
+              </span>
             </p>
             <p>
               <b>Categories:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">{categories}</span>
+              <span className="text-gray-500 font-semibold ml-3">
+                {categories}
+              </span>
             </p>
             <p>
               <b>Price:</b>{" "}
@@ -61,11 +64,15 @@ export default function Products() {
             </p>
             <p>
               <b>Quantity in Stock:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">{quantity}</span>
+              <span className="text-gray-500 font-semibold ml-3">
+                {quantity}
+              </span>
             </p>
             <p className="border-b-2 border-gray-300">
               <b>Total value in Stock:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">#{price * quantity}</span>
+              <span className="text-gray-500 font-semibold ml-3">
+                #{price * quantity}
+              </span>
             </p>
             <b>Description:</b>
             <p className="text-gray-500 font-semibold">{description}</p>

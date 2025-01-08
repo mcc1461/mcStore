@@ -15,7 +15,7 @@ module.exports = {
       const [scheme, token] = authHeader.split(" "); // ['Bearer', '...accessToken...']
 
       if (scheme === "Bearer" && token) {
-        jwt.verify(token, process.env.ACCESS_KEY, (err, decoded) => {
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
           if (err) {
             return res.status(401).send({
               error: true,

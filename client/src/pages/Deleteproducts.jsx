@@ -1,20 +1,19 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useDeleteProductMutation } from '../slices/products/productApiSlice';
-import { deleteProduct } from '../slices/products/productSlice';
-import { toast } from 'react-toastify';
-import { useDispatch } from 'react-redux';
+import { useParams, useNavigate } from "react-router-dom";
+import { deleteProduct } from "../slices/products/productSlice";
+import { toast } from "react-toastify";
+import { useDispatch } from "react-redux";
 
 export default function DeleteProduct() {
-  const { id} = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   // Use the deleteProduct mutation from productApiSlice
   const [productDelete, { isLoading }] = useDeleteProductMutation();
 
   const handleDelete = async () => {
     try {
-      console.log("Deleting product with ID:", id)
+      console.log("Deleting product with ID:", id);
       // Execute the deleteProduct mutation
       const response = await productDelete(id);
 
@@ -22,22 +21,21 @@ export default function DeleteProduct() {
       if (response.payload) {
         // If deletion is successful, navigate to a success page or back to the product list.
 
-        dispatch(deleteProduct(id))
+        dispatch(deleteProduct(id));
 
-        navigate('/dashboard/board');
-        toast.success("Product deleted successfully")
+        navigate("/dashboard/board");
+        toast.success("Product deleted successfully");
       } else {
         // Handle the error and display a message to the user if needed.
-        console.log('Product deleted successfully');
-        toast.success("Product deleted Successfully")
+        console.log("Product deleted successfully");
+        toast.success("Product deleted Successfully");
 
-        navigate('/dashboard/board');
+        navigate("/dashboard/board");
       }
-
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error("Error deleting product:", error);
       // Handle the error and display a message to the user if needed.
-      toast("Error deleting products!, Please try again later")
+      toast("Error deleting products!, Please try again later");
     }
   };
 
@@ -58,7 +56,7 @@ export default function DeleteProduct() {
           <button
             className="text-white bg-blue-500 hover:bg-blue-300 font-bold uppercase text-sm px-6 py-3 rounded shadow hover:shadow-lg outline-none focus:outline-none mr-1 mb-1"
             type="button"
-            onClick={() => navigate('/dashboard/board')}
+            onClick={() => navigate("/dashboard/board")}
             disabled={isLoading}
           >
             Cancel

@@ -1,19 +1,18 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from './slices/authSlice'
-import { apiSlice } from "./slices/apiSlice";
-import productReducer from "./slices/products/productSlice"
-import boardReducer from "./slices/products/boardSlice"
+
+// Import your reducers
+import authReducer from "./slices/authSlice"; // <-- Make sure path matches the actual file location
+import productReducer from "./slices/products/productSlice";
+import boardReducer from "./slices/products/boardSlice";
 
 const store = configureStore({
-    reducer: {
-        auth: authReducer,
-        product: productReducer,
-        board: boardReducer,
-        [apiSlice.reducerPath]:apiSlice.reducer,
-    },
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(apiSlice.middleware),
-    devTools: true
+  reducer: {
+    auth: authReducer, // Auth slice
+    product: productReducer,
+    board: boardReducer,
+  },
+  // No RTK Query middleware since we've removed `apiSlice`
+  devTools: true,
 });
 
-export default store
+export default store;

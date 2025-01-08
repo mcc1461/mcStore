@@ -1,26 +1,25 @@
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-// import { useLogoutMutation } from "../slices/usersApiSlice"; // Ensure you're using the correct API slice
-import { logout } from "../slices/authSlice"; // Redux action for logging out
+import { logout } from "../slices/authSlice"; // <-- import your logout action
 
 export default function Dasheader() {
-  const { userInfo } = useSelector((state) => state.auth); // Get userInfo from Redux store
-
+  const { userInfo } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // const [logoutApiCall] = useLogoutMutation(); // Logout mutation hook from the API slice
-
+  // Axios-based logout handler
   const logoutHandler = async () => {
-    dispatch(logout()); // Clear user info from Redux store
+    // Clear Redux auth state
+    dispatch(logout());
 
-    // Remove tokens and user info from local storage
+    // Remove tokens and user info from localStorage
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userInfo");
 
-    // Redirect to the login page
+    // Redirect to login
     navigate("/login");
   };
 
@@ -30,7 +29,7 @@ export default function Dasheader() {
         Hello,{" "}
         {userInfo ? (
           <Link to="/dashboard/profile" className="text-red-500 no-underline">
-            {userInfo.username} {/* Show user's name */}
+            {userInfo.username}
           </Link>
         ) : (
           "Guest"

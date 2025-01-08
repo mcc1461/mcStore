@@ -19,6 +19,7 @@ import Deleteproducts from "./Deleteproducts";
 import FirmList from "../utils/FirmList";
 import BrandList from "../utils/BrandList";
 import ProductList from "../utils/ProductList";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 function App() {
   return (
@@ -32,7 +33,14 @@ function App() {
       <Route path="/brands" element={<BrandList />} />
       <Route path="/products" element={<ProductList />} />
 
-      <Route path="/dashboard" element={<Dashboard />}>
+      <Route
+        path="/dashboard"
+        element={
+          <ErrorBoundary>
+            <Dashboard />
+          </ErrorBoundary>
+        }
+      >
         <Route path="board" element={<Board />} />
         {/*Private Routes*/}
         <Route path="" element={<PrivateRoute />}>

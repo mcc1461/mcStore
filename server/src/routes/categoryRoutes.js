@@ -6,7 +6,7 @@ const router = require("express").Router();
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/authentication");
+} = require("../middlewares/authMiddleware");
 const category = require("../controllers/categoryController");
 
 // URL: /categories

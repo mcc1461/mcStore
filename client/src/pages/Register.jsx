@@ -120,7 +120,7 @@ function Register() {
       toast.success("Registration successful!");
       navigate("/dashboard/board");
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("Registration error:", error.response?.data || error);
       toast.error(
         error.response?.data?.message || "An unexpected error occurred."
       );

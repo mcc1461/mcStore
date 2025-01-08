@@ -4,10 +4,6 @@ import log from "../assets/log.png";
 import Logo1 from "../components/Logo1";
 import { toast } from "react-toastify";
 import Loader from "../components/Loader";
-import {
-  useForgotPasswordMutation,
-  useResetPasswordMutation,
-} from "../slices/usersApiSlice";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");

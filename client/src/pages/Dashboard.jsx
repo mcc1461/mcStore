@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Bars3Icon,
   BellIcon,
@@ -17,8 +18,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useSelector, useDispatch } from "react-redux";
-import { useLogoutMutation } from "../slices/usersApiSlice"; // API Slice for logout
-import { logout } from "../slices/authSlice"; // Redux action for clearing user data
+import { logout } from "../slices/authSlice";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
@@ -40,19 +40,20 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { userInfo } = useSelector((state) => state.auth); // Get userInfo from Redux store
 
-  const [logoutApiCall] = useLogoutMutation(); // Hook for API logout call
+  // Get user info from Redux
+  const { userInfo } = useSelector((state) => state.auth);
 
+  // Logout handler
   const logoutHandler = async () => {
-    dispatch(logout()); // Clear user info from Redux store
+    dispatch(logout());
 
-    // Remove tokens and user infor from local storage
-    localStorage.removeItem("accessToken");
+    // 4) Remove tokens and user info from localStorage
+    localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userInfo");
 
-    // Redirect to the login page
+    // 5) Redirect to login
     navigate("/login");
   };
 
@@ -62,7 +63,6 @@ export default function Dashboard() {
         {/* Sidebar overlay for mobile */}
         <Transition show={sidebarOpen} as={Dialog} onClose={setSidebarOpen}>
           <Dialog.Overlay className="fixed inset-0 bg-gray-900/80" />
-
           <div className="fixed inset-0 flex">
             <Transition.Child
               enter="transition ease-out duration-300"

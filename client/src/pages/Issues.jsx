@@ -2,7 +2,6 @@ import { BsTelephone, BsTwitter } from "react-icons/bs";
 import { GrMail } from "react-icons/gr";
 import { toast } from "react-toastify";
 import { useState } from "react";
-import { useReportIssuesMutation } from "../slices/usersApiSlice";
 import Loader from "../components/Loader";
 
 export default function Issues() {

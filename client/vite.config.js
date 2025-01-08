@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3061, // Frontend running on port 3061
     proxy: {
       "/api": {
-        target: "http://localhost:8061", // Proxy API requests to backend
+        target: "http://127.0.0.1:8061", // Proxy API requests to backend
         changeOrigin: true,
       },
     },

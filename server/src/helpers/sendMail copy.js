@@ -14,7 +14,7 @@ const sendResetEmail = async (email, resetToken) => {
     });
 
     // Create the email content
-    const resetLink = `http://localhost:3061/reset-password/${resetToken}`; // Adjust this based on your frontend
+    const resetLink = `http://127.0.0.1:3061/reset-password/${resetToken}`; // Adjust this based on your frontend
     const mailOptions = {
       from: process.env.EMAIL_USER, // Your email address
       to: email, // The user's email

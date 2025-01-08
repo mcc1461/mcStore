@@ -1,7 +1,6 @@
 // REACT FORGOT PASSWORD PAGE || ForgotPassword.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForgotPasswordMutation } from "../slices/usersApiSlice";
 import { toast } from "react-toastify";
 import log from "../assets/log.png";
 import Logo1 from "../components/Logo1";

@@ -1,9 +1,9 @@
 "use strict";
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
 const User = require("../models/userModel");
 const sendResetEmail = require("../helpers/sendResetEmail");
 
+// Fallback secrets if no environment variables are set
 const JWT_SECRET = process.env.JWT_SECRET || "mcc1461_default_jwt_secret";
 const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "mcc1461_default_refresh_secret";
@@ -12,7 +12,7 @@ const JWT_REFRESH_SECRET =
 const generateToken = (user, secret, expiresIn) => {
   return jwt.sign(
     { id: user._id, username: user.username, role: user.role },
-    secret,
+    secret || JWT_SECRET,
     { expiresIn }
   );
 };
@@ -28,6 +28,7 @@ const register = async (req, res) => {
     const { username, password, email, firstName, lastName, role, roleCode } =
       req.body;
 
+    // Check password complexity
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
         message:
@@ -35,7 +36,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Assign the correct role based on roleCode
+    // Assign role based on roleCode
     let assignedRole = "user";
     if (role === "admin" && roleCode === process.env.ADMIN_CODE) {
       assignedRole = "admin";
@@ -47,10 +48,10 @@ const register = async (req, res) => {
       });
     }
 
-    // Create a new user
+    // Create new user
     const newUser = new User({
       username,
-      password, // Will be hashed by the pre-save hook
+      password, // pre-save hook will hash it
       email,
       firstName,
       lastName,
@@ -59,16 +60,16 @@ const register = async (req, res) => {
 
     await newUser.save();
 
-    // Generate tokens
+    // Generate tokens (1h for access, 30d for refresh)
     const accessToken = generateToken(newUser, JWT_SECRET, "1h");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
-    // Send both tokens in the response
-    res.status(201).json({
+    // Return tokens + user info
+    return res.status(201).json({
       message: "User registered successfully",
       bearer: {
         accessToken,
-        refreshToken, // Include refreshToken in response
+        refreshToken,
       },
       user: {
         id: newUser._id,
@@ -80,7 +81,7 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: error.message || "Failed to register user.",
     });
   }
@@ -91,12 +92,14 @@ const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    // Ensure both fields exist
     if (!username || !password) {
       return res.status(400).json({
         message: "Username and password are required.",
       });
     }
 
+    // Find user by username
     const user = await User.findOne({ username });
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({
@@ -104,10 +107,11 @@ const login = async (req, res) => {
       });
     }
 
+    // Issue access & refresh tokens
     const accessToken = generateToken(user, JWT_SECRET, "1h");
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
-    res.json({
+    return res.json({
       message: "Login successful",
       bearer: { accessToken, refreshToken },
       user: {
@@ -120,7 +124,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Login failed",
       error: error.message,
     });
@@ -138,6 +142,7 @@ const refresh = async (req, res) => {
       });
     }
 
+    // IMPORTANT: Verify the refresh token with JWT_REFRESH_SECRET
     jwt.verify(refreshToken, JWT_REFRESH_SECRET, async (err, decoded) => {
       if (err) {
         return res.status(401).json({
@@ -145,6 +150,7 @@ const refresh = async (req, res) => {
         });
       }
 
+      // Attempt to find user by decoded token id
       const user = await User.findById(decoded.id);
       if (!user) {
         return res.status(403).json({
@@ -152,14 +158,15 @@ const refresh = async (req, res) => {
         });
       }
 
+      // Generate new 1h access token
       const newAccessToken = generateToken(user, JWT_SECRET, "1h");
-      res.json({
+      return res.json({
         message: "Token refreshed successfully",
         bearer: { accessToken: newAccessToken },
       });
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to refresh token",
       error: error.message,
     });
@@ -167,8 +174,10 @@ const refresh = async (req, res) => {
 };
 
 // Logout User
+// Currently does no token check. If you want to verify user is logged in,
+// you'd protect this route with a middleware that checks the access token.
 const logout = (req, res) => {
-  res.json({ message: "Logged out successfully." });
+  return res.json({ message: "Logged out successfully." });
 };
 
 // Request Password Reset
@@ -176,6 +185,7 @@ const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
@@ -183,16 +193,14 @@ const requestPasswordReset = async (req, res) => {
       });
     }
 
-    const resetToken = generateToken(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      "1h"
-    );
+    // Create reset token valid for 1 hour
+    const resetToken = generateToken({ id: user._id }, JWT_SECRET, "1h");
 
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1h from now
     await user.save();
 
+    // Email the link
     const resetLink = `${process.env.FRONTEND_BASE_URL}/reset-password?token=${resetToken}`;
     await sendResetEmail(
       user.email,
@@ -200,11 +208,11 @@ const requestPasswordReset = async (req, res) => {
       `Click here to reset your password: ${resetLink}`
     );
 
-    res.json({
+    return res.json({
       message: "Password reset link sent to email.",
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to send password reset link",
       error: error.message,
     });
@@ -216,6 +224,7 @@ const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
 
+    // Check password complexity
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         message:
@@ -223,8 +232,10 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    // Verify token with JWT_SECRET
+    const decoded = jwt.verify(resetToken, JWT_SECRET);
 
+    // Find user & check if the token matches
     const user = await User.findById(decoded.id);
     if (!user || user.resetPasswordToken !== resetToken) {
       return res.status(403).json({
@@ -232,15 +243,15 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    user.password = newPassword; // Pre-save hook will hash this password
+    // Update user's password
+    user.password = newPassword; // hashed by pre-save
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
-
     await user.save();
 
-    res.json({ message: "Password reset successfully." });
+    return res.json({ message: "Password reset successfully." });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to reset password",
       error: error.message,
     });
