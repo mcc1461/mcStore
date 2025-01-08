@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import log from "../assets/log.png";
+import log from "../assets/logo2.png";
 import Logo from "../components/Logo1";
 import Loader from "../components/Loader";
 
@@ -75,6 +75,8 @@ function Register() {
       roleCode,
     } = formData;
 
+    console.log(formData);
+
     // Validate password
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
@@ -137,8 +139,7 @@ function Register() {
         {/* Header */}
         <div className="w-3/5 mt-10">
           <div className="flex items-center justify-between w-full">
-            <Logo />
-            <p className="text-3xl font-bold">Sign Up</p>
+            <p className="text-3xl font-bold">Register</p>
           </div>
         </div>
 
@@ -255,7 +256,7 @@ function Register() {
             type="submit"
             className="w-3/5 mt-4 font-bold text-white bg-red-500 h-9 rounded-xl"
           >
-            Sign Up
+            Register
           </button>
           <button
             type="button"

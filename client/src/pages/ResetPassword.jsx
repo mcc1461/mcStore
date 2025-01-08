@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
-import log from "../assets/log.png";
+import log from "../assets/logo2.png";
 import Logo1 from "../components/Logo1";
 import { toast } from "react-toastify";
 import Loader from "../components/Loader";

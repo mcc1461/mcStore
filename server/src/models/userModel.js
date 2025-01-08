@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const argon2 = require("argon2");
 
-// User Schema
 const UserSchema = new mongoose.Schema(
   {
     username: {
@@ -45,17 +44,13 @@ const UserSchema = new mongoose.Schema(
       enum: ["admin", "staff", "user"],
       default: "user",
     },
-    resetPasswordToken: {
-      type: String,
-    },
-    resetPasswordExpires: {
-      type: Date,
-    },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
   },
   { collection: "users", timestamps: true }
 );
 
-// Pre-save hook to hash the password
+// Pre-save hook to hash the password with argon2
 UserSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
     try {
@@ -67,7 +62,7 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Method to verify password
+// Method to verify password using argon2
 UserSchema.methods.verifyPassword = async function (password) {
   try {
     return await argon2.verify(this.password, password);

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import log from "../assets/log.png";
+import log from "../assets/logo2.png";
 import Logo1 from "../components/Logo1";
 import { Link } from "react-router-dom";
 

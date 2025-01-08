@@ -1,5 +1,6 @@
 "use strict";
 const jwt = require("jsonwebtoken");
+const argon2 = require("argon2");
 const User = require("../models/userModel");
 const sendResetEmail = require("../helpers/sendResetEmail");
 
@@ -17,7 +18,7 @@ const generateToken = (user, secret, expiresIn) => {
   );
 };
 
-// Helper: Validate Password
+// Helper: Validate Password Complexity
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
 /* ----------------------------- Controllers ----------------------------- */
@@ -48,10 +49,10 @@ const register = async (req, res) => {
       });
     }
 
-    // Create new user
+    // Create new user (password will be hashed by the pre-save hook in the model)
     const newUser = new User({
       username,
-      password, // pre-save hook will hash it
+      password,
       email,
       firstName,
       lastName,
@@ -64,7 +65,6 @@ const register = async (req, res) => {
     const accessToken = generateToken(newUser, JWT_SECRET, "1h");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
-    // Return tokens + user info
     return res.status(201).json({
       message: "User registered successfully",
       bearer: {
@@ -92,22 +92,26 @@ const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Ensure both fields exist
+    // Basic validation
     if (!username || !password) {
-      return res.status(400).json({
-        message: "Username and password are required.",
-      });
+      return res
+        .status(400)
+        .json({ message: "Username and password are required." });
     }
 
     // Find user by username
     const user = await User.findOne({ username });
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({
-        message: "Invalid username or password.",
-      });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    // Issue access & refresh tokens
+    // Verify password with Argon2
+    const validPassword = await argon2.verify(user.password, password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Invalid username or password." });
+    }
+
+    // Generate access & refresh tokens
     const accessToken = generateToken(user, JWT_SECRET, "1h");
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
@@ -124,6 +128,7 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Login error:", error);
     return res.status(500).json({
       message: "Login failed",
       error: error.message,
@@ -142,7 +147,6 @@ const refresh = async (req, res) => {
       });
     }
 
-    // IMPORTANT: Verify the refresh token with JWT_REFRESH_SECRET
     jwt.verify(refreshToken, JWT_REFRESH_SECRET, async (err, decoded) => {
       if (err) {
         return res.status(401).json({
@@ -150,7 +154,6 @@ const refresh = async (req, res) => {
         });
       }
 
-      // Attempt to find user by decoded token id
       const user = await User.findById(decoded.id);
       if (!user) {
         return res.status(403).json({
@@ -174,8 +177,6 @@ const refresh = async (req, res) => {
 };
 
 // Logout User
-// Currently does no token check. If you want to verify user is logged in,
-// you'd protect this route with a middleware that checks the access token.
 const logout = (req, res) => {
   return res.json({ message: "Logged out successfully." });
 };
@@ -185,7 +186,6 @@ const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
@@ -197,10 +197,9 @@ const requestPasswordReset = async (req, res) => {
     const resetToken = generateToken({ id: user._id }, JWT_SECRET, "1h");
 
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1h from now
+    user.resetPasswordExpires = Date.now() + 3600000; // 1h
     await user.save();
 
-    // Email the link
     const resetLink = `${process.env.FRONTEND_BASE_URL}/reset-password?token=${resetToken}`;
     await sendResetEmail(
       user.email,
@@ -232,19 +231,17 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Verify token with JWT_SECRET
     const decoded = jwt.verify(resetToken, JWT_SECRET);
-
-    // Find user & check if the token matches
     const user = await User.findById(decoded.id);
+
     if (!user || user.resetPasswordToken !== resetToken) {
       return res.status(403).json({
         message: "Invalid or expired reset token.",
       });
     }
 
-    // Update user's password
-    user.password = newPassword; // hashed by pre-save
+    // Update user's password (pre-save will handle hashing)
+    user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
