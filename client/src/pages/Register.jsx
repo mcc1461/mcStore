@@ -1,253 +1,275 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useRegisterUserMutation } from "../slices/apiSlice";
-import { setCredentials } from "../slices/authSlice";
 import log from "../assets/log.png";
 import Logo from "../components/Logo1";
 import Loader from "../components/Loader";
 
 function Register() {
-  const [firstName, setFirstname] = useState("");
-  const [lastName, setLastname] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // State for form data
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "user",
+    roleCode: "",
+  });
 
-  // New state variables
-  const [role, setRole] = useState("user"); // Default role is 'user'
-  const [roleCode, setRoleCode] = useState("");
+  // Local state for user info (based on localStorage)
+  const [userInfo, setUserInfo] = useState(
+    JSON.parse(localStorage.getItem("userInfo")) || null
+  );
 
-  // States for showing/hiding passwords
+  // State for toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showRoleCode, setShowRoleCode] = useState(false); // Toggle visibility of role code input
+  const [showRoleCode, setShowRoleCode] = useState(false);
+
+  // Local loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  const { userInfo } = useSelector((state) => state.auth);
-
-  const [registerUser, { isLoading }] = useRegisterUserMutation();
-
+  // Redirect to dashboard if already logged in
   useEffect(() => {
     if (userInfo) {
       navigate("/dashboard/board");
     }
-  }, [navigate, userInfo]);
+  }, [userInfo, navigate]);
 
+  // Update form data
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Reset form fields
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "user",
+      roleCode: "",
+    });
+  };
+
+  // Submit the registration form
   const submitHandler = async (e) => {
     e.preventDefault();
+    const {
+      firstName,
+      lastName,
+      username,
+      email,
+      password,
+      confirmPassword,
+      role,
+      roleCode,
+    } = formData;
+
+    // Validate password
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
-    } else {
-      try {
-        // Prepare registration data
-        const registrationData = {
-          firstName,
-          lastName,
-          username,
-          email,
-          password,
-          role,
-        };
+      return;
+    }
 
-        if (role === "admin" || role === "staff") {
-          if (!roleCode) {
-            toast.error(`Please enter the ${role} code.`);
-            return;
-          }
-          registrationData.roleCode = roleCode;
-        }
+    // Validate role code for admin/staff
+    if ((role === "admin" || role === "staff") && !roleCode) {
+      toast.error(`Please provide the ${role} code.`);
+      return;
+    }
 
-        const res = await registerUser(registrationData).unwrap();
+    try {
+      setIsLoading(true);
 
-        // Store the token in localStorage
-        localStorage.setItem("token", res.token);
+      // Prepare data
+      const registrationData = {
+        firstName,
+        lastName,
+        username,
+        email,
+        password,
+        role,
+        roleCode,
+      };
 
-        // Store user info
-        localStorage.setItem("userInfo", JSON.stringify(res.user));
+      // Make the axios call
+      const { data } = await axios.post("/api/auth/register", registrationData);
+      // data = {
+      //   message: "User registered successfully",
+      //   bearer: { accessToken, refreshToken },
+      //   user: { ... }
+      // }
 
-        // Update Redux store with user info
-        dispatch(setCredentials(res.user));
+      // Store tokens & user in localStorage
+      localStorage.setItem("token", data.bearer.accessToken);
+      localStorage.setItem("refreshToken", data.bearer.refreshToken);
+      localStorage.setItem("userInfo", JSON.stringify(data.user));
 
-        navigate("/dashboard/board");
-      } catch (err) {
-        toast.error(err?.data?.message || err.error);
-      }
+      // Update local state
+      setUserInfo(data.user);
+
+      toast.success("Registration successful!");
+      navigate("/dashboard/board");
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error(
+        error.response?.data?.message || "An unexpected error occurred."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="flex items-center justify-center w-screen h-screen">
-      <img src={log} alt="Log" className="h-[auto] w-[30%]" />
-      <div className="h-[90%] w-[70%] flex flex-col items-center justify-between">
-        <div className="w-[60%] mt-10">
-          <div className="flex items-center justify-between w-[100%]">
-            <Logo className="" />
+      <img src={log} alt="Log" className="w-1/3 h-auto" />
+
+      <div className="h-[90%] w-2/3 flex flex-col items-center justify-between">
+        {/* Header */}
+        <div className="w-3/5 mt-10">
+          <div className="flex items-center justify-between w-full">
+            <Logo />
             <p className="text-3xl font-bold">Sign Up</p>
           </div>
         </div>
 
+        {/* Registration Form */}
         <form
           className="flex flex-col items-center w-full gap-2"
-          style={{ minHeight: "400px" }} // Fixed minHeight to prevent shifting
           onSubmit={submitHandler}
         >
-          <input
-            type="text"
-            name="firstname"
-            placeholder="Firstname"
-            className="w-[60%] h-[35px] outline-none border-2 border-slate-400 text-center rounded-xl"
-            value={firstName}
-            onChange={(e) => setFirstname(e.target.value)}
-            autoComplete="given-name"
-          />
-          <input
-            type="text"
-            name="lastname"
-            placeholder="Lastname"
-            className="w-[60%] h-[35px] outline-none border-2 border-slate-400 text-center rounded-xl"
-            value={lastName}
-            onChange={(e) => setLastname(e.target.value)}
-            autoComplete="family-name"
-          />
-          <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            className="w-[60%] h-[35px] outline-none border-2 border-slate-400 text-center rounded-xl"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            className="w-[60%] h-[35px] outline-none border-2 border-slate-400 text-center rounded-xl"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-
-          {/* Password Input */}
-          <div className="relative w-[60%] h-[35px]">
+          {/* Text Fields */}
+          {["firstName", "lastName", "username", "email"].map((field) => (
             <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              className="w-full h-full text-center border-2 outline-none border-slate-400 rounded-xl"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
+              key={field}
+              type="text"
+              name={field}
+              placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+              className="w-3/5 text-center border-2 h-9 border-slate-400 rounded-xl"
+              value={formData[field]}
+              onChange={handleChange}
             />
-            <div
-              className="absolute right-4 top-[50%] transform -translate-y-[50%] cursor-pointer"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{ fontSize: "1.5em" }}
-            >
-              {showPassword ? "👁️" : "🙈"}
-            </div>
-          </div>
+          ))}
 
-          {/* Confirm Password Input */}
-          <div className="relative w-[60%] h-[35px]">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              placeholder="Confirm Password"
-              className="w-full h-full text-center border-2 outline-none border-slate-400 rounded-xl"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-            <div
-              className="absolute right-4 top-[50%] transform -translate-y-[50%] cursor-pointer"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={{ fontSize: "1.5em" }}
-            >
-              {showConfirmPassword ? "👁️" : "🙈"}
+          {/* Password / Confirm Password */}
+          {["password", "confirmPassword"].map((field) => (
+            <div className="relative w-3/5 h-9" key={field}>
+              <input
+                type={
+                  field === "password"
+                    ? showPassword
+                      ? "text"
+                      : "password"
+                    : showConfirmPassword
+                    ? "text"
+                    : "password"
+                }
+                name={field}
+                placeholder={
+                  field === "password" ? "Password" : "Confirm Password"
+                }
+                className="w-full h-full text-center border-2 border-slate-400 rounded-xl"
+                value={formData[field]}
+                onChange={handleChange}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (field === "password") {
+                    setShowPassword(!showPassword);
+                  } else {
+                    setShowConfirmPassword(!showConfirmPassword);
+                  }
+                }}
+                className="absolute transform -translate-y-1/2 right-4 top-1/2"
+              >
+                {field === "password"
+                  ? showPassword
+                    ? "🙈"
+                    : "👁️"
+                  : showConfirmPassword
+                  ? "🙈"
+                  : "👁️"}
+              </button>
             </div>
-          </div>
+          ))}
 
           {/* Role Selection */}
-          <div className="w-[60%] flex flex-col mt-4">
+          <div className="flex flex-col w-3/5 mt-4">
             <p className="mb-2 text-xl font-bold">Register as:</p>
-            <div className="flex justify-around">
-              <label className="flex items-center">
+            {["user", "staff", "admin"].map((roleOption) => (
+              <label key={roleOption} className="flex items-center">
                 <input
                   type="radio"
                   name="role"
-                  value="user"
-                  checked={role === "user"}
-                  onChange={(e) => setRole(e.target.value)}
+                  value={roleOption}
+                  checked={formData.role === roleOption}
+                  onChange={handleChange}
                 />
-                <span className="ml-2">User</span>
+                <span className="ml-2">
+                  {roleOption.charAt(0).toUpperCase() + roleOption.slice(1)}
+                </span>
               </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="role"
-                  value="staff"
-                  checked={role === "staff"}
-                  onChange={(e) => setRole(e.target.value)}
-                />
-                <span className="ml-2">Staff</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="role"
-                  value="admin"
-                  checked={role === "admin"}
-                  onChange={(e) => setRole(e.target.value)}
-                />
-                <span className="ml-2">Admin</span>
-              </label>
-            </div>
+            ))}
           </div>
 
-          {/* Conditionally render the role code input field */}
-          <div
-            className="relative w-[60%] h-[35px]"
-            style={{
-              visibility:
-                role === "admin" || role === "staff" ? "visible" : "hidden",
-            }} // Space is allocated but kept hidden
-          >
-            <input
-              type={showRoleCode ? "text" : "password"}
-              name="roleCode"
-              placeholder={`Enter ${role} code`}
-              className="w-full h-full text-center border-2 outline-none border-slate-400 rounded-xl"
-              value={roleCode}
-              onChange={(e) => setRoleCode(e.target.value)}
-            />
-            <div
-              className="absolute right-4 top-[50%] transform -translate-y-[50%] cursor-pointer"
-              onClick={() => setShowRoleCode(!showRoleCode)}
-              style={{ fontSize: "1.5em" }}
-            >
-              {showRoleCode ? "🙈" : "👁️"}
+          {/* Role Code Input (Admin/Staff) */}
+          {(formData.role === "admin" || formData.role === "staff") && (
+            <div className="relative w-3/5 h-9">
+              <input
+                type={showRoleCode ? "text" : "password"}
+                name="roleCode"
+                placeholder="Enter Role Code"
+                className="w-full h-full text-center border-2 border-slate-400 rounded-xl"
+                value={formData.roleCode}
+                onChange={handleChange}
+              />
+              <button
+                type="button"
+                onClick={() => setShowRoleCode(!showRoleCode)}
+                className="absolute transform -translate-y-1/2 right-4 top-1/2"
+              >
+                {showRoleCode ? "🙈" : "👁️"}
+              </button>
             </div>
-          </div>
+          )}
 
-          {isLoading && <Loader />}
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
+              <Loader />
+            </div>
+          )}
 
+          {/* Buttons */}
           <button
             type="submit"
-            className="w-[60%] bg-red-500 h-[35px] text-white flex justify-center items-center font-bold rounded-xl mt-4"
+            className="w-3/5 mt-4 font-bold text-white bg-red-500 h-9 rounded-xl"
           >
             Sign Up
           </button>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="w-3/5 mt-2 font-bold text-white bg-gray-500 h-9 rounded-xl"
+          >
+            Reset
+          </button>
         </form>
 
-        <p className="text-xl font-bold">
+        {/* Redirect */}
+        <p className="mt-4 text-xl font-bold">
           Already have an account?{" "}
-          <Link to="/login" className="text-red-500 no-underline">
+          <Link to="/login" className="text-red-500">
             Login
           </Link>
         </p>

@@ -1,4 +1,5 @@
 "use strict";
+
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/userModel");
@@ -10,7 +11,7 @@ const generateToken = (user) => {
   return jwt.sign(
     { _id: user._id, username: user.username, role: user.role },
     JWT_SECRET,
-    { expiresIn: "10d" }
+    { expiresIn: "30d" }
   );
 };
 
@@ -24,13 +25,13 @@ module.exports = {
       if (!users.length) {
         return res
           .status(404)
-          .send({ error: true, message: "No users found." });
+          .json({ error: true, message: "No users found." });
       }
 
-      res.status(200).send({ error: false, data: users });
+      res.status(200).json({ error: false, data: users });
     } catch (error) {
       console.error("Error listing users:", error);
-      res.status(500).send({ error: true, message: "Server error." });
+      res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -41,10 +42,11 @@ module.exports = {
 
     try {
       // Check if user already exists
-      if (await User.findOne({ username })) {
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
         return res
           .status(400)
-          .send({ error: true, message: "Username already exists." });
+          .json({ error: true, message: "Username already exists." });
       }
 
       // Determine role based on provided role and roleCode
@@ -60,17 +62,13 @@ module.exports = {
       if (!assignedRole) {
         return res
           .status(400)
-          .send({ error: true, message: "Invalid role or role code." });
+          .json({ error: true, message: "Invalid role or role code." });
       }
-
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
 
       // Create new user
       const newUser = new User({
         username,
-        password: hashedPassword,
+        password,
         email,
         firstName,
         lastName,
@@ -82,7 +80,7 @@ module.exports = {
       // Generate token
       const token = generateToken(newUser);
 
-      res.status(201).send({
+      res.status(201).json({
         error: false,
         message: "User registered successfully.",
         token,
@@ -97,7 +95,7 @@ module.exports = {
       });
     } catch (error) {
       console.error("Error creating user:", error);
-      res.status(500).send({ error: true, message: "Server error." });
+      res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -113,13 +111,13 @@ module.exports = {
       if (!user) {
         return res
           .status(404)
-          .send({ error: true, message: "User not found." });
+          .json({ error: true, message: "User not found." });
       }
 
-      res.status(200).send({ error: false, data: user });
+      res.status(200).json({ error: false, data: user });
     } catch (error) {
       console.error("Error reading user:", error);
-      res.status(500).send({ error: true, message: "Server error." });
+      res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -132,37 +130,37 @@ module.exports = {
           : { _id: req.user._id };
 
       if (req.body.password) {
-        const salt = await bcrypt.genSalt(10);
-        req.body.password = await bcrypt.hash(req.body.password, salt);
+        req.body.password = req.body.password; // Let model handle hashing
       }
 
       const updatedUser = await User.findOneAndUpdate(filters, req.body, {
         new: true,
         runValidators: true,
+        context: { updatedBy: req.user._id },
       });
 
       if (!updatedUser) {
         return res
           .status(404)
-          .send({ error: true, message: "User not found or no changes made." });
+          .json({ error: true, message: "User not found or no changes made." });
       }
 
-      res.status(202).send({
+      res.status(202).json({
         error: false,
         message: "User updated successfully.",
         data: updatedUser,
       });
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).send({ error: true, message: "Server error." });
+      res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
-  // Delete a user (admin only)
+  // Delete a user (Admin only)
   remove: async (req, res) => {
     try {
       if (req.user.role !== "admin") {
-        return res.status(403).send({ error: true, message: "Access denied." });
+        return res.status(403).json({ error: true, message: "Access denied." });
       }
 
       const deletedUser = await User.deleteOne({ _id: req.params.id });
@@ -170,15 +168,15 @@ module.exports = {
       if (!deletedUser.deletedCount) {
         return res
           .status(404)
-          .send({ error: true, message: "User not found." });
+          .json({ error: true, message: "User not found." });
       }
 
       res
-        .status(204)
-        .send({ error: false, message: "User deleted successfully." });
+        .status(200)
+        .json({ error: false, message: "User deleted successfully." });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).send({ error: true, message: "Server error." });
+      res.status(500).json({ error: true, message: "Server error." });
     }
   },
 };
