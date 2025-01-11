@@ -1,7 +1,10 @@
 "use strict";
 
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../models/userModel");
+const path = require("path");
+const fs = require("fs");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
 
@@ -14,12 +17,26 @@ const generateToken = (user) => {
   );
 };
 
+// Helper function to delete a file
+const deleteFile = (filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`Deleted file: ${filePath}`);
+    } else {
+      console.warn(`File does not exist: ${filePath}`);
+    }
+  } catch (error) {
+    console.error(`Error deleting file: ${filePath}`, error);
+  }
+};
+
 module.exports = {
   // List all users (Admin only) or self-profile for non-admin
   list: async (req, res) => {
     try {
       const filters = req.user.role === "admin" ? {} : { _id: req.user._id };
-      const users = await User.find(filters);
+      const users = await User.find(filters).select("-password");
 
       if (!users.length) {
         return res
@@ -40,7 +57,6 @@ module.exports = {
       req.body;
 
     try {
-      // Check if user already exists
       const existingUser = await User.findOne({ username });
       if (existingUser) {
         return res
@@ -48,7 +64,6 @@ module.exports = {
           .json({ error: true, message: "Username already exists." });
       }
 
-      // Determine role based on provided role and roleCode
       const assignedRole =
         role === "admin" && roleCode === process.env.ADMIN_CODE
           ? "admin"
@@ -64,7 +79,6 @@ module.exports = {
           .json({ error: true, message: "Invalid role or role code." });
       }
 
-      // Create new user
       const newUser = new User({
         username,
         password,
@@ -72,11 +86,10 @@ module.exports = {
         firstName,
         lastName,
         role: assignedRole,
+        image: req.file ? `/uploads/${req.file.filename}` : null,
       });
 
       await newUser.save();
-
-      // Generate token
       const token = generateToken(newUser);
 
       res.status(201).json({
@@ -90,6 +103,7 @@ module.exports = {
           firstName,
           lastName,
           role: assignedRole,
+          image: newUser.image,
         },
       });
     } catch (error) {
@@ -98,15 +112,15 @@ module.exports = {
     }
   },
 
-  // Read user details (self or specific user for admin)
+  // Read user details (self or admin for specific user)
   read: async (req, res) => {
     try {
       const filters =
         req.user.role === "admin"
           ? { _id: req.params.id }
           : { _id: req.user._id };
-      const user = await User.findOne(filters);
 
+      const user = await User.findOne(filters).select("-password");
       if (!user) {
         return res
           .status(404)
@@ -120,7 +134,7 @@ module.exports = {
     }
   },
 
-  // Update user details (self or admin updating any user)
+  // Update user details
   update: async (req, res) => {
     try {
       const filters =
@@ -128,15 +142,30 @@ module.exports = {
           ? { _id: req.params.id }
           : { _id: req.user._id };
 
-      if (req.body.password) {
-        req.body.password = req.body.password; // Let model handle hashing
+      const user = await User.findOne(filters);
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: true, message: "User not found." });
+      }
+
+      // Delete the old image file if a new file is uploaded
+      if (req.file) {
+        const oldFilePath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          path.basename(user.image || "")
+        );
+        console.log("Old file path for deletion:", oldFilePath);
+        deleteFile(oldFilePath);
+        req.body.image = `/uploads/${req.file.filename}`;
       }
 
       const updatedUser = await User.findOneAndUpdate(filters, req.body, {
         new: true,
         runValidators: true,
-        context: { updatedBy: req.user._id },
-      });
+      }).select("-password");
 
       if (!updatedUser) {
         return res
@@ -146,7 +175,7 @@ module.exports = {
 
       res.status(202).json({
         error: false,
-        message: "User updated successfully.",
+        message: "Profile updated successfully.",
         data: updatedUser,
       });
     } catch (error) {
@@ -162,17 +191,28 @@ module.exports = {
         return res.status(403).json({ error: true, message: "Access denied." });
       }
 
-      const deletedUser = await User.deleteOne({ _id: req.params.id });
+      const deletedUser = await User.findOneAndDelete({ _id: req.params.id });
 
-      if (!deletedUser.deletedCount) {
+      if (!deletedUser) {
         return res
           .status(404)
           .json({ error: true, message: "User not found." });
       }
 
-      res
-        .status(200)
-        .json({ error: false, message: "User deleted successfully." });
+      if (deletedUser.image) {
+        const imagePath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          path.basename(deletedUser.image)
+        );
+        deleteFile(imagePath);
+      }
+
+      res.status(200).json({
+        error: false,
+        message: "User deleted successfully.",
+      });
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: true, message: "Server error." });

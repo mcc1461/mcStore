@@ -50,34 +50,39 @@ function Updateprofile() {
 
   const submitHandler = async (e) => {
     e.preventDefault();
-    try {
-      // Handle Image upload
-      let imageURL;
 
+    try {
+      let imageURL = profileImage; // Retain existing image URL if no new image is uploaded
+
+      // Validate file type and upload if a new file is provided
       if (
         fileName &&
-        (fileName.type === "image/jpeg" ||
-          fileName.type === "image/jpg" ||
-          fileName.type === "image/png")
+        ["image/jpeg", "image/jpg", "image/png"].includes(fileName.type)
       ) {
         const image = new FormData();
         image.append("file", fileName);
         image.append("cloud_name", "ddc5ebbcn");
         image.append("upload_preset", "el7id0ah");
 
-        // First save image to cloudinary
+        // Upload image to Cloudinary
         const response = await fetch(
-          "https://api.cloudinary.com/v1_1/ddc5ebbcn/image/uploads",
+          "https://api.cloudinary.com/v1_1/ddc5ebbcn/image/upload",
           {
-            method: "post",
+            method: "POST",
             body: image,
           }
         );
+
+        if (!response.ok) {
+          throw new Error("Image upload failed. Please try again.");
+        }
+
         const imgData = await response.json();
-        imageURL = imgData.url.toString();
+        imageURL = imgData.url; // Extract URL from Cloudinary response
       }
 
-      const res = await updateProfile({
+      // Prepare profile update data
+      const updatedProfileData = {
         _id: userInfo._id,
         firstName,
         lastName,
@@ -85,14 +90,25 @@ function Updateprofile() {
         email,
         phoneNumber,
         bio,
-        photo: profileImage, // Add profileImage data here
-      }).unwrap();
-      console.log(res);
+        photo: imageURL, // Use new or existing image URL
+      };
+
+      // Call profile update function (Redux or API)
+      const res = await updateProfile(updatedProfileData).unwrap();
+
+      // Dispatch updated credentials to Redux store
       dispatch(setCredentials(res));
+
+      // Navigate to the profile page and notify user
       navigate("/dashboard/profile");
       toast.success("Profile Updated Successfully");
     } catch (err) {
-      toast.error(err?.data?.message || err.error);
+      console.error("Error updating profile:", err);
+
+      // Display error message from response or fallback to default message
+      toast.error(
+        err?.data?.message || "Failed to update profile. Please try again."
+      );
     }
   };
 

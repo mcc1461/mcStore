@@ -1,30 +1,100 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// Initialize from localStorage or default to null
 const initialState = {
-  userInfo: localStorage.getItem("userInfo")
-    ? JSON.parse(localStorage.getItem("userInfo"))
-    : null,
+  userInfo: (() => {
+    try {
+      const storedUserInfo = localStorage.getItem("userInfo");
+      if (storedUserInfo) {
+        const parsedUserInfo = JSON.parse(storedUserInfo);
+
+        // Ensure the parsed data includes the necessary fields
+        if (parsedUserInfo.id && !parsedUserInfo._id) {
+          parsedUserInfo._id = parsedUserInfo.id; // Map `id` to `_id`
+        }
+
+        return parsedUserInfo;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error parsing userInfo from localStorage:", error);
+      return null;
+    }
+  })(),
+  token: localStorage.getItem("token") || null,
+  refreshToken: localStorage.getItem("refreshToken") || null,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    // Saves user info to Redux and localStorage
+    /**
+     * Sets user credentials into the Redux store and localStorage.
+     * Maps `id` to `_id` for consistency if necessary.
+     */
     setCredentials: (state, action) => {
-      state.userInfo = action.payload;
-      localStorage.setItem("userInfo", JSON.stringify(action.payload));
+      const { userInfo, token, refreshToken } = action.payload;
+
+      // Map `id` to `_id` if not already mapped
+      if (userInfo?.id && !userInfo._id) {
+        userInfo._id = userInfo.id;
+      }
+
+      state.userInfo = userInfo;
+      state.token = token;
+      state.refreshToken = refreshToken;
+
+      localStorage.setItem("userInfo", JSON.stringify(userInfo));
+      if (token) localStorage.setItem("token", token);
+      if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
     },
-    // Clears user info from Redux and localStorage
+
+    /**
+     * Clears user credentials from the Redux store and localStorage.
+     */
     logout: (state) => {
       state.userInfo = null;
+      state.token = null;
+      state.refreshToken = null;
+
       localStorage.removeItem("userInfo");
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
     },
+
+    /**
+     * Hydrates the Redux store state from localStorage upon application initialization.
+     */
+    hydrateFromStorage: (state) => {
+      try {
+        const storedUserInfo = localStorage.getItem("userInfo");
+        const token = localStorage.getItem("token");
+        const refreshToken = localStorage.getItem("refreshToken");
+
+        if (storedUserInfo) {
+          const parsedUserInfo = JSON.parse(storedUserInfo);
+
+          // Ensure the parsed data includes the necessary fields
+          if (parsedUserInfo.id && !parsedUserInfo._id) {
+            parsedUserInfo._id = parsedUserInfo.id; // Map `id` to `_id`
+          }
+
+          state.userInfo = parsedUserInfo;
+        } else {
+          state.userInfo = null;
+        }
+
+        state.token = token || null;
+        state.refreshToken = refreshToken || null;
+      } catch (error) {
+        console.error("Error hydrating auth state from localStorage:", error);
+        state.userInfo = null;
+        state.token = null;
+        state.refreshToken = null;
+      }
+    },
   },
 });
 
-export const { setCredentials, logout } = authSlice.actions;
+export const { setCredentials, logout, hydrateFromStorage } = authSlice.actions;
 export default authSlice.reducer;

@@ -37,12 +37,21 @@ export default function Addproducts() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) {
+      e.preventDefault(); // Prevent form's default submit behavior
+    } else {
+      console.warn("Event does not support preventDefault:", e);
+    }
+
     const { name, category, price, quantity, description } = formData;
 
     console.log("Form Data", formData);
 
-    // Validation logic here (you can check if fields are empty, etc.)
+    // Validate form fields (example)
+    if (!name || !category || !price || !quantity || !description) {
+      toast.error("All fields are required.");
+      return;
+    }
 
     try {
       const response = await createProduct({
@@ -51,13 +60,12 @@ export default function Addproducts() {
         price,
         quantity,
         description,
-        // Add other fields as needed based on your schema
       });
 
-      // Check if the mutation was successful
       if (response.data) {
-        dispatch(addProduct(response.data));
-        // Clear the form fields and image
+        dispatch(addProduct(response.data)); // Add product to Redux state
+
+        // Clear form fields
         setFormData({
           name: "",
           category: "",
@@ -65,29 +73,26 @@ export default function Addproducts() {
           quantity: "",
           description: "",
         });
-
-        console.log("API RESPONSE:", response);
         setFileName("No selected file");
         setImage(null);
 
-        // Optionally, you can show a success message using toast
+        // Success feedback
         toast.success("Product added successfully!");
 
-        // Navigate to a different page if needed
+        // Redirect to another page
         navigate("/dashboard/board");
       }
     } catch (error) {
-      // Handle errors here, you can display an error message to the user or log errors to the console
       console.error("Error adding product:", error);
 
+      // Handle specific error response
       if (
         error.response &&
-        error.response.data.message === "Nmae already exists"
+        error.response.data.message === "Name already exists"
       ) {
         toast.error(
-          "Product name already exists. Please choose a different name"
+          "Product name already exists. Please choose a different name."
         );
-        console.error("name already exists,", error);
       } else {
         toast.error("Error adding product. Please try again later.");
       }
@@ -110,7 +115,7 @@ export default function Addproducts() {
                 id="name"
                 name="name"
                 placeholder="product Names"
-                className="w-full border border-gray-400 pt-2 rounded-lg"
+                className="w-full pt-2 border border-gray-400 rounded-lg"
                 value={formData.name}
                 onChange={handleInputChange}
               />
@@ -122,7 +127,7 @@ export default function Addproducts() {
                 id="category"
                 name="category"
                 placeholder="Product Category"
-                className="w-full border border-gray-400 pt-2 rounded-lg"
+                className="w-full pt-2 border border-gray-400 rounded-lg"
                 value={formData.category}
                 onChange={handleInputChange}
               />
@@ -134,7 +139,7 @@ export default function Addproducts() {
                 id="price"
                 name="price"
                 placeholder="Product Price"
-                className="w-full border border-gray-400 pt-2 rounded-lg"
+                className="w-full pt-2 border border-gray-400 rounded-lg"
                 value={formData.price}
                 onChange={handleInputChange}
               />
@@ -146,13 +151,13 @@ export default function Addproducts() {
                 id="quantity"
                 name="quantity"
                 placeholder="Product Quantity"
-                className="w-full border border-gray-400 pt-2 rounded-lg"
+                className="w-full pt-2 border border-gray-400 rounded-lg"
                 value={formData.quantity}
                 onChange={handleInputChange}
               />
             </div>
             <div className="">
-              <label htmlFor="message" className=" font-bold">
+              <label htmlFor="message" className="font-bold ">
                 Message
               </label>
               <textarea
@@ -160,7 +165,7 @@ export default function Addproducts() {
                 name="description"
                 rows={6}
                 placeholder="Enter message"
-                className="w-full border border-gray-400 pt-2 rounded-lg"
+                className="w-full pt-2 border border-gray-400 rounded-lg"
                 value={formData.description}
                 onChange={handleInputChange}
               />
@@ -168,7 +173,7 @@ export default function Addproducts() {
 
             <button
               type="submit"
-              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+              className="px-4 py-2 font-bold text-white transition duration-200 bg-red-500 rounded-lg hover:bg-red-600"
             >
               Add Products
             </button>

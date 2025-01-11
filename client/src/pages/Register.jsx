@@ -64,6 +64,7 @@ function Register() {
   // Submit the registration form
   const submitHandler = async (e) => {
     e.preventDefault();
+
     const {
       firstName,
       lastName,
@@ -75,16 +76,16 @@ function Register() {
       roleCode,
     } = formData;
 
-    console.log(formData);
+    console.log("Registration Form Data:", formData);
 
-    // Validate password
+    // Password validation
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords do not match.");
       return;
     }
 
-    // Validate role code for admin/staff
-    if ((role === "admin" || role === "staff") && !roleCode) {
+    // Role code validation for admin or staff
+    if ((role === "admin" || role === "staff") && !roleCode.trim()) {
       toast.error(`Please provide the ${role} code.`);
       return;
     }
@@ -92,39 +93,38 @@ function Register() {
     try {
       setIsLoading(true);
 
-      // Prepare data
+      // Prepare registration payload
       const registrationData = {
-        firstName,
-        lastName,
-        username,
-        email,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        username: username.trim(),
+        email: email.trim(),
         password,
         role,
-        roleCode,
+        roleCode: roleCode ? roleCode.trim() : undefined, // Only include if provided
       };
 
-      // Make the axios call
+      // Send registration request
       const { data } = await axios.post("/api/auth/register", registrationData);
-      // data = {
-      //   message: "User registered successfully",
-      //   bearer: { accessToken, refreshToken },
-      //   user: { ... }
-      // }
 
-      // Store tokens & user in localStorage
+      // Save tokens and user data in localStorage
       localStorage.setItem("token", data.bearer.accessToken);
       localStorage.setItem("refreshToken", data.bearer.refreshToken);
       localStorage.setItem("userInfo", JSON.stringify(data.user));
 
-      // Update local state
+      // Update state with user information
       setUserInfo(data.user);
 
-      toast.success("Registration successful!");
-      navigate("/dashboard/board");
+      // Notify success and redirect
+      toast.success(data.message || "Registration successful!");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Registration error:", error.response?.data || error);
+
+      // Handle error messages
       toast.error(
-        error.response?.data?.message || "An unexpected error occurred."
+        error.response?.data?.message ||
+          "An unexpected error occurred during registration."
       );
     } finally {
       setIsLoading(false);
@@ -171,8 +171,8 @@ function Register() {
                       ? "text"
                       : "password"
                     : showConfirmPassword
-                    ? "text"
-                    : "password"
+                      ? "text"
+                      : "password"
                 }
                 name={field}
                 placeholder={
@@ -198,8 +198,8 @@ function Register() {
                     ? "🙈"
                     : "👁️"
                   : showConfirmPassword
-                  ? "🙈"
-                  : "👁️"}
+                    ? "🙈"
+                    : "👁️"}
               </button>
             </div>
           ))}

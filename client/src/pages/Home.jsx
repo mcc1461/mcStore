@@ -1,4 +1,4 @@
-import Logo from "./Logo";
+import Logo from "../components/Logo";
 import { BsArrowRight } from "react-icons/bs";
 import logbook from "../assets/logbook.png";
 import { Link } from "react-router-dom";

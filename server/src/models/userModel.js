@@ -44,6 +44,20 @@ const UserSchema = new mongoose.Schema(
       enum: ["admin", "staff", "user"],
       default: "user",
     },
+    image: {
+      type: String,
+      default: null,
+      validate: {
+        validator: function (v) {
+          // Allow null, valid URLs, or file paths
+          const urlOrPathRegex =
+            /^(https?:\/\/.*\.(?:png|jpg|jpeg|svg|webp))|(^\/uploads\/.*\.(?:png|jpg|jpeg|svg|webp))$/i;
+          return v === null || urlOrPathRegex.test(v);
+        },
+        message: (props) =>
+          `${props.value} is not a valid URL or file path for an image.`,
+      },
+    },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
   },
@@ -69,6 +83,37 @@ UserSchema.methods.verifyPassword = async function (password) {
   } catch (err) {
     return false;
   }
+};
+
+// Static method to update user profile image
+UserSchema.statics.updateProfileImage = async function (userId, imagePath) {
+  return this.findByIdAndUpdate(
+    userId,
+    { image: imagePath },
+    { new: true, runValidators: true }
+  );
+};
+
+// Static method for updating user fields safely
+UserSchema.statics.updateUserProfile = async function (userId, updateData) {
+  const allowedUpdates = [
+    "firstName",
+    "lastName",
+    "email",
+    "username",
+    "image",
+  ];
+  const filteredUpdates = Object.keys(updateData).reduce((obj, key) => {
+    if (allowedUpdates.includes(key)) {
+      obj[key] = updateData[key];
+    }
+    return obj;
+  }, {});
+
+  return this.findByIdAndUpdate(userId, filteredUpdates, {
+    new: true,
+    runValidators: true,
+  });
 };
 
 module.exports = mongoose.model("User", UserSchema);

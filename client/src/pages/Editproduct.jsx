@@ -31,24 +31,44 @@ export default function Editproducts() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) {
+      e.preventDefault(); // Prevent default form submission behavior
+    } else {
+      console.warn("Event does not support preventDefault:", e);
+    }
 
     try {
+      // Log the data being sent for debugging
+      console.log("Updating product with data:", { id, updatedProductData });
+
+      // Make the API call to update the product
       const response = await productUpdate({ id, updatedProductData });
 
-      if (response.data) {
-        toast.success("Product Updated Successfully!");
+      if (response?.data) {
+        // Show success feedback
+        toast.success("Product updated successfully!");
 
+        // Dispatch Redux action to update state
         dispatch(updateProduct(response.data));
 
+        // Navigate to the board or another page as needed
         navigate(`/dashboard/board`);
+      } else {
+        // Handle unexpected response structure
+        console.warn("Unexpected response format:", response);
+        toast.error("Unexpected response. Please try again.");
       }
     } catch (error) {
       console.error("Error updating product:", error);
 
-      toast.error("Error updating product, please try again later!");
+      // Display specific error messages if available
+      const errorMessage =
+        error.response?.data?.message ||
+        "Error updating product. Please try again later!";
+      toast.error(errorMessage);
     }
   };
+
   if (isLoadingProduct) {
     return <Loader />;
   }
@@ -71,7 +91,7 @@ export default function Editproducts() {
                   id="name"
                   name="name"
                   placeholder="Product Name"
-                  className="w-full border border-gray-400 p-2 rounded-lg"
+                  className="w-full p-2 border border-gray-400 rounded-lg"
                   value={updatedProductData?.name || productData?.name || ""}
                   onChange={handleInputChange}
                 />
@@ -83,7 +103,7 @@ export default function Editproducts() {
                   id="category"
                   name="category"
                   placeholder="Product Category"
-                  className="w-full border border-gray-400 p-2 rounded-lg"
+                  className="w-full p-2 border border-gray-400 rounded-lg"
                   value={updatedProductData?.category || productData?.category}
                   onChange={handleInputChange}
                 />
@@ -95,7 +115,7 @@ export default function Editproducts() {
                   id="price"
                   name="price"
                   placeholder="Product Price"
-                  className="w-full border border-gray-400 p-2 rounded-lg"
+                  className="w-full p-2 border border-gray-400 rounded-lg"
                   value={updatedProductData?.price || productData?.price}
                   onChange={handleInputChange}
                 />
@@ -107,13 +127,13 @@ export default function Editproducts() {
                   id="quantity"
                   name="quantity"
                   placeholder="10"
-                  className="w-full border border-gray-400 p-2 rounded-lg"
+                  className="w-full p-2 border border-gray-400 rounded-lg"
                   value={updatedProductData?.quantity || productData?.quantity}
                   onChange={handleInputChange}
                 />
               </div>
               <div className="">
-                <label htmlFor="message" className=" font-bold">
+                <label htmlFor="message" className="font-bold ">
                   Product Description:
                 </label>
                 <textarea
@@ -121,7 +141,7 @@ export default function Editproducts() {
                   name="description"
                   rows={5}
                   placeholder="Product Description"
-                  className="w-full border border-gray-400 p-2 rounded-lg"
+                  className="w-full p-2 border border-gray-400 rounded-lg"
                   value={
                     updatedProductData?.description || productData?.description
                   }
@@ -130,7 +150,7 @@ export default function Editproducts() {
               </div>
               <button
                 type="submit"
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
+                className="px-4 py-2 font-bold text-white transition duration-200 bg-red-500 rounded-lg hover:bg-red-600"
               >
                 Update Product
               </button>

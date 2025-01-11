@@ -3,6 +3,7 @@
 /* -------------------------------------------------------
     NODEJS EXPRESS SERVER - server.js | MusCo Dev
 ------------------------------------------------------- */
+
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
@@ -22,11 +23,9 @@ const {
   authorizeRoles,
 } = require("./src/middlewares/authentication");
 const errorHandler = require("./src/middlewares/errorHandler");
-
-// Import custom middlewares
 const { findSearchSortPage } = require("./src/middlewares/findSearchSortPage");
 
-// Import controllers for password reset
+// Import controllers
 const {
   resetPassword,
   requestPasswordReset,
@@ -38,8 +37,6 @@ dbConnection();
 
 /* ------------------------------------------------------- */
 // Application Settings
-
-// Set up the view engine
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
@@ -56,21 +53,18 @@ app.use(
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
-    // allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.options("*", cors()); // Preflight request handling
 
-// Preflight request handling for all routes
-app.options("*", cors());
+// Serve static files for uploads directory (prioritize this middleware)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Serve static files
-app.use(express.static(path.join(__dirname, "public")));
-
-// Parse JSON and URL-encoded requests
+// Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Custom middlewares
+// Custom Middleware
 app.use(findSearchSortPage);
 
 /* ------------------------------------------------------- */
@@ -89,7 +83,7 @@ app.use("/api", authenticate, require("./src/routes"));
 app.post("/api/users/forgotPassword", requestPasswordReset);
 app.post("/api/users/reset-password", resetPassword);
 
-// API Documentation
+// API Documentation Route
 app.all("/api/documents", (req, res) => {
   res.render("documents", {
     title: "Stock Management API Service for MusCo",
@@ -101,17 +95,21 @@ app.get("/", (req, res) => {
   res.json({ message: "Welcome to MusCo Dev API!" });
 });
 
-// Catch-all route for undefined paths
-app.get("*", (req, res) => {
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, "public")));
+
+// Frontend Catch-all Route
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api/")) return next(); // Avoid serving index.html for API routes
   res.sendFile(path.resolve(__dirname, "public", "index.html"));
 });
 
 /* ------------------------------------------------------- */
 // Error Handlers
 
-// 404 Not Found Handler
-app.use((req, res) => {
-  res.status(404).json({ msg: "Route not found" });
+// 404 Not Found Handler for undefined API routes
+app.use("/api", (req, res) => {
+  res.status(404).json({ msg: "API route not found" });
 });
 
 // Centralized Error Handler

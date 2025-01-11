@@ -50,25 +50,35 @@ export default function ResetPassword() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
+    // Validate input fields
     if (!password || !confirmPassword) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill in all fields.");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error("Passwords do not match.");
       return;
     }
 
     try {
+      // Reset password request
       const response = await passwordReset({
         resetToken,
-        newPassword: password,
+        newPassword: password.trim(), // Ensure trimmed password is sent
       });
-      toast.success("Password reset successfully");
+
+      // Notify user of success
+      toast.success(response.message || "Password reset successfully.");
       navigate("/login");
     } catch (error) {
-      toast.error("Failed to reset password. Please try again.");
+      console.error("Password reset error:", error);
+
+      // Handle error response
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to reset password. Please try again."
+      );
     }
   };
 

@@ -16,16 +16,40 @@ export default function Issues() {
   const [reportIssues, { isLoading }] = useReportIssuesMutation();
 
   const sendEmail = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent the default form submission behavior
 
     try {
-      await reportIssues(data);
-      toast.success("Message Sent Successfully");
+      // Validate input fields before sending the request
+      if (!subject.trim() || !message.trim()) {
+        toast.error("Subject and message fields cannot be empty.");
+        return;
+      }
+
+      // Prepare the email data payload
+      const emailData = {
+        subject,
+        message,
+        ...data, // Spread any additional required data
+      };
+
+      // Call the API to report the issue
+      await reportIssues(emailData);
+
+      // Show success message
+      toast.success("Message sent successfully!");
+
+      // Clear input fields after successful submission
       setSubject("");
       setMessage("");
     } catch (error) {
+      // Log the error for debugging
       console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+
+      // Show an error message to the user
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to send the message. Please try again."
+      );
     }
   };
 

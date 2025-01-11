@@ -1,47 +1,78 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { BsEye } from "react-icons/bs";
 import { HiOutlineRefresh } from "react-icons/hi";
 import { ImBin } from "react-icons/im";
 import { Link } from "react-router-dom";
-import axios from "axios"; // Import axios
+import axios from "axios";
 import Search from "./search";
 import { deleteProduct, setProducts } from "../slices/products/productSlice";
 
 export default function Table() {
   const [showModal, setShowModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); // Track the product for deletion
   const dispatch = useDispatch();
   const products = useSelector((state) => state.product.products);
-
   const [search, setSearch] = useState("");
 
+  // Fetch products on component mount
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get("/api/products"); // Use axios to make the GET request
+        const token = localStorage.getItem("token");
+        const response = await axios.get("/api/products", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         if (response.status === 200) {
-          dispatch(setProducts(response.data)); // Access data directly from response
+          dispatch(setProducts(response.data));
         }
       } catch (error) {
-        console.error("Error Fetching Products", error);
+        console.error("Error Fetching Products:", error);
       }
     };
+
     fetchProducts();
   }, [dispatch]);
 
-  const handleDeleteProduct = (id) => {
-    dispatch(deleteProduct(id));
-    setShowModal(false);
+  // Handle deletion of a product
+  const handleDeleteProduct = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/products/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      dispatch(deleteProduct(id));
+      toast.success("Product deleted successfully!");
+    } catch (error) {
+      console.error("Error Deleting Product:", error);
+      toast.error("Failed to delete product.");
+    } finally {
+      setShowModal(false);
+    }
   };
+
+  // Filtered products based on search input
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) =>
+      product.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [products, search]);
 
   return (
     <div>
+      {/* Search Bar */}
       <div className="bg-white h-[15%] w-[98%] flex items-center justify-center">
         <Search value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="flex flex-col items-center justify-start h-[55vh] mt-3 w-[98%] ">
-        <table className="w-full text-center table-auto ">
+
+      {/* Products Table */}
+      <div className="flex flex-col items-center justify-start h-[55vh] mt-3 w-[98%]">
+        <table className="w-full text-center table-auto">
           <thead>
             <tr className="border-t-2 border-b-2 border-black">
               <th className="w-[5%]">S/N</th>
@@ -53,9 +84,8 @@ export default function Table() {
               <th>Action</th>
             </tr>
           </thead>
-          {/*Table rows */}
-          <tbody className=" h-[300px] overflow-y-auto ">
-            {products.map((product, index) => (
+          <tbody className="h-[300px] overflow-y-auto">
+            {filteredProducts.map((product, index) => (
               <tr
                 key={product?._id}
                 className="h-[40px] bg-gray-100 border-b-2 border-white"
@@ -67,61 +97,54 @@ export default function Table() {
                 <td>{product?.quantity || "-"}</td>
                 <td>#{product?.value || "-"}</td>
                 <td className="flex items-center justify-center gap-3 mt-3">
-                  <p>
-                    <Link to={`/dashboard/products/${product?._id}`}>
-                      <BsEye className="text-[#0F1377]" />
-                    </Link>
-                  </p>
-                  <p>
-                    <Link to={`/dashboard/editproduct/${product?._id}`}>
-                      <HiOutlineRefresh className="text-[#0A6502]" />
-                    </Link>
-                  </p>
-                  <p>
-                    <Link to={`/dashboard/deleteproduct/${product?._id}`}>
-                      <ImBin className="text-[#850707]" />
-                    </Link>
-                  </p>
+                  <Link to={`/dashboard/products/${product?._id}`}>
+                    <BsEye className="text-[#0F1377]" />
+                  </Link>
+                  <Link to={`/dashboard/editproduct/${product?._id}`}>
+                    <HiOutlineRefresh className="text-[#0A6502]" />
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setShowModal(true);
+                    }}
+                  >
+                    <ImBin className="text-[#850707]" />
+                  </button>
                 </td>
-
-                {showModal ? (
-                  <>
-                    {/*Delete Confirmation Modal*/}
-                    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
-                      <div className="relative w-auto max-w-3xl mx-auto my-6">
-                        <div className="border-0 rounded-lg shadow-lg relative flex flex-col items-center justify-center w-[40vw] h-[40vh] bg-white outline-none focus:outline-none">
-                          <p>Hey Joshua!</p>
-                          <p>Are you sure you want to delete this?</p>
-                          <div className="flex items-center justify-end p-6 border-t border-solid rounded-b border-blueGray-200">
-                            <button
-                              className="px-6 py-3 mb-1 mr-1 text-sm font-bold text-white uppercase bg-green-500 rounded outline-none background-transparent focus:outline-none hover:bg-green-300"
-                              type="button"
-                              onClick={() => handleDeleteProduct(product._id)}
-                            >
-                              Delete
-                            </button>
-                            <button
-                              className="px-6 py-3 mb-1 mr-1 text-sm font-bold text-white uppercase bg-red-500 rounded shadow outline-none hover:bg-red-300 hover:shadow-lg focus:outline-none"
-                              type="button"
-                              onClick={() => setShowModal(false)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : null}
               </tr>
             ))}
-            <tr></tr>
           </tbody>
         </table>
-        <p className="w-full text-center text-slate-400">
-          by MusCo ©️ <span>{new Date().getFullYear}</span>2024
+        <p className="w-full mt-4 text-center text-slate-400">
+          by MusCo ©️ {new Date().getFullYear()}
         </p>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showModal && selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-[40vw] h-[40vh] p-6 bg-white rounded-lg shadow-lg">
+            <p className="text-lg font-semibold">
+              Are you sure you want to delete <b>{selectedProduct.name}</b>?
+            </p>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => handleDeleteProduct(selectedProduct._id)}
+                className="px-6 py-2 font-bold text-white bg-green-500 rounded-lg hover:bg-green-600"
+              >
+                Yes, Delete
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-6 py-2 font-bold text-white bg-red-500 rounded-lg hover:bg-red-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
