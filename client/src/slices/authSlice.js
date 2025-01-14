@@ -93,8 +93,26 @@ const authSlice = createSlice({
         state.refreshToken = null;
       }
     },
+
+    /**
+     * Updates user info in the Redux store with new values. Useful for profile
+     * updates without requiring a full re-login.
+     */
+    updateUserInfo: (state, action) => {
+      // Merge the updated fields into the existing user info.
+      if (state.userInfo) {
+        state.userInfo = {
+          ...state.userInfo,
+          ...action.payload,
+        };
+
+        // Update the localStorage to maintain consistency across reloads.
+        localStorage.setItem("userInfo", JSON.stringify(state.userInfo));
+      }
+    },
   },
 });
 
-export const { setCredentials, logout, hydrateFromStorage } = authSlice.actions;
+export const { setCredentials, logout, hydrateFromStorage, updateUserInfo } =
+  authSlice.actions;
 export default authSlice.reducer;

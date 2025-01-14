@@ -7,11 +7,12 @@ import Loader from "../components/Loader";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { userInfo } = useSelector((state) => state.auth); // Get user info from Redux
+  const { userInfo } = useSelector((state) => state.auth); // Get user credentials from Redux
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Fetch detailed profile data once the component mounts
   useEffect(() => {
     if (!userInfo) {
       toast.error("User not authenticated. Redirecting to login...");
@@ -33,6 +34,7 @@ export default function Profile() {
           }
         );
 
+        // Update local state with the fetched profile data
         setProfile(data.data);
       } catch (err) {
         const message = err.response?.data?.message || "Error loading profile.";
@@ -47,6 +49,7 @@ export default function Profile() {
     fetchProfile();
   }, [userInfo, navigate]);
 
+  // While loading, display the Loader component
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -55,6 +58,7 @@ export default function Profile() {
     );
   }
 
+  // If an error occurred, display the error message with a button to navigate to login
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -71,6 +75,7 @@ export default function Profile() {
     );
   }
 
+  // Compute the proper URL for the profile image
   const imageUrl = profile.image?.startsWith("/uploads/")
     ? `${import.meta.env.VITE_APP_API_URL}${profile.image}`
     : profile.image || "/default-profile.png";
@@ -82,6 +87,7 @@ export default function Profile() {
           <h2 className="text-2xl font-semibold text-gray-700">Your Profile</h2>
           <button
             onClick={() => {
+              // Navigate to the profile update page
               navigate("/dashboard/update", { state: { profile } });
               console.log(
                 "Profile data being sent to edit profile page",
@@ -95,7 +101,7 @@ export default function Profile() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Left Side */}
+          {/* Left side: Profile details */}
           <div className="space-y-4">
             <div>
               <p className="text-sm font-semibold text-gray-500">Name:</p>
@@ -129,7 +135,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Right Side */}
+          {/* Right side: Profile image and membership info */}
           <div className="flex flex-col items-center">
             <img
               src={imageUrl}
