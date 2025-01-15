@@ -41,8 +41,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/firms" element={<FirmList />} />
       <Route path="/brands" element={<BrandList />} />
+      <Route path="/firms" element={<FirmList />} />
       <Route path="/products" element={<ProductList />} />
 
       {/* Protected Dashboard Routes */}

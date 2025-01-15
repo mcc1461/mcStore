@@ -31,7 +31,7 @@ export default function BrandsList() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await apiClient.get("/api/brands?limit=-1&page=1");
+        const response = await apiClient.get("/brands?limit=-1&page=1");
         setBrands(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -76,7 +76,7 @@ export default function BrandsList() {
 
   const deleteBrand = async () => {
     try {
-      await apiClient.delete(`/api/brands/${selectedBrandForDelete._id}`);
+      await apiClient.delete(`/brands/${selectedBrandForDelete._id}`);
       setBrands(
         brands.filter((brand) => brand._id !== selectedBrandForDelete._id)
       ); // Remove deleted brand
@@ -106,7 +106,7 @@ export default function BrandsList() {
   const saveBrandDetails = async () => {
     try {
       if (isAddingNewBrand) {
-        const response = await apiClient.post("/api/brands", editingBrand);
+        const response = await apiClient.post("/brands", editingBrand);
         setBrands((prevBrands) => [...prevBrands, response.data.data]);
       } else {
         await apiClient.put(`/api/brands/${editingBrand._id}`, editingBrand);

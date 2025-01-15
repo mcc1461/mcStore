@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { Link, useNavigate, Outlet } from "react-router-dom";
 import {
@@ -9,7 +9,6 @@ import {
   CalendarIcon,
   ChartPieIcon,
   DocumentDuplicateIcon,
-  MagnifyingGlassIcon,
   ChevronDownIcon,
   FolderIcon,
   HomeIcon,
@@ -17,45 +16,48 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useSelector, useDispatch } from "react-redux";
+import axios from "axios";
 import { logout } from "../slices/authSlice";
+import logo from "../assets/logo.png";
+import defaultUser from "../assets/default-profile.png";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
   { name: "Team", href: "/dashboard/team", icon: UsersIcon, current: false },
-  { name: "Firms", href: "/dashboard/firms", icon: FolderIcon, current: false },
+  { name: "Firms", href: "/firms", icon: FolderIcon, current: false },
   {
     name: "Brands",
-    href: "/dashboard/brands",
+    href: "/brands",
     icon: FolderIcon,
     current: false,
   },
   {
     name: "Products",
-    href: "/dashboard/products",
+    href: "/products",
     icon: FolderIcon,
     current: false,
   },
   {
     name: "Purchases",
-    href: "/dashboard/purchases",
+    href: "/purchases",
     icon: DocumentDuplicateIcon,
     current: false,
   },
   {
     name: "Sales",
-    href: "/dashboard/sales",
+    href: "/sales",
     icon: DocumentDuplicateIcon,
     current: false,
   },
   {
     name: "Calendar",
-    href: "/dashboard/calendar",
+    href: "/calendar",
     icon: CalendarIcon,
     current: false,
   },
   {
     name: "Reports",
-    href: "/dashboard/reports",
+    href: "/reports",
     icon: ChartPieIcon,
     current: false,
   },
@@ -70,7 +72,34 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Get basic user info from Redux.
   const { userInfo } = useSelector((state) => state.auth);
+
+  // We'll fetch the full profile data from the API so we can use the updated image.
+  const [profileData, setProfileData] = useState(null);
+
+  useEffect(() => {
+    if (userInfo) {
+      const fetchProfile = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            throw new Error("Authentication token missing.");
+          }
+          const { data } = await axios.get(
+            `${import.meta.env.VITE_APP_API_URL}/api/users/${userInfo._id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          // Assuming the API returns the updated user profile in data.data
+          setProfileData(data.data);
+        } catch (err) {
+          console.error("Error fetching profile in Dashboard:", err);
+          // Optionally, you might want to toast an error or do additional error handling here.
+        }
+      };
+      fetchProfile();
+    }
+  }, [userInfo]);
 
   const logoutHandler = async () => {
     dispatch(logout());
@@ -88,6 +117,13 @@ export default function Dashboard() {
       navigate("/login");
     }
   };
+
+  // Use the fetched profileData to compute the image URL.
+  // If profileData.image exists and starts with "/uploads/", prefix with the API URL.
+  // Otherwise, if a valid image URL exists, use it. If not, fall back to the default image.
+  const imageUrl = profileData?.image?.startsWith("/uploads/")
+    ? `${import.meta.env.VITE_APP_API_URL}${profileData.image}`
+    : profileData?.image || defaultUser;
 
   return (
     <>
@@ -144,11 +180,8 @@ export default function Dashboard() {
         {/* Static sidebar for desktop */}
         <div className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 lg:bg-gray-900">
           <div className="flex items-center h-16 px-6 text-white">
-            <img
-              src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-              alt="Your Logo"
-              className="h-8 w-auto"
-            />
+            <img src={logo} alt="Logo" className="w-auto h-8 rounded-full" />
+            <h2 className="ml-2 text-xl font-bold">Musco Store</h2>
           </div>
           <nav className="flex-1 px-6 py-4 space-y-4 bg-gray-900">
             <ul className="space-y-4">
@@ -189,18 +222,21 @@ export default function Dashboard() {
               <Menu as="div" className="relative">
                 <Menu.Button>
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={
-                        userInfo?.image?.startsWith("/uploads/")
-                          ? `${import.meta.env.VITE_APP_API_URL}${userInfo.image}`
-                          : "/default-profile.png"
-                      }
-                      alt="User Profile"
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <span className="hidden text-gray-900 lg:block">
+                    <h3 className="text-xl italic font-bold">Hello</h3>
+                    <span className="hidden text-xl italic font-bold text-red-800 lg:block">
                       {userInfo?.username || "Guest"}
                     </span>
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={imageUrl}
+                        alt="Profile"
+                        className="object-cover w-16 h-16 rounded-full shadow-lg"
+                        onError={(e) => {
+                          // If the image fails to load, set it to the default image.
+                          e.currentTarget.src = defaultUser;
+                        }}
+                      />
+                    </div>
                     <ChevronDownIcon className="w-5 h-5 text-gray-500" />
                   </div>
                 </Menu.Button>

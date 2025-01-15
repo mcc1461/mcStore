@@ -50,7 +50,7 @@ export default function FirmsList() {
   useEffect(() => {
     const fetchFirms = async () => {
       try {
-        const response = await apiClient.get("/api/firms?limit=-1&page=1");
+        const response = await apiClient.get("/firms?limit=-1&page=1");
         setFirms(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -77,7 +77,7 @@ export default function FirmsList() {
 
   const deleteFirm = async () => {
     try {
-      await apiClient.delete(`/api/firms/${selectedFirmForDelete._id}`);
+      await apiClient.delete(`/firms/${selectedFirmForDelete._id}`);
       setFirms((prevFirms) =>
         prevFirms.filter((firm) => firm._id !== selectedFirmForDelete._id)
       );
@@ -115,7 +115,7 @@ export default function FirmsList() {
       }
 
       if (isAddingNewFirm) {
-        const response = await apiClient.post("/api/firms", editingFirm);
+        const response = await apiClient.post("/firms", editingFirm);
         setFirms([...firms, response.data.data]);
       } else {
         const updateResponse = await apiClient.put(

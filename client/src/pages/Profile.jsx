@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Loader from "../components/Loader";
+import defaultProfile from "../assets/default-profile.png";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export default function Profile() {
           }
         );
 
-        // Update local state with the fetched profile data
+        console.log("Fetched profile data:", data.data);
         setProfile(data.data);
       } catch (err) {
         const message = err.response?.data?.message || "Error loading profile.";
@@ -75,10 +76,13 @@ export default function Profile() {
     );
   }
 
-  // Compute the proper URL for the profile image
+  // Compute the URL for the profile image:
+  // If the image field starts with "/uploads/", the URL is prefixed with your API URL.
+  // Otherwise, if profile.image exists (and is presumed to be a valid URL) use it.
+  // If profile.image is missing, it will fall back to the onError case.
   const imageUrl = profile.image?.startsWith("/uploads/")
     ? `${import.meta.env.VITE_APP_API_URL}${profile.image}`
-    : profile.image || "/default-profile.png";
+    : profile.image;
 
   return (
     <div className="flex items-center justify-center min-h-screen px-5 py-10 bg-gray-100">
@@ -141,6 +145,10 @@ export default function Profile() {
               src={imageUrl}
               alt="Profile"
               className="object-cover w-40 h-40 rounded-full shadow-lg"
+              onError={(e) => {
+                // When the image fails to load, set the src to the default image
+                e.currentTarget.src = defaultProfile;
+              }}
             />
             <p className="mt-4 text-sm text-gray-500">
               Member since{" "}

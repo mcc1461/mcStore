@@ -31,7 +31,7 @@ export default function ProductsList() {
     const fetchProducts = async () => {
       try {
         // Pass query params to fetch all products
-        const response = await apiClient.get("/api/products?limit=-1&page=1");
+        const response = await apiClient.get("/products?limit=-1&page=1");
         setProducts(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -97,7 +97,7 @@ export default function ProductsList() {
 
   const deleteProduct = async () => {
     try {
-      await apiClient.delete(`/api/products/${selectedProductForDelete._id}`);
+      await apiClient.delete(`/products/${selectedProductForDelete._id}`);
       setProducts(
         products.filter(
           (product) => product._id !== selectedProductForDelete._id
@@ -137,13 +137,10 @@ export default function ProductsList() {
   const saveProductDetails = async () => {
     try {
       if (isAddingNewProduct) {
-        const response = await apiClient.post("/api/products", editingProduct);
+        const response = await apiClient.post("/products", editingProduct);
         setProducts([...products, response.data]);
       } else {
-        await apiClient.put(
-          `/api/products/${editingProduct._id}`,
-          editingProduct
-        );
+        await apiClient.put(`/products/${editingProduct._id}`, editingProduct);
         setProducts((prevProducts) =>
           prevProducts.map((product) =>
             product._id === editingProduct._id ? editingProduct : product
@@ -191,10 +188,10 @@ export default function ProductsList() {
       filterStockStatus === "all"
         ? true
         : filterStockStatus === "low"
-        ? product.quantity > 0 && product.quantity < 5
-        : filterStockStatus === "available"
-        ? product.quantity >= 1
-        : product.quantity === 0
+          ? product.quantity > 0 && product.quantity < 5
+          : filterStockStatus === "available"
+            ? product.quantity >= 1
+            : product.quantity === 0
     )
     .filter((product) =>
       product?.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -378,8 +375,8 @@ export default function ProductsList() {
                             label === "Out of Stock"
                               ? "#FF4D4F" // Red for out of stock
                               : label === "Low Stock"
-                              ? "#FFA500" // Orange for low stock
-                              : "", // Green for normal stock
+                                ? "#FFA500" // Orange for low stock
+                                : "", // Green for normal stock
                         }}
                       >
                         {label || "In Stock"}
