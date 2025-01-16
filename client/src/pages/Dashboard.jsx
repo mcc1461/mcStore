@@ -24,19 +24,10 @@ import defaultUser from "../assets/default-profile.png";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
   { name: "Team", href: "/dashboard/team", icon: UsersIcon, current: false },
+  { name: "Categories", href: "/categories", icon: FolderIcon, current: false },
   { name: "Firms", href: "/firms", icon: FolderIcon, current: false },
-  {
-    name: "Brands",
-    href: "/brands",
-    icon: FolderIcon,
-    current: false,
-  },
-  {
-    name: "Products",
-    href: "/products",
-    icon: FolderIcon,
-    current: false,
-  },
+  { name: "Brands", href: "/brands", icon: FolderIcon, current: false },
+  { name: "Products", href: "/products", icon: FolderIcon, current: false },
   {
     name: "Purchases",
     href: "/purchases",
@@ -49,18 +40,8 @@ const navigation = [
     icon: DocumentDuplicateIcon,
     current: false,
   },
-  {
-    name: "Calendar",
-    href: "/calendar",
-    icon: CalendarIcon,
-    current: false,
-  },
-  {
-    name: "Reports",
-    href: "/reports",
-    icon: ChartPieIcon,
-    current: false,
-  },
+  { name: "Calendar", href: "/calendar", icon: CalendarIcon, current: false },
+  { name: "Reports", href: "/reports", icon: ChartPieIcon, current: false },
 ];
 
 function classNames(...classes) {
@@ -94,7 +75,7 @@ export default function Dashboard() {
           setProfileData(data.data);
         } catch (err) {
           console.error("Error fetching profile in Dashboard:", err);
-          // Optionally, you might want to toast an error or do additional error handling here.
+          // Optionally, display a toast or additional error handling
         }
       };
       fetchProfile();
@@ -155,8 +136,9 @@ export default function Dashboard() {
                     <ul className="space-y-4">
                       {navigation.map((item) => (
                         <li key={item.name}>
+                          {/* Force absolute navigation by using a location object */}
                           <Link
-                            to={item.href}
+                            to={{ pathname: item.href }}
                             className={classNames(
                               item.current
                                 ? "bg-gray-800 text-white"
@@ -188,7 +170,7 @@ export default function Dashboard() {
               {navigation.map((item) => (
                 <li key={item.name}>
                   <Link
-                    to={item.href}
+                    to={{ pathname: item.href }}
                     className={classNames(
                       item.current
                         ? "bg-gray-800 text-white"
@@ -232,7 +214,7 @@ export default function Dashboard() {
                         alt="Profile"
                         className="object-cover w-16 h-16 rounded-full shadow-lg"
                         onError={(e) => {
-                          // If the image fails to load, set it to the default image.
+                          // If the image fails to load, fall back to the default image.
                           e.currentTarget.src = defaultUser;
                         }}
                       />

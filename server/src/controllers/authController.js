@@ -62,7 +62,7 @@ const register = async (req, res) => {
     await newUser.save();
 
     // Generate tokens (1h for access, 30d for refresh)
-    const accessToken = generateToken(newUser, JWT_SECRET, "1h");
+    const accessToken = generateToken(newUser, JWT_SECRET, "1d");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
     return res.status(201).json({
@@ -112,7 +112,7 @@ const login = async (req, res) => {
     }
 
     // Generate access & refresh tokens
-    const accessToken = generateToken(user, JWT_SECRET, "1h");
+    const accessToken = generateToken(user, JWT_SECRET, "1d");
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
     return res.json({
@@ -162,7 +162,7 @@ const refresh = async (req, res) => {
       }
 
       // Generate new 1h access token
-      const newAccessToken = generateToken(user, JWT_SECRET, "1h");
+      const newAccessToken = generateToken(user, JWT_SECRET, "1d");
       return res.json({
         message: "Token refreshed successfully",
         bearer: { accessToken: newAccessToken },
