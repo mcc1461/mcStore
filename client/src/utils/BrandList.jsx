@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { FaEdit, FaTrashAlt, FaPlusCircle, FaSearch } from "react-icons/fa";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
@@ -10,23 +11,34 @@ export default function BrandsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Modal states for add/edit
   const [editingBrand, setEditingBrand] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
+
+  // Modal state for details
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [detailsBrand, setDetailsBrand] = useState(null);
+
+  // Modal state for deletion confirmation
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedBrandForDelete, setSelectedBrandForDelete] = useState(null);
+
+  // Mobile search toggle state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Fixed Pagination State
+  // Fixed pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // Fixed items per page
+  const itemsPerPage = 12; // fixed items per page
 
   const navigate = useNavigate();
+  const { userInfo } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        // Fetch brands; adjust limit as per your API's settings
+        // Adjust limit as needed; here we fetch up to 100 brands.
         const response = await apiClient.get("/brands?limit=100&page=1");
         console.log("Fetched brands:", response.data.data);
         setBrands(response.data.data);
@@ -41,12 +53,12 @@ export default function BrandsList() {
     fetchBrands();
   }, []);
 
-  // Filter brands based on the search term
+  // Filter brands based on search term.
   const filteredBrands = brands.filter((brand) =>
     brand?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pagination Logic
+  // Pagination logic.
   const indexOfLastBrand = currentPage * itemsPerPage;
   const indexOfFirstBrand = indexOfLastBrand - itemsPerPage;
   const currentBrands = filteredBrands.slice(
@@ -63,17 +75,23 @@ export default function BrandsList() {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  // Navigation Handlers
+  // Navigation handler: go to Dashboard.
   const navigateToDashboard = () => {
     navigate("/dashboard");
   };
 
-  // When clicking on Details button, navigate to brand details route
-  const handleDetailsClick = (brandId) => {
-    navigate(`/brands/details/${brandId}`);
+  // Open Details Modal to view all info about a brand.
+  const openDetailsModal = (brand) => {
+    setDetailsBrand(brand);
+    setDetailsModalOpen(true);
   };
 
-  // Modal and deletion handlers
+  const closeDetailsModal = () => {
+    setDetailsModalOpen(false);
+    setDetailsBrand(null);
+  };
+
+  // Modal and deletion handlers.
   const confirmDeleteBrand = (brand) => {
     setSelectedBrandForDelete(brand);
     setConfirmOpen(true);
@@ -98,7 +116,7 @@ export default function BrandsList() {
   };
 
   const openAddNewModal = () => {
-    setEditingBrand({ name: "", image: "" });
+    setEditingBrand({ name: "", image: "", description: "" });
     setIsAddingNewBrand(true);
     setModalOpen(true);
   };
@@ -188,7 +206,7 @@ export default function BrandsList() {
           <div className="flex items-center space-x-4">
             <button
               onClick={openAddNewModal}
-              className="flex items-center hidden px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
+              className="flex items-center px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
             >
               <FaPlusCircle className="inline-block mr-2" /> Add New Brand
             </button>
@@ -210,7 +228,7 @@ export default function BrandsList() {
         )}
       </header>
 
-      {/* Brands List as a Responsive Grid */}
+      {/* Brands List - Responsive Grid */}
       <main className="p-4">
         {filteredBrands.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -222,7 +240,7 @@ export default function BrandsList() {
                 {/* Brand Card Clickable Area for Details */}
                 <div
                   className="cursor-pointer"
-                  onClick={() => handleDetailsClick(brand._id)}
+                  onClick={() => openDetailsModal(brand)}
                 >
                   <div className="flex items-center justify-center h-48 bg-gray-100">
                     <img
@@ -244,7 +262,7 @@ export default function BrandsList() {
                 {/* Action Buttons */}
                 <div className="flex justify-around p-4 border-t">
                   <button
-                    onClick={() => handleDetailsClick(brand._id)}
+                    onClick={() => openDetailsModal(brand)}
                     className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                   >
                     Details
@@ -255,12 +273,14 @@ export default function BrandsList() {
                   >
                     <FaEdit className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => confirmDeleteBrand(brand)}
-                    className="text-red-500 hover:text-red-700 focus:outline-none"
-                  >
-                    <FaTrashAlt className="w-5 h-5" />
-                  </button>
+                  {userInfo?.role === "admin" && (
+                    <button
+                      onClick={() => confirmDeleteBrand(brand)}
+                      className="text-red-500 hover:text-red-700 focus:outline-none"
+                    >
+                      <FaTrashAlt className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -329,8 +349,6 @@ export default function BrandsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
-
-            {/* Trick to center modal */}
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
@@ -347,10 +365,7 @@ export default function BrandsList() {
               leaveTo="opacity-0 scale-95"
             >
               <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-                <Dialog.Title
-                  as="h3"
-                  className="text-2xl font-bold leading-6 text-gray-900"
-                >
+                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
                   {isAddingNewBrand ? "Add New Brand" : "Edit Brand"}
                 </Dialog.Title>
                 <div className="mt-4">
@@ -378,7 +393,6 @@ export default function BrandsList() {
                       placeholder="Enter logo URL"
                     />
                   </div>
-
                   {/* Name Section */}
                   <div className="mb-4">
                     <label className="block mb-2 text-sm font-semibold">
@@ -393,9 +407,20 @@ export default function BrandsList() {
                       placeholder="Enter brand name"
                     />
                   </div>
+                  {/* Description Section */}
+                  <div className="mb-4">
+                    <label className="block mb-2 text-sm font-semibold">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={editingBrand?.description || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
+                      placeholder="Enter brand description"
+                    ></textarea>
+                  </div>
                 </div>
-
-                {/* Save and Cancel Buttons */}
                 <div className="flex justify-end mt-6 space-x-4">
                   <button
                     onClick={saveBrandDetails}
@@ -408,6 +433,90 @@ export default function BrandsList() {
                     className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600"
                   >
                     Cancel
+                  </button>
+                </div>
+              </div>
+            </Transition.Child>
+          </div>
+        </Dialog>
+      </Transition>
+
+      {/* Details Modal */}
+      <Transition appear show={detailsModalOpen} as={React.Fragment}>
+        <Dialog
+          as="div"
+          className="fixed inset-0 z-50 overflow-y-auto"
+          onClose={closeDetailsModal}
+        >
+          <div className="min-h-screen px-4 text-center">
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+            </Transition.Child>
+            <span
+              className="inline-block h-screen align-middle"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
+                  Brand Details
+                </Dialog.Title>
+                {detailsBrand ? (
+                  <div className="mt-4 space-y-4">
+                    <div className="flex justify-center">
+                      <img
+                        src={detailsBrand.image}
+                        alt={detailsBrand.name}
+                        className="object-contain w-32 h-32"
+                        onError={(e) => {
+                          e.currentTarget.src = defaultUser;
+                        }}
+                      />
+                    </div>
+                    <p>
+                      <span className="font-semibold">Name:</span>{" "}
+                      {detailsBrand.name}
+                    </p>
+                    {detailsBrand.description ? (
+                      <p>
+                        <span className="font-semibold">Description:</span>{" "}
+                        {detailsBrand.description}
+                      </p>
+                    ) : (
+                      <p>
+                        <span className="font-semibold">Description:</span> No
+                        description provided.
+                      </p>
+                    )}
+                    {/* Add more fields here if needed */}
+                  </div>
+                ) : (
+                  <p className="mt-4">No details available.</p>
+                )}
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={closeDetailsModal}
+                    className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
@@ -435,8 +544,6 @@ export default function BrandsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
-
-            {/* Trick to center modal */}
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
@@ -453,10 +560,7 @@ export default function BrandsList() {
               leaveTo="opacity-0 scale-95"
             >
               <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-                <Dialog.Title
-                  as="h3"
-                  className="text-2xl font-bold leading-6 text-gray-900"
-                >
+                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
                   Confirm Deletion
                 </Dialog.Title>
                 <div className="mt-4">
