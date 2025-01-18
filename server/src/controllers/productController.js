@@ -1,176 +1,248 @@
 "use strict";
 /* -------------------------------------------------------
-    NODEJS EXPRESS | MusCo Dev
+    NODEJS EXPRESS | Product Controller
 ------------------------------------------------------- */
-// Product Controller:
 
+const mongoose = require("mongoose");
 const Product = require("../models/productModel");
+const Brand = require("../models/brandModel");
+const Category = require("../models/categoryModel");
+
+/**
+ * resolveIdOrName:
+ *   - If the provided value is a valid MongoDB ObjectId string, return it.
+ *   - Otherwise, treat the value as a name and search for the matching document.
+ *   - Returns the document's _id (as a string) if found; otherwise undefined.
+ */
+async function resolveIdOrName(value, type) {
+  if (!value) return undefined;
+  const isValidObjectId = mongoose.Types.ObjectId.isValid(value);
+  if (isValidObjectId) return value;
+
+  let doc;
+  if (type === "brand") {
+    doc = await Brand.findOne({ name: value });
+  } else {
+    doc = await Category.findOne({ name: value });
+  }
+  return doc ? doc._id.toString() : undefined;
+}
+
+/**
+ * transformNumericFields:
+ *   For each provided field name, convert its value in reqBody to a number and log before and after.
+ */
+function transformNumericFields(reqBody, fields = []) {
+  fields.forEach((field) => {
+    if (reqBody[field] !== undefined && reqBody[field] !== null) {
+      console.log(`Original ${field} value:`, reqBody[field]);
+      const num = Number(reqBody[field]);
+      reqBody[field] = isNaN(num) ? 0 : num;
+      console.log(`Transformed ${field} value:`, reqBody[field]);
+    }
+  });
+}
 
 module.exports = {
+  // LIST PRODUCTS
   list: async (req, res) => {
-    /*
-            #swagger.tags = ["Products"]
-            #swagger.summary = "List Products"
-            #swagger.description = `
-                Use <u>filter[], search[], sort[], page, and limit</u> queries with this endpoint.
-                Examples:
-                - /?filter[field1]=value1&filter[field2]=value2
-                - /?search[field1]=value1&search[field2]=value2
-                - /?sort[field1]=asc&sort[field2]=desc
-                - /?limit=10&page=1
-            `
-        */
     try {
-      // Fetch product data with pagination and population
       const data = await res.getModelList(Product, {}, [
         "categoryId",
         "brandId",
       ]);
-
-      // Fetch details like total records, pagination info
       const totalRecords = await Product.countDocuments({});
       const details = await res.getModelListDetails(Product);
 
-      // Debug logs for validation
-      console.log("Total Products in DB:", totalRecords);
-      console.log("Products Retrieved:", data.length);
-      console.log("Pagination Details:", details);
+      console.log("Total products in DB:", totalRecords);
+      console.log("Products retrieved:", data.length);
+      console.log("Pagination details:", details);
 
-      res.status(200).send({
+      return res.status(200).json({
         error: false,
         details,
         data,
       });
     } catch (err) {
       console.error("Error fetching products:", err.message, err.stack);
-      res.status(500).send({
+      return res.status(500).json({
         error: true,
         message: "Error fetching products",
       });
     }
   },
 
+  // CREATE PRODUCT
   create: async (req, res) => {
-    /*
-            #swagger.tags = ["Products"]
-            #swagger.summary = "Create Product"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "categoryId": "65343222b67e9681f937f203",
-                    "brandId": "65343222b67e9681f937f107",
-                    "name": "Product 1"
-                }
-            }
-        */
     try {
+      let { brandId, categoryId } = req.body;
+
+      // Convert numeric fields "quantity" and "numbers"
+      transformNumericFields(req.body, ["quantity", "numbers"]);
+
+      if (brandId) {
+        const resolvedBrandId = await resolveIdOrName(brandId, "brand");
+        if (!resolvedBrandId) {
+          console.warn(`No brand found with name or ID '${brandId}'`);
+          return res.status(400).json({
+            error: true,
+            message: `No brand found with name or ID '${brandId}'`,
+          });
+        }
+        req.body.brandId = resolvedBrandId;
+      }
+
+      if (categoryId) {
+        const resolvedCategoryId = await resolveIdOrName(
+          categoryId,
+          "category"
+        );
+        if (!resolvedCategoryId) {
+          console.warn(`No category found with name or ID '${categoryId}'`);
+          return res.status(400).json({
+            error: true,
+            message: `No category found with name or ID '${categoryId}'`,
+          });
+        }
+        req.body.categoryId = resolvedCategoryId;
+      }
+
+      console.log("Creating product with data:", req.body);
       const data = await Product.create(req.body);
-      res.status(201).send({
+      console.log("Product created successfully:", data);
+
+      return res.status(201).json({
         error: false,
         data,
       });
     } catch (err) {
       console.error("Error creating product:", err.message, err.stack);
-      res.status(500).send({
+      return res.status(500).json({
         error: true,
         message: "Error creating product",
       });
     }
   },
 
+  // READ PRODUCT
   read: async (req, res) => {
-    /*
-            #swagger.tags = ["Products"]
-            #swagger.summary = "Get Single Product"
-        */
     try {
       const data = await Product.findOne({ _id: req.params.id }).populate([
         "categoryId",
         "brandId",
       ]);
       if (!data) {
-        return res.status(404).send({
+        console.warn(`Product not found with ID '${req.params.id}'`);
+        return res.status(404).json({
           error: true,
           message: "Product not found",
         });
       }
-      res.status(200).send({
+      console.log("Fetched product:", data);
+      return res.status(200).json({
         error: false,
         data,
       });
     } catch (err) {
       console.error("Error fetching product:", err.message, err.stack);
-      res.status(500).send({
+      return res.status(500).json({
         error: true,
         message: "Error fetching product",
       });
     }
   },
 
+  // UPDATE PRODUCT
   update: async (req, res) => {
-    /*
-            #swagger.tags = ["Products"]
-            #swagger.summary = "Update Product"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "categoryId": "65343222b67e9681f937f203",
-                    "brandId": "65343222b67e9681f937f107",
-                    "name": "Product 1"
-                }
-            }
-        */
     try {
+      let { brandId, categoryId } = req.body;
+      console.log("Incoming req.body in update:", req.body);
+
+      // Convert numeric fields "quantity" and "numbers"
+      transformNumericFields(req.body, ["quantity", "numbers"]);
+
+      if (brandId) {
+        const resolvedBrandId = await resolveIdOrName(brandId, "brand");
+        if (!resolvedBrandId) {
+          console.warn(`No brand found with name or ID '${brandId}'`);
+          return res.status(400).json({
+            error: true,
+            message: `No brand found with name or ID '${brandId}'`,
+          });
+        }
+        req.body.brandId = resolvedBrandId;
+      }
+
+      if (categoryId) {
+        const resolvedCategoryId = await resolveIdOrName(
+          categoryId,
+          "category"
+        );
+        if (!resolvedCategoryId) {
+          console.warn(`No category found with name or ID '${categoryId}'`);
+          return res.status(400).json({
+            error: true,
+            message: `No category found with name or ID '${categoryId}'`,
+          });
+        }
+        req.body.categoryId = resolvedCategoryId;
+      }
+
+      console.log("Final update data:", req.body);
+
       const data = await Product.updateOne({ _id: req.params.id }, req.body, {
         runValidators: true,
       });
+      console.log("Update operation result:", data);
 
       if (!data.matchedCount) {
-        return res.status(404).send({
+        console.warn(`Product not found for update with ID '${req.params.id}'`);
+        return res.status(404).json({
           error: true,
           message: "Product not found for update",
         });
       }
 
-      res.status(202).send({
+      // Retrieve the updated document
+      const updatedDoc = await Product.findOne({ _id: req.params.id });
+      console.log("Updated document:", updatedDoc);
+
+      return res.status(200).json({
         error: false,
         updated: data,
-        new: await Product.findOne({ _id: req.params.id }),
+        new: updatedDoc,
       });
     } catch (err) {
       console.error("Error updating product:", err.message, err.stack);
-      res.status(500).send({
+      return res.status(500).json({
         error: true,
         message: "Error updating product",
       });
     }
   },
 
+  // DELETE PRODUCT
   delete: async (req, res) => {
-    /*
-            #swagger.tags = ["Products"]
-            #swagger.summary = "Delete Product"
-        */
     try {
       const data = await Product.deleteOne({ _id: req.params.id });
-
       if (!data.deletedCount) {
-        return res.status(404).send({
+        console.warn(
+          `Product not found for deletion with ID '${req.params.id}'`
+        );
+        return res.status(404).json({
           error: true,
           message: "Product not found for deletion",
         });
       }
-
-      res.status(200).send({
+      console.log(`Product with ID '${req.params.id}' deleted successfully.`);
+      return res.status(200).json({
         error: false,
         message: "Product successfully deleted",
         data,
       });
     } catch (err) {
       console.error("Error deleting product:", err.message, err.stack);
-      res.status(500).send({
+      return res.status(500).json({
         error: true,
         message: "Error deleting product",
       });

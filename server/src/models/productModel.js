@@ -1,21 +1,17 @@
 "use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | PRODUCT MODEL
-------------------------------------------------------- */
 const { mongoose } = require("../configs/dbConnection");
 
-// Product Schema
 const ProductSchema = new mongoose.Schema(
   {
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      required: true,
+      required: false,
     },
     brandId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Brand",
-      required: true,
+      required: false,
     },
     name: {
       type: String,
@@ -28,47 +24,67 @@ const ProductSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      default: 0, // Selling price
+      default: 0,
     },
     total_purchased: {
       type: Number,
-      default: 0, // Total quantity purchased
+      default: 0,
     },
     total_sold: {
       type: Number,
-      default: 0, // Total quantity sold
+      default: 0,
     },
     purchasing_price: {
       type: Number,
-      default: 0, // Average purchasing price
+      default: 0,
     },
     image: {
       type: String,
       default: "no-image.jpg",
     },
+    // Original quantity field for stock
+    quantity: {
+      type: Number,
+      default: 0,
+    },
+    // New field for testing numeric updates
+    numbers: {
+      type: Number,
+      default: 0,
+    },
     purchases: [
       {
         vendor: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Firm", // Vendor is a firm
-          required: true,
+          ref: "Firm",
+          required: false,
         },
         price: {
           type: Number,
-          required: true, // Price at which it was purchased
+          required: false,
         },
         quantity: {
           type: Number,
-          required: true, // Quantity purchased
+          required: false,
         },
         date: {
           type: Date,
-          default: Date.now, // Date of purchase
+          default: Date.now,
         },
       },
     ],
   },
   { collection: "products", timestamps: true }
 );
+
+// Remove or comment out any pre-save hooks that might override "quantity" or "numbers" if present.
+// For debugging purposes, you can include a simple logging hook:
+ProductSchema.pre("save", function (next) {
+  console.log("Saving product:", {
+    quantity: this.quantity,
+    numbers: this.numbers,
+  });
+  next();
+});
 
 module.exports = mongoose.model("Product", ProductSchema);

@@ -13,25 +13,29 @@ function Login() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+
   const dispatch = useDispatch();
   const { userInfo } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
+  // If already logged in, redirect from /login to /dashboard
   useEffect(() => {
     if (userInfo && window.location.pathname === "/login") {
       navigate("/dashboard");
     }
   }, [userInfo, navigate]);
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentialsState((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Form submission
   const submitHandler = async (e) => {
     console.log("Form submission triggered.");
 
-    // Check if the event is cancelable before preventing default behavior
+    // Prevent default if possible
     if (e.cancelable) {
       e.preventDefault();
       console.log("Default action prevented.");
@@ -39,18 +43,21 @@ function Login() {
       console.warn("Event is not cancelable.");
     }
 
-    // Validate the credentials input
+    // Validate credentials
     if (!credentials.username.trim() || !credentials.password.trim()) {
       toast.error("Username and Password are required.");
       return;
     }
 
-    setIsLoading(true); // Show loading indicator
+    setIsLoading(true);
     try {
-      // API call to authenticate user
+      // Call your login API endpoint
       const { data } = await axios.post("/api/auth/login", credentials);
 
-      // Dispatch the credentials to Redux store
+      // 1) Store token in localStorage => so an Axios interceptor can pick it up
+      localStorage.setItem("token", data.bearer.accessToken);
+
+      // 2) Dispatch credentials to Redux (keeping your existing logic)
       dispatch(
         setCredentials({
           userInfo: data.user,
@@ -59,20 +66,17 @@ function Login() {
         })
       );
 
-      // Show success message and navigate to the dashboard
+      // Success message + navigate
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {
-      // Log error for debugging
       console.error("Login Failed:", error);
-
-      // Display error message to the user
       toast.error(
         error.response?.data?.message ||
           "Invalid login credentials. Please try again."
       );
     } finally {
-      setIsLoading(false); // Hide loading indicator
+      setIsLoading(false);
     }
   };
 
@@ -83,6 +87,7 @@ function Login() {
         <div className="flex items-center justify-between w-3/5 mt-10">
           <p className="text-3xl font-bold">Login</p>
         </div>
+
         <form
           className="flex flex-col items-center w-3/5 gap-6"
           onSubmit={submitHandler}
@@ -110,12 +115,14 @@ function Login() {
           >
             Login
           </button>
+
           <div className="w-full text-right">
             <Link to="/forgotPassword" className="text-blue-500 underline">
               Forgot Password
             </Link>
           </div>
         </form>
+
         <p className="text-xl font-bold">
           Don't have an account?{" "}
           <Link to="/register" className="text-red-500">
