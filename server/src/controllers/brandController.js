@@ -102,24 +102,14 @@ module.exports = {
   },
 
   update: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "Update Brand"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "name": "Brand 1",
-                    "image": "http://imageURL"
-                }
-            }
-        */
     try {
-      const data = await Brand.updateOne({ _id: req.params.id }, req.body, {
-        runValidators: true,
-      });
+      const updatedBrand = await Brand.findOneAndUpdate(
+        { _id: req.params.id },
+        req.body,
+        { new: true, runValidators: true } // Return updated document
+      );
 
-      if (!data.matchedCount) {
+      if (!updatedBrand) {
         return res.status(404).send({
           error: true,
           message: "Brand not found for update",
@@ -128,8 +118,7 @@ module.exports = {
 
       res.status(202).send({
         error: false,
-        updated: data,
-        new: await Brand.findOne({ _id: req.params.id }),
+        updated: updatedBrand, // Simplify to include the updated brand
       });
     } catch (err) {
       console.error("Error updating brand:", err.message, err.stack);

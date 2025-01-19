@@ -10,15 +10,24 @@ const Category = require("../models/categoryModel");
 
 /**
  * resolveIdOrName:
- *   - If the provided value is a valid MongoDB ObjectId string, return it.
+ *   - If the provided value is a valid MongoDB ObjectId string, try to find the matching document.
  *   - Otherwise, treat the value as a name and search for the matching document.
- *   - Returns the document's _id (as a string) if found; otherwise undefined.
+ *   - Returns the document's _id (as a string) if found; otherwise, returns undefined.
  */
 async function resolveIdOrName(value, type) {
   if (!value) return undefined;
   const isValidObjectId = mongoose.Types.ObjectId.isValid(value);
-  if (isValidObjectId) return value;
+  if (isValidObjectId) {
+    let doc;
+    if (type === "brand") {
+      doc = await Brand.findOne({ _id: value });
+    } else {
+      doc = await Category.findOne({ _id: value });
+    }
+    return doc ? doc._id.toString() : undefined;
+  }
 
+  // If not a valid ObjectId, treat the value as a name.
   let doc;
   if (type === "brand") {
     doc = await Brand.findOne({ name: value });
@@ -30,7 +39,7 @@ async function resolveIdOrName(value, type) {
 
 /**
  * transformNumericFields:
- *   For each provided field name, convert its value in reqBody to a number and log before and after.
+ *   For each provided field name, convert its value in reqBody to a number.
  */
 function transformNumericFields(reqBody, fields = []) {
   fields.forEach((field) => {
@@ -80,40 +89,92 @@ module.exports = {
       // Convert numeric fields "quantity" and "numbers"
       transformNumericFields(req.body, ["quantity", "numbers"]);
 
+      // Enforce that brands and categories must be predefined.
+      // Process brandId:
       if (brandId) {
-        const resolvedBrandId = await resolveIdOrName(brandId, "brand");
-        if (!resolvedBrandId) {
-          console.warn(`No brand found with name or ID '${brandId}'`);
-          return res.status(400).json({
-            error: true,
-            message: `No brand found with name or ID '${brandId}'`,
-          });
+        // If brandId is a valid ObjectId, try to resolve it.
+        const isValidBrandId = /^[a-fA-F0-9]{24}$/.test(brandId);
+        if (isValidBrandId) {
+          const resolvedBrandId = await resolveIdOrName(brandId, "brand");
+          if (!resolvedBrandId) {
+            console.warn(`No brand found with name or ID '${brandId}'`);
+            return res.status(400).json({
+              error: true,
+              message: `No brand found with name or ID '${brandId}'. Please define this brand first.`,
+            });
+          }
+          req.body.brandId = resolvedBrandId;
+        } else {
+          // Not a valid ObjectId – look up by name.
+          const doc = await Brand.findOne({ name: brandId });
+          if (!doc) {
+            console.warn(`Brand "${brandId}" is not defined.`);
+            return res.status(400).json({
+              error: true,
+              message: `Brand "${brandId}" is not defined. Please define this brand first.`,
+            });
+          }
+          // Store as text (or optionally, you could choose to store the ObjectId)
+          req.body.brandId = doc.name;
         }
-        req.body.brandId = resolvedBrandId;
+      } else {
+        return res.status(400).json({
+          error: true,
+          message: "Brand is required. Please define the brand first.",
+        });
       }
 
+      // Process categoryId:
       if (categoryId) {
-        const resolvedCategoryId = await resolveIdOrName(
-          categoryId,
-          "category"
-        );
-        if (!resolvedCategoryId) {
-          console.warn(`No category found with name or ID '${categoryId}'`);
-          return res.status(400).json({
-            error: true,
-            message: `No category found with name or ID '${categoryId}'`,
-          });
+        const isValidCategoryId = /^[a-fA-F0-9]{24}$/.test(categoryId);
+        if (isValidCategoryId) {
+          const resolvedCategoryId = await resolveIdOrName(
+            categoryId,
+            "category"
+          );
+          if (!resolvedCategoryId) {
+            console.warn(`No category found with name or ID '${categoryId}'`);
+            return res.status(400).json({
+              error: true,
+              message: `No category found with name or ID '${categoryId}'. Please define this category first.`,
+            });
+          }
+          req.body.categoryId = resolvedCategoryId;
+        } else {
+          const doc = await Category.findOne({ name: categoryId });
+          if (!doc) {
+            console.warn(`Category "${categoryId}" is not defined.`);
+            return res.status(400).json({
+              error: true,
+              message: `Category "${categoryId}" is not defined. Please define this category first.`,
+            });
+          }
+          req.body.categoryId = doc.name;
         }
-        req.body.categoryId = resolvedCategoryId;
+      } else {
+        return res.status(400).json({
+          error: true,
+          message: "Category is required. Please define the category first.",
+        });
       }
 
       console.log("Creating product with data:", req.body);
-      const data = await Product.create(req.body);
-      console.log("Product created successfully:", data);
+      const createdProduct = await Product.create(req.body);
+
+      // Re-fetch the newly created product and populate categoryId and brandId (to return names)
+      const productPopulated = await Product.findOne({
+        _id: createdProduct._id,
+      })
+        .populate("categoryId", "name")
+        .populate("brandId", "name");
+      console.log(
+        "Product created successfully (populated):",
+        productPopulated
+      );
 
       return res.status(201).json({
         error: false,
-        data,
+        data: productPopulated,
       });
     } catch (err) {
       console.error("Error creating product:", err.message, err.stack);
@@ -131,6 +192,7 @@ module.exports = {
         "categoryId",
         "brandId",
       ]);
+
       if (!data) {
         console.warn(`Product not found with ID '${req.params.id}'`);
         return res.status(404).json({
@@ -161,31 +223,71 @@ module.exports = {
       // Convert numeric fields "quantity" and "numbers"
       transformNumericFields(req.body, ["quantity", "numbers"]);
 
+      // Process brandId:
       if (brandId) {
-        const resolvedBrandId = await resolveIdOrName(brandId, "brand");
-        if (!resolvedBrandId) {
-          console.warn(`No brand found with name or ID '${brandId}'`);
-          return res.status(400).json({
-            error: true,
-            message: `No brand found with name or ID '${brandId}'`,
-          });
+        const isValidBrandId = /^[a-fA-F0-9]{24}$/.test(brandId);
+        if (isValidBrandId) {
+          const resolvedBrandId = await resolveIdOrName(brandId, "brand");
+          if (resolvedBrandId) {
+            req.body.brandId = resolvedBrandId;
+          } else {
+            console.warn(`No brand found with name or ID '${brandId}'`);
+            return res.status(400).json({
+              error: true,
+              message: `No brand found with name or ID '${brandId}'. Please define this brand first.`,
+            });
+          }
+        } else {
+          const doc = await Brand.findOne({ name: brandId });
+          if (!doc) {
+            console.warn(`Brand "${brandId}" is not defined.`);
+            return res.status(400).json({
+              error: true,
+              message: `Brand "${brandId}" is not defined. Please define this brand first.`,
+            });
+          }
+          req.body.brandId = doc.name;
         }
-        req.body.brandId = resolvedBrandId;
+      } else {
+        return res.status(400).json({
+          error: true,
+          message: "Brand is required. Please define the brand first.",
+        });
       }
 
+      // Process categoryId:
       if (categoryId) {
-        const resolvedCategoryId = await resolveIdOrName(
-          categoryId,
-          "category"
-        );
-        if (!resolvedCategoryId) {
-          console.warn(`No category found with name or ID '${categoryId}'`);
-          return res.status(400).json({
-            error: true,
-            message: `No category found with name or ID '${categoryId}'`,
-          });
+        const isValidCategoryId = /^[a-fA-F0-9]{24}$/.test(categoryId);
+        if (isValidCategoryId) {
+          const resolvedCategoryId = await resolveIdOrName(
+            categoryId,
+            "category"
+          );
+          if (resolvedCategoryId) {
+            req.body.categoryId = resolvedCategoryId;
+          } else {
+            console.warn(`No category found with name or ID '${categoryId}'`);
+            return res.status(400).json({
+              error: true,
+              message: `No category found with name or ID '${categoryId}'. Please define this category first.`,
+            });
+          }
+        } else {
+          const doc = await Category.findOne({ name: categoryId });
+          if (!doc) {
+            console.warn(`Category "${categoryId}" is not defined.`);
+            return res.status(400).json({
+              error: true,
+              message: `Category "${categoryId}" is not defined. Please define this category first.`,
+            });
+          }
+          req.body.categoryId = doc.name;
         }
-        req.body.categoryId = resolvedCategoryId;
+      } else {
+        return res.status(400).json({
+          error: true,
+          message: "Category is required. Please define the category first.",
+        });
       }
 
       console.log("Final update data:", req.body);
@@ -203,9 +305,11 @@ module.exports = {
         });
       }
 
-      // Retrieve the updated document
-      const updatedDoc = await Product.findOne({ _id: req.params.id });
-      console.log("Updated document:", updatedDoc);
+      // Retrieve the updated document with populated category and brand names.
+      const updatedDoc = await Product.findOne({ _id: req.params.id })
+        .populate("categoryId", "name")
+        .populate("brandId", "name");
+      console.log("Updated document (populated):", updatedDoc);
 
       return res.status(200).json({
         error: false,

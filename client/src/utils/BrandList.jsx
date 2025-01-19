@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { FaEdit, FaTrashAlt, FaPlusCircle, FaSearch } from "react-icons/fa";
@@ -38,9 +38,17 @@ export default function BrandsList() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        // Adjust limit as needed; here we fetch up to 100 brands.
         const response = await apiClient.get("/brands?limit=100&page=1");
-        console.log("Fetched brands:", response.data.data);
+        console.log("Fetched brands from API:", response.data.data);
+
+        // Validate API response
+        const isValidData = response.data.data.every(
+          (brand) => brand && brand._id
+        );
+        if (!isValidData) {
+          console.error("Invalid brand data detected:", response.data.data);
+        }
+
         setBrands(response.data.data);
         setLoading(false);
       } catch (error) {
@@ -57,6 +65,40 @@ export default function BrandsList() {
   const filteredBrands = brands.filter((brand) =>
     brand?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const extractUpdatedBrand = (response, key) => {
+    try {
+      console.log("Extracting updated brand from response:", response);
+
+      const data = response?.data;
+      if (!data) {
+        console.error("Response data is missing:", response);
+        return null;
+      }
+
+      // Extract the brand from `data.new` if key is 'updated'
+      if (key === "updated" && data.new) {
+        console.log(`Successfully extracted brand from key 'new':`, data.new);
+        return data.new;
+      }
+
+      // Fallback to generic key extraction
+      const brand = data[key];
+      if (brand && typeof brand === "object" && brand._id) {
+        console.log(`Successfully extracted brand from key '${key}':`, brand);
+        return brand;
+      }
+
+      console.warn(
+        `Brand not found or invalid under key '${key}'. Expected object with _id.`
+      );
+      console.log("Full response data:", data);
+      return null;
+    } catch (error) {
+      console.error("Error extracting updated brand:", error);
+      return null;
+    }
+  };
 
   // Pagination logic.
   const indexOfLastBrand = currentPage * itemsPerPage;
@@ -99,13 +141,22 @@ export default function BrandsList() {
 
   const deleteBrand = async () => {
     try {
-      await apiClient.delete(`/brands/${selectedBrandForDelete._id}`);
-      setBrands(
-        brands.filter((brand) => brand._id !== selectedBrandForDelete._id)
+      const brandId = selectedBrandForDelete._id;
+
+      // Optimistic UI Update
+      setBrands((prevBrands) =>
+        prevBrands.filter((brand) => brand._id !== brandId)
       );
+
+      // API Call
+      await apiClient.delete(`/brands/${brandId}`);
       setConfirmOpen(false);
     } catch (error) {
-      console.error("Error deleting the brand:", error);
+      console.error("Error deleting brand:", error);
+      alert("Failed to delete brand. Reverting changes.");
+      refetchBrands();
+      // Revert UI Update
+      setBrands((prevBrands) => [...prevBrands, selectedBrandForDelete]);
     }
   };
 
@@ -126,25 +177,105 @@ export default function BrandsList() {
     setEditingBrand(null);
   };
 
+  const refetchBrands = async () => {
+    try {
+      const response = await apiClient.get("/brands?limit=100&page=1");
+      setBrands(response.data.data); // Update the state with fresh data
+    } catch (error) {
+      console.error("Error refetching brands:", error);
+      setError("Failed to refresh brand list.");
+    }
+  };
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(filteredBrands.length / itemsPerPage)
+    );
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages); // Adjust to the last valid page
+    }
+  }, [filteredBrands.length, currentPage, itemsPerPage]);
+
   const saveBrandDetails = async () => {
     try {
+      console.log("Starting saveBrandDetails function");
+      console.log("Editing brand:", editingBrand);
+      console.log("Is adding new brand:", isAddingNewBrand);
+
+      if (!editingBrand || (!isAddingNewBrand && !editingBrand._id)) {
+        console.error("Invalid editingBrand:", editingBrand);
+        alert("Invalid brand data. Please try again.");
+        return;
+      }
+
       if (isAddingNewBrand) {
+        const tempId = `temp-${Date.now()}`;
+        const tempBrand = { ...editingBrand, _id: tempId };
+
+        console.log("Adding temporary brand:", tempBrand);
+
+        setBrands((prevBrands) => [...prevBrands, tempBrand]);
+
         const response = await apiClient.post("/brands", editingBrand);
-        setBrands((prevBrands) => [...prevBrands, response.data.data]);
+        console.log("Full API response (POST):", response);
+
+        const newBrand = extractUpdatedBrand(response, "new");
+
+        if (!newBrand) {
+          console.error("New brand not found in API response. Re-fetching...");
+          await refetchBrands();
+        } else {
+          setBrands((prevBrands) =>
+            prevBrands.map((brand) => (brand._id === tempId ? newBrand : brand))
+          );
+        }
       } else {
+        console.log("Updating brand with ID:", editingBrand._id);
+
+        setBrands((prevBrands) => {
+          console.log("Previous brands before update:", prevBrands);
+          return prevBrands.map((brand) =>
+            brand._id === editingBrand._id
+              ? { ...brand, ...editingBrand }
+              : brand
+          );
+        });
+
         const response = await apiClient.put(
           `/brands/${editingBrand._id}`,
           editingBrand
         );
-        setBrands((prevBrands) =>
-          prevBrands.map((brand) =>
-            brand._id === editingBrand._id ? response.data.data : brand
-          )
-        );
+        console.log("Full API response (PUT):", response);
+
+        // Extract the updated brand from `data.new`
+        const updatedBrand = extractUpdatedBrand(response, "updated");
+
+        if (!updatedBrand) {
+          console.error(
+            "Updated brand not found in API response. Using fallback."
+          );
+          setBrands((prevBrands) =>
+            prevBrands.map((brand) =>
+              brand._id === editingBrand._id ? editingBrand : brand
+            )
+          );
+          await refetchBrands();
+        } else {
+          setBrands((prevBrands) =>
+            prevBrands.map((brand) =>
+              brand._id === editingBrand._id ? updatedBrand : brand
+            )
+          );
+        }
       }
+
+      setSearchTerm("");
       closeModal();
+      console.log("Finished saveBrandDetails function");
     } catch (error) {
-      console.error("Error saving the brand:", error);
+      console.error("Critical error in saveBrandDetails:", error);
+      alert("A critical error occurred. Please try again.");
+      await refetchBrands();
     }
   };
 
@@ -229,61 +360,67 @@ export default function BrandsList() {
       </header>
 
       {/* Brands List - Responsive Grid */}
-      <main className="p-4">
+      <main className="p-4 pb-20">
         {filteredBrands.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {currentBrands.map((brand) => (
-              <div
-                key={brand._id}
-                className="overflow-hidden transition-shadow duration-300 bg-white rounded-lg shadow-lg hover:shadow-2xl"
-              >
-                {/* Brand Card Clickable Area for Details */}
+            {currentBrands.map((brand) => {
+              if (!brand || !brand._id) {
+                console.error("Skipping invalid brand:", brand);
+                return null; // Skip rendering for invalid brands
+              }
+              return (
                 <div
-                  className="cursor-pointer"
-                  onClick={() => openDetailsModal(brand)}
+                  key={brand._id}
+                  className="overflow-hidden transition-shadow duration-300 bg-white rounded-lg shadow-lg hover:shadow-2xl"
                 >
-                  <div className="flex items-center justify-center h-48 bg-gray-100">
-                    <img
-                      src={brand.image}
-                      alt={brand.name}
-                      className="object-contain w-32 h-32 mx-auto"
-                      onError={(e) => {
-                        e.currentTarget.src = defaultUser;
-                      }}
-                    />
-                  </div>
-                  <div className="p-4 text-center">
-                    <h3 className="text-xl font-semibold text-gray-800">
-                      {brand.name}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-around p-4 border-t">
-                  <button
+                  {/* Brand Card Clickable Area for Details */}
+                  <div
+                    className="cursor-pointer"
                     onClick={() => openDetailsModal(brand)}
-                    className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                   >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => openEditModal(brand)}
-                    className="text-blue-500 hover:text-blue-700 focus:outline-none"
-                  >
-                    <FaEdit className="w-5 h-5" />
-                  </button>
-                  {userInfo?.role === "admin" && (
+                    <div className="flex items-center justify-center h-48 bg-gray-100">
+                      <img
+                        src={brand.image}
+                        alt={brand.name}
+                        className="object-contain w-32 h-32 mx-auto"
+                        onError={(e) => {
+                          e.currentTarget.src = defaultUser;
+                        }}
+                      />
+                    </div>
+                    <div className="p-4 text-center">
+                      <h3 className="text-xl font-semibold text-gray-800">
+                        {brand.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-around p-4 border-t">
                     <button
-                      onClick={() => confirmDeleteBrand(brand)}
-                      className="text-red-500 hover:text-red-700 focus:outline-none"
+                      onClick={() => openDetailsModal(brand)}
+                      className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                     >
-                      <FaTrashAlt className="w-5 h-5" />
+                      Details
                     </button>
-                  )}
+                    <button
+                      onClick={() => openEditModal(brand)}
+                      className="text-blue-500 hover:text-blue-700 focus:outline-none"
+                    >
+                      <FaEdit className="w-5 h-5" />
+                    </button>
+                    {userInfo?.role === "admin" && (
+                      <button
+                        onClick={() => confirmDeleteBrand(brand)}
+                        className="text-red-500 hover:text-red-700 focus:outline-none"
+                      >
+                        <FaTrashAlt className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="mt-8 text-center text-gray-600">
@@ -292,11 +429,11 @@ export default function BrandsList() {
         )}
       </main>
 
-      {/* Pagination */}
-      <div className="sticky bottom-0 left-0 w-full py-4 bg-white border-t">
+      {/* Fixed Pagination Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t">
         <nav
           aria-label="Pagination"
-          className="flex items-center justify-between px-4 sm:px-6"
+          className="flex items-center justify-between px-4 py-2"
         >
           <div className="hidden sm:block">
             <p className="text-sm text-gray-700">
@@ -315,23 +452,23 @@ export default function BrandsList() {
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center px-3 py-2 ml-3 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-3 py-2 ml-3 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>
           </div>
         </nav>
-      </div>
+      </footer>
 
       {/* Modal for Editing or Adding Brand */}
-      <Transition appear show={modalOpen} as={React.Fragment}>
+      <Transition appear show={modalOpen} as={Fragment}>
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -339,7 +476,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -356,7 +493,7 @@ export default function BrandsList() {
               &#8203;
             </span>
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -442,7 +579,7 @@ export default function BrandsList() {
       </Transition>
 
       {/* Details Modal */}
-      <Transition appear show={detailsModalOpen} as={React.Fragment}>
+      <Transition appear show={detailsModalOpen} as={Fragment}>
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -450,7 +587,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -467,7 +604,7 @@ export default function BrandsList() {
               &#8203;
             </span>
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -506,7 +643,6 @@ export default function BrandsList() {
                         description provided.
                       </p>
                     )}
-                    {/* Add more fields here if needed */}
                   </div>
                 ) : (
                   <p className="mt-4">No details available.</p>
@@ -526,7 +662,7 @@ export default function BrandsList() {
       </Transition>
 
       {/* Confirm Delete Modal */}
-      <Transition appear show={confirmOpen} as={React.Fragment}>
+      <Transition appear show={confirmOpen} as={Fragment}>
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -534,7 +670,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -551,7 +687,7 @@ export default function BrandsList() {
               &#8203;
             </span>
             <Transition.Child
-              as={React.Fragment}
+              as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"

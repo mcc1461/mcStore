@@ -18,6 +18,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Editproduct from "./pages/Editproduct";
 import Deleteproducts from "./pages/Deleteproducts";
+import CategoriesList from "./utils/CategoryList";
 import FirmList from "./utils/FirmList";
 import BrandList from "./utils/BrandList";
 import ProductList from "./utils/ProductList";
@@ -45,6 +46,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/categories" element={<CategoriesList />} />
       <Route path="/brands" element={<BrandList />} />
       <Route path="/firms" element={<FirmList />} />
       <Route path="/products" element={<ProductList />} />
