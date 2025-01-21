@@ -7,6 +7,22 @@ import apiClient from "../services/apiClient";
 import defaultUser from "../assets/default-profile.png";
 
 export default function BrandsList() {
+  // ----------------------------------------------------------------
+  // 1) USER ROLE + COLOR CODING
+  // ----------------------------------------------------------------
+  const { userInfo } = useSelector((state) => state.auth);
+  const userRole = userInfo?.role || "user"; // fallback to user if not set
+
+  // Mapping role -> color for the header
+  const roleColors = {
+    admin: "bg-red-500",
+    staff: "bg-yellow-500",
+    user: "bg-green-500",
+  };
+
+  // ----------------------------------------------------------------
+  // STATE
+  // ----------------------------------------------------------------
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,37 +33,31 @@ export default function BrandsList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
 
-  // Modal state for details
+  // Details Modal
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailsBrand, setDetailsBrand] = useState(null);
 
-  // Modal state for deletion confirmation
+  // Delete Confirmation
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedBrandForDelete, setSelectedBrandForDelete] = useState(null);
 
-  // Mobile search toggle state
+  // Mobile search
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Fixed pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // fixed items per page
+  const itemsPerPage = 12;
 
   const navigate = useNavigate();
-  const { userInfo } = useSelector((state) => state.auth);
 
+  // ----------------------------------------------------------------
+  // FETCH BRANDS
+  // ----------------------------------------------------------------
   useEffect(() => {
     const fetchBrands = async () => {
       try {
         const response = await apiClient.get("/brands?limit=100&page=1");
         console.log("Fetched brands from API:", response.data.data);
-
-        // Validate API response
-        const isValidData = response.data.data.every(
-          (brand) => brand && brand._id
-        );
-        if (!isValidData) {
-          console.error("Invalid brand data detected:", response.data.data);
-        }
 
         setBrands(response.data.data);
         setLoading(false);
@@ -61,46 +71,13 @@ export default function BrandsList() {
     fetchBrands();
   }, []);
 
-  // Filter brands based on search term.
+  // ----------------------------------------------------------------
+  // FILTER + PAGINATION
+  // ----------------------------------------------------------------
   const filteredBrands = brands.filter((brand) =>
     brand?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const extractUpdatedBrand = (response, key) => {
-    try {
-      console.log("Extracting updated brand from response:", response);
-
-      const data = response?.data;
-      if (!data) {
-        console.error("Response data is missing:", response);
-        return null;
-      }
-
-      // Extract the brand from `data.new` if key is 'updated'
-      if (key === "updated" && data.new) {
-        console.log(`Successfully extracted brand from key 'new':`, data.new);
-        return data.new;
-      }
-
-      // Fallback to generic key extraction
-      const brand = data[key];
-      if (brand && typeof brand === "object" && brand._id) {
-        console.log(`Successfully extracted brand from key '${key}':`, brand);
-        return brand;
-      }
-
-      console.warn(
-        `Brand not found or invalid under key '${key}'. Expected object with _id.`
-      );
-      console.log("Full response data:", data);
-      return null;
-    } catch (error) {
-      console.error("Error extracting updated brand:", error);
-      return null;
-    }
-  };
-
-  // Pagination logic.
   const indexOfLastBrand = currentPage * itemsPerPage;
   const indexOfFirstBrand = indexOfLastBrand - itemsPerPage;
   const currentBrands = filteredBrands.slice(
@@ -117,12 +94,20 @@ export default function BrandsList() {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  // Navigation handler: go to Dashboard.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // ----------------------------------------------------------------
+  // NAVIGATION
+  // ----------------------------------------------------------------
   const navigateToDashboard = () => {
     navigate("/dashboard");
   };
 
-  // Open Details Modal to view all info about a brand.
+  // ----------------------------------------------------------------
+  // DETAILS MODAL
+  // ----------------------------------------------------------------
   const openDetailsModal = (brand) => {
     setDetailsBrand(brand);
     setDetailsModalOpen(true);
@@ -133,33 +118,46 @@ export default function BrandsList() {
     setDetailsBrand(null);
   };
 
-  // Modal and deletion handlers.
+  // ----------------------------------------------------------------
+  // DELETE CONFIRMATION
+  // ----------------------------------------------------------------
   const confirmDeleteBrand = (brand) => {
     setSelectedBrandForDelete(brand);
     setConfirmOpen(true);
   };
 
+  const refetchBrands = async () => {
+    try {
+      const response = await apiClient.get("/brands?limit=100&page=1");
+      setBrands(response.data.data);
+    } catch (error) {
+      console.error("Error refetching brands:", error);
+      setError("Failed to refresh brand list.");
+    }
+  };
+
   const deleteBrand = async () => {
     try {
+      if (!selectedBrandForDelete?._id) return;
       const brandId = selectedBrandForDelete._id;
 
-      // Optimistic UI Update
-      setBrands((prevBrands) =>
-        prevBrands.filter((brand) => brand._id !== brandId)
-      );
+      // Optimistic UI update
+      setBrands((prev) => prev.filter((b) => b._id !== brandId));
 
-      // API Call
+      // Actual API call
       await apiClient.delete(`/brands/${brandId}`);
       setConfirmOpen(false);
     } catch (error) {
       console.error("Error deleting brand:", error);
       alert("Failed to delete brand. Reverting changes.");
-      refetchBrands();
-      // Revert UI Update
-      setBrands((prevBrands) => [...prevBrands, selectedBrandForDelete]);
+      // Revert UI
+      await refetchBrands();
     }
   };
 
+  // ----------------------------------------------------------------
+  // ADD/EDIT MODALS
+  // ----------------------------------------------------------------
   const openEditModal = (brand) => {
     setEditingBrand(brand);
     setIsAddingNewBrand(false);
@@ -177,101 +175,76 @@ export default function BrandsList() {
     setEditingBrand(null);
   };
 
-  const refetchBrands = async () => {
+  // ----------------------------------------------------------------
+  // SAVE HANDLER
+  // ----------------------------------------------------------------
+  const extractUpdatedBrand = (response, key) => {
     try {
-      const response = await apiClient.get("/brands?limit=100&page=1");
-      setBrands(response.data.data); // Update the state with fresh data
-    } catch (error) {
-      console.error("Error refetching brands:", error);
-      setError("Failed to refresh brand list.");
+      const data = response?.data;
+      if (!data) return null;
+
+      // If we're looking for "updated" brand from data.new
+      if (key === "updated" && data.new) {
+        return data.new;
+      }
+
+      // Otherwise, look under data[key]
+      const brand = data[key];
+      return brand && brand._id ? brand : null;
+    } catch (err) {
+      console.error("Error extracting updated brand:", err);
+      return null;
     }
   };
-  useEffect(() => {
-    const totalPages = Math.max(
-      1,
-      Math.ceil(filteredBrands.length / itemsPerPage)
-    );
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages); // Adjust to the last valid page
-    }
-  }, [filteredBrands.length, currentPage, itemsPerPage]);
 
   const saveBrandDetails = async () => {
     try {
-      console.log("Starting saveBrandDetails function");
-      console.log("Editing brand:", editingBrand);
-      console.log("Is adding new brand:", isAddingNewBrand);
-
-      if (!editingBrand || (!isAddingNewBrand && !editingBrand._id)) {
-        console.error("Invalid editingBrand:", editingBrand);
-        alert("Invalid brand data. Please try again.");
-        return;
-      }
-
+      if (!editingBrand) return;
       if (isAddingNewBrand) {
+        // Create
         const tempId = `temp-${Date.now()}`;
         const tempBrand = { ...editingBrand, _id: tempId };
 
-        console.log("Adding temporary brand:", tempBrand);
-
-        setBrands((prevBrands) => [...prevBrands, tempBrand]);
+        setBrands((prev) => [...prev, tempBrand]); // optimistic
 
         const response = await apiClient.post("/brands", editingBrand);
-        console.log("Full API response (POST):", response);
-
         const newBrand = extractUpdatedBrand(response, "new");
 
         if (!newBrand) {
-          console.error("New brand not found in API response. Re-fetching...");
+          // fallback: re-fetch
           await refetchBrands();
         } else {
           setBrands((prevBrands) =>
-            prevBrands.map((brand) => (brand._id === tempId ? newBrand : brand))
+            prevBrands.map((b) => (b._id === tempId ? newBrand : b))
           );
         }
       } else {
-        console.log("Updating brand with ID:", editingBrand._id);
-
-        setBrands((prevBrands) => {
-          console.log("Previous brands before update:", prevBrands);
-          return prevBrands.map((brand) =>
-            brand._id === editingBrand._id
-              ? { ...brand, ...editingBrand }
-              : brand
-          );
-        });
+        // Update
+        setBrands((prevBrands) =>
+          prevBrands.map((b) =>
+            b._id === editingBrand._id ? { ...b, ...editingBrand } : b
+          )
+        );
 
         const response = await apiClient.put(
           `/brands/${editingBrand._id}`,
           editingBrand
         );
-        console.log("Full API response (PUT):", response);
-
-        // Extract the updated brand from `data.new`
         const updatedBrand = extractUpdatedBrand(response, "updated");
 
         if (!updatedBrand) {
-          console.error(
-            "Updated brand not found in API response. Using fallback."
-          );
-          setBrands((prevBrands) =>
-            prevBrands.map((brand) =>
-              brand._id === editingBrand._id ? editingBrand : brand
-            )
-          );
+          console.error("Failed to extract updated brand, re-fetching...");
           await refetchBrands();
         } else {
           setBrands((prevBrands) =>
-            prevBrands.map((brand) =>
-              brand._id === editingBrand._id ? updatedBrand : brand
+            prevBrands.map((b) =>
+              b._id === editingBrand._id ? updatedBrand : b
             )
           );
         }
       }
-
       setSearchTerm("");
       closeModal();
-      console.log("Finished saveBrandDetails function");
     } catch (error) {
       console.error("Critical error in saveBrandDetails:", error);
       alert("A critical error occurred. Please try again.");
@@ -279,6 +252,9 @@ export default function BrandsList() {
     }
   };
 
+  // ----------------------------------------------------------------
+  // INPUT CHANGE
+  // ----------------------------------------------------------------
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditingBrand((prev) => ({
@@ -287,6 +263,9 @@ export default function BrandsList() {
     }));
   };
 
+  // ----------------------------------------------------------------
+  // CONDITIONAL RENDER
+  // ----------------------------------------------------------------
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -303,17 +282,30 @@ export default function BrandsList() {
     );
   }
 
+  // ----------------------------------------------------------------
+  // RETURN JSX
+  // ----------------------------------------------------------------
   return (
     <>
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-10 bg-blue-500 shadow-md">
+      {/* Sticky Header with color-coded background */}
+      <header className={`sticky top-0 z-10 shadow-md ${roleColors[userRole]}`}>
+        {/* First row: Title */}
         <div className="flex items-center justify-between px-4 py-4 text-white">
-          <h1 className="text-3xl font-bold">
-            Brands ({filteredBrands.length})
-          </h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-3xl font-bold">
+              Brands ({filteredBrands.length})
+            </h1>
+            {/* Show user role badge */}
+            <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
+              {userRole.toUpperCase()}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center justify-between px-4 py-2 bg-blue-500">
+
+        {/* Second row: search & add buttons */}
+        <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center space-x-4">
+            {/* Desktop search */}
             <input
               type="text"
               placeholder="Search brands..."
@@ -321,6 +313,7 @@ export default function BrandsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="hidden w-full px-4 py-2 text-black border rounded-lg md:block focus:ring focus:ring-indigo-200"
             />
+            {/* Mobile search toggle */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="text-white md:hidden"
@@ -328,24 +321,37 @@ export default function BrandsList() {
               <FaSearch size={24} />
             </button>
           </div>
-          <button
-            onClick={navigateToDashboard}
-            className="flex items-center px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            ➤ Dashboard
-          </button>
+
           <div className="flex items-center space-x-4">
+            {/* Navigate Dashboard */}
             <button
-              onClick={openAddNewModal}
-              className="flex items-center px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
+              onClick={navigateToDashboard}
+              className="flex items-center px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
             >
-              <FaPlusCircle className="inline-block mr-2" /> Add New Brand
+              ➤ Dashboard
             </button>
-            <button onClick={openAddNewModal} className="text-white md:hidden">
-              <FaPlusCircle size={24} />
-            </button>
+
+            {/* Add New Brand: only for staff & admin */}
+            {(userRole === "staff" || userRole === "admin") && (
+              <>
+                <button
+                  onClick={openAddNewModal}
+                  className="items-center hidden px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 md:flex"
+                >
+                  <FaPlusCircle className="inline-block mr-2" /> Add New Brand
+                </button>
+                <button
+                  onClick={openAddNewModal}
+                  className="text-white md:hidden"
+                >
+                  <FaPlusCircle size={24} />
+                </button>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Mobile search field when toggled */}
         {isSearchOpen && (
           <div className="px-4 pb-2 md:hidden">
             <input
@@ -366,7 +372,7 @@ export default function BrandsList() {
             {currentBrands.map((brand) => {
               if (!brand || !brand._id) {
                 console.error("Skipping invalid brand:", brand);
-                return null; // Skip rendering for invalid brands
+                return null;
               }
               return (
                 <div
@@ -397,19 +403,26 @@ export default function BrandsList() {
 
                   {/* Action Buttons */}
                   <div className="flex justify-around p-4 border-t">
+                    {/* Everyone can see details */}
                     <button
                       onClick={() => openDetailsModal(brand)}
                       className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                     >
                       Details
                     </button>
-                    <button
-                      onClick={() => openEditModal(brand)}
-                      className="text-blue-500 hover:text-blue-700 focus:outline-none"
-                    >
-                      <FaEdit className="w-5 h-5" />
-                    </button>
-                    {userInfo?.role === "admin" && (
+
+                    {/* Edit: staff or admin */}
+                    {(userRole === "staff" || userRole === "admin") && (
+                      <button
+                        onClick={() => openEditModal(brand)}
+                        className="text-blue-500 hover:text-blue-700 focus:outline-none"
+                      >
+                        <FaEdit className="w-5 h-5" />
+                      </button>
+                    )}
+
+                    {/* Delete: admin only */}
+                    {userRole === "admin" && (
                       <button
                         onClick={() => confirmDeleteBrand(brand)}
                         className="text-red-500 hover:text-red-700 focus:outline-none"
@@ -467,7 +480,7 @@ export default function BrandsList() {
         </nav>
       </footer>
 
-      {/* Modal for Editing or Adding Brand */}
+      {/* MODAL for Add/Edit Brand */}
       <Transition appear show={modalOpen} as={Fragment}>
         <Dialog
           as="div"
@@ -501,84 +514,86 @@ export default function BrandsList() {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
-                  {isAddingNewBrand ? "Add New Brand" : "Edit Brand"}
-                </Dialog.Title>
-                <div className="mt-4">
-                  {/* Logo Section */}
-                  <div className="mb-4">
-                    <label className="block mb-2 text-sm font-semibold">
-                      Logo
-                    </label>
-                    <div className="flex items-center justify-center mb-4">
-                      <img
-                        src={editingBrand?.image || defaultUser}
-                        alt={editingBrand?.name || "Default Logo"}
-                        className="object-contain w-24 h-24"
-                        onError={(e) => {
-                          e.currentTarget.src = defaultUser;
-                        }}
+              {editingBrand && (
+                <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+                  <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
+                    {isAddingNewBrand ? "Add New Brand" : "Edit Brand"}
+                  </Dialog.Title>
+                  <div className="mt-4">
+                    {/* Logo Section */}
+                    <div className="mb-4">
+                      <label className="block mb-2 text-sm font-semibold">
+                        Logo
+                      </label>
+                      <div className="flex items-center justify-center mb-4">
+                        <img
+                          src={editingBrand?.image || defaultUser}
+                          alt={editingBrand?.name || "Default Logo"}
+                          className="object-contain w-24 h-24"
+                          onError={(e) => {
+                            e.currentTarget.src = defaultUser;
+                          }}
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        name="image"
+                        value={editingBrand?.image || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
+                        placeholder="Enter logo URL"
                       />
                     </div>
-                    <input
-                      type="text"
-                      name="image"
-                      value={editingBrand?.image || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
-                      placeholder="Enter logo URL"
-                    />
+                    {/* Name Section */}
+                    <div className="mb-4">
+                      <label className="block mb-2 text-sm font-semibold">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={editingBrand?.name || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
+                        placeholder="Enter brand name"
+                      />
+                    </div>
+                    {/* Description Section */}
+                    <div className="mb-4">
+                      <label className="block mb-2 text-sm font-semibold">
+                        Description
+                      </label>
+                      <textarea
+                        name="description"
+                        value={editingBrand?.description || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
+                        placeholder="Enter brand description"
+                      />
+                    </div>
                   </div>
-                  {/* Name Section */}
-                  <div className="mb-4">
-                    <label className="block mb-2 text-sm font-semibold">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={editingBrand?.name || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
-                      placeholder="Enter brand name"
-                    />
-                  </div>
-                  {/* Description Section */}
-                  <div className="mb-4">
-                    <label className="block mb-2 text-sm font-semibold">
-                      Description
-                    </label>
-                    <textarea
-                      name="description"
-                      value={editingBrand?.description || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
-                      placeholder="Enter brand description"
-                    ></textarea>
+                  <div className="flex justify-end mt-6 space-x-4">
+                    <button
+                      onClick={saveBrandDetails}
+                      className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={closeModal}
+                      className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
-                <div className="flex justify-end mt-6 space-x-4">
-                  <button
-                    onClick={saveBrandDetails}
-                    className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+              )}
             </Transition.Child>
           </div>
         </Dialog>
       </Transition>
 
-      {/* Details Modal */}
+      {/* DETAILS MODAL */}
       <Transition appear show={detailsModalOpen} as={Fragment}>
         <Dialog
           as="div"
@@ -612,11 +627,11 @@ export default function BrandsList() {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
-                  Brand Details
-                </Dialog.Title>
-                {detailsBrand ? (
+              {detailsBrand && (
+                <div className="inline-block w-full max-w-md p-6 my-8 text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+                  <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
+                    Brand Details
+                  </Dialog.Title>
                   <div className="mt-4 space-y-4">
                     <div className="flex justify-center">
                       <img
@@ -644,24 +659,22 @@ export default function BrandsList() {
                       </p>
                     )}
                   </div>
-                ) : (
-                  <p className="mt-4">No details available.</p>
-                )}
-                <div className="flex justify-end mt-6">
-                  <button
-                    onClick={closeDetailsModal}
-                    className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
-                  >
-                    Close
-                  </button>
+                  <div className="flex justify-end mt-6">
+                    <button
+                      onClick={closeDetailsModal}
+                      className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </Transition.Child>
           </div>
         </Dialog>
       </Transition>
 
-      {/* Confirm Delete Modal */}
+      {/* CONFIRM DELETE MODAL */}
       <Transition appear show={confirmOpen} as={Fragment}>
         <Dialog
           as="div"
@@ -695,31 +708,33 @@ export default function BrandsList() {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-                <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
-                  Confirm Deletion
-                </Dialog.Title>
-                <div className="mt-4">
-                  <p className="text-gray-600">
-                    Are you sure you want to delete this brand? This action
-                    cannot be undone.
-                  </p>
+              {selectedBrandForDelete && (
+                <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+                  <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
+                    Confirm Deletion
+                  </Dialog.Title>
+                  <div className="mt-4">
+                    <p className="text-gray-600">
+                      Are you sure you want to delete this brand? This action
+                      cannot be undone.
+                    </p>
+                  </div>
+                  <div className="flex justify-end mt-6 space-x-4">
+                    <button
+                      onClick={() => setConfirmOpen(false)}
+                      className="px-4 py-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={deleteBrand}
+                      className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-end mt-6 space-x-4">
-                  <button
-                    onClick={() => setConfirmOpen(false)}
-                    className="px-4 py-2 text-white bg-gray-500 rounded-lg hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={deleteBrand}
-                    className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+              )}
             </Transition.Child>
           </div>
         </Dialog>

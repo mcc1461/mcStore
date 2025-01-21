@@ -6,36 +6,52 @@ import apiClient from "../services/apiClient";
 import defaultUser from "../assets/default-profile.png";
 
 export default function ProductsList() {
-  // -------------------------
+  // --------------------------------------------------
+  // 1) USER ROLE FROM LOCALSTORAGE
+  // --------------------------------------------------
+  const savedUser = localStorage.getItem("userInfo");
+  const initialRole = savedUser ? JSON.parse(savedUser).role : "user";
+  // This sets the userRole to whatever is in localStorage, or "user" if none found
+  const [userRole, setUserRole] = useState(initialRole);
+
+  // For color-coding the top bar by role
+  const roleColors = {
+    admin: "bg-red-500",
+    staff: "bg-yellow-500",
+    user: "bg-green-500",
+  };
+
+  // --------------------------------------------------
   // NAVIGATION
-  // -------------------------
+  // --------------------------------------------------
   const navigate = useNavigate();
   const navigateToDashboard = () => {
     navigate("/dashboard", { replace: true });
   };
 
-  // -------------------------
+  // --------------------------------------------------
   // STATE: Data & UI
-  // -------------------------
+  // --------------------------------------------------
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Filter & Search
   const [searchTerm, setSearchTerm] = useState("");
-  // For sidebar filtering, we use text values (category and brand names)
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [filterStockStatus, setFilterStockStatus] = useState("all");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Dropdown options for Add/Edit modals (fetched from API)
+  // Brands & Categories (for dropdowns, filter, etc.)
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
 
   // Add/Edit Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [isAddingNewProduct, setIsAddingNewProduct] = useState(false);
+
+  // The product state used in Add or Edit forms
   const [editingProduct, setEditingProduct] = useState(null);
 
   // Details Modal
@@ -51,41 +67,31 @@ export default function ProductsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // -------------------------
+  // --------------------------------------------------
   // HELPER FUNCTIONS
-  // -------------------------
-  // Convert an ObjectId (or object) for category to its name using the fetched categories.
-  const resolveCategoryName = (catVal) => {
-    if (typeof catVal === "string" && catVal.length === 24) {
-      const found = categories.find((c) => c._id === catVal);
-      return found ? found.name : catVal;
-    } else if (typeof catVal === "object") {
-      return catVal.name || "";
-    }
-    return catVal;
-  };
+  // --------------------------------------------------
+  function getProductId(prod) {
+    return prod._id || prod.id;
+  }
 
-  // Convert an ObjectId (or object) for brand to its name using the fetched brands.
-  const resolveBrandName = (brandVal) => {
-    if (typeof brandVal === "string" && brandVal.length === 24) {
-      const found = brands.find((b) => b._id === brandVal);
-      return found ? found.name : brandVal;
-    } else if (typeof brandVal === "object") {
-      return brandVal.name || "";
-    }
-    return brandVal;
-  };
+  function resolveCategoryName(catId) {
+    if (!catId) return "";
+    const found = categories.find((c) => c._id === catId);
+    return found ? found.name : catId;
+  }
 
-  // Helper: Get product ID from _id or id.
-  const getProductId = (prod) => prod._id || prod.id;
+  function resolveBrandName(brandId) {
+    if (!brandId) return "";
+    const found = brands.find((b) => b._id === brandId);
+    return found ? b.name : brandId;
+  }
 
-  // -------------------------
+  // --------------------------------------------------
   // FETCH PRODUCTS
-  // -------------------------
+  // --------------------------------------------------
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        console.log(">>> Fetching products from DB...");
         const response = await apiClient.get("/products?limit=100&page=1");
         setProducts(response.data.data);
         setLoading(false);
@@ -98,9 +104,9 @@ export default function ProductsList() {
     fetchProducts();
   }, []);
 
-  // -------------------------
-  // FETCH BRANDS & CATEGORIES FOR DROPDOWNS (for modals)
-  // -------------------------
+  // --------------------------------------------------
+  // FETCH BRANDS & CATEGORIES
+  // --------------------------------------------------
   const fetchBrands = async () => {
     try {
       const response = await apiClient.get("/brands?limit=0");
@@ -130,15 +136,14 @@ export default function ProductsList() {
     fetchCategories();
   }, []);
 
-  // -------------------------
-  // SIDEBAR FILTER DROPDOWN OPTIONS (using fetched arrays)
-  // -------------------------
+  // --------------------------------------------------
+  // SIDEBAR FILTER DROPDOWN OPTIONS
+  // --------------------------------------------------
   const allCategoriesForFilter = [
     "all",
     ...categories.map((c) => c.name).sort(),
   ];
-  // For the brand dropdown in the sidebar, if a specific category is selected,
-  // filter products to get only those associated brands.
+
   const filteredBrandsForSidebar =
     selectedCategory === "all"
       ? ["all", ...brands.map((b) => b.name).sort()]
@@ -155,19 +160,21 @@ export default function ProductsList() {
           ).sort(),
         ];
 
-  // -------------------------
+  // --------------------------------------------------
   // STOCK SUMMARY
-  // -------------------------
+  // --------------------------------------------------
   const totalProducts = products.length;
+
+  // 0 => Out of Stock, 1–4 => Low Stock, 5+ => Available
   const outOfStockCount = products.filter((p) => p.quantity === 0).length;
   const lowStockCount = products.filter(
     (p) => p.quantity > 0 && p.quantity < 5
   ).length;
-  const availableCount = totalProducts - outOfStockCount - lowStockCount;
+  const availableCount = products.filter((p) => p.quantity >= 5).length;
 
-  // -------------------------
-  // FILTER PRODUCTS (for Listing)
-  // -------------------------
+  // --------------------------------------------------
+  // FILTER PRODUCTS (Listing)
+  // --------------------------------------------------
   const filteredProducts = products
     .filter((product) =>
       selectedCategory === "all"
@@ -181,19 +188,28 @@ export default function ProductsList() {
     )
     .filter((product) => {
       if (filterStockStatus === "all") return true;
-      if (filterStockStatus === "low")
+      if (filterStockStatus === "low") {
+        // 1–4 => “Low Stock”
         return product.quantity > 0 && product.quantity < 5;
-      if (filterStockStatus === "available") return product.quantity >= 5;
-      if (filterStockStatus === "out") return product.quantity === 0;
+      }
+      if (filterStockStatus === "available") {
+        // 5+ => “Available”
+        return product.quantity >= 5;
+      }
+      if (filterStockStatus === "out") {
+        // 0 => “Out of Stock”
+        return product.quantity === 0;
+      }
       return true;
     })
+    // search by product name
     .filter((product) =>
       product.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  // -------------------------
+  // --------------------------------------------------
   // PAGINATION
-  // -------------------------
+  // --------------------------------------------------
   const indexOfLastProduct = currentPage * itemsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - itemsPerPage;
   const currentProducts = filteredProducts.slice(
@@ -214,9 +230,9 @@ export default function ProductsList() {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  // -------------------------
-  // ADD/EDIT PRODUCT MODAL FUNCTIONS
-  // -------------------------
+  // --------------------------------------------------
+  // ADD / EDIT PRODUCT MODAL
+  // --------------------------------------------------
   const openAddNewModal = () => {
     setEditingProduct({
       name: "",
@@ -231,21 +247,26 @@ export default function ProductsList() {
     setModalOpen(true);
   };
 
-  // In the edit modal, convert stored IDs to names for display.
   const openEditModal = (product) => {
     const prod = { ...product };
-    if (typeof prod.categoryId === "string" && prod.categoryId.length === 24) {
-      const cat = categories.find((c) => c._id === prod.categoryId);
-      prod.categoryId = cat ? cat.name : prod.categoryId;
-    } else if (typeof prod.categoryId === "object") {
-      prod.categoryId = prod.categoryId.name || "";
+
+    if (prod.brandId && typeof prod.brandId === "object") {
+      prod.brandId = prod.brandId._id;
+    } else if (typeof prod.brandId === "string" && prod.brandId.length !== 24) {
+      const foundBrand = brands.find((b) => b.name === prod.brandId);
+      if (foundBrand) prod.brandId = foundBrand._id;
     }
-    if (typeof prod.brandId === "string" && prod.brandId.length === 24) {
-      const br = brands.find((b) => b._id === prod.brandId);
-      prod.brandId = br ? br.name : prod.brandId;
-    } else if (typeof prod.brandId === "object") {
-      prod.brandId = prod.brandId.name || "";
+
+    if (prod.categoryId && typeof prod.categoryId === "object") {
+      prod.categoryId = prod.categoryId._id;
+    } else if (
+      typeof prod.categoryId === "string" &&
+      prod.categoryId.length !== 24
+    ) {
+      const foundCategory = categories.find((c) => c.name === prod.categoryId);
+      if (foundCategory) prod.categoryId = foundCategory._id;
     }
+
     setEditingProduct(prod);
     setIsAddingNewProduct(false);
     setModalOpen(true);
@@ -256,21 +277,13 @@ export default function ProductsList() {
     setEditingProduct(null);
   };
 
-  // For the details modal, do the same conversion.
+  // --------------------------------------------------
+  // DETAILS MODAL
+  // --------------------------------------------------
   const openDetailsModal = (product) => {
     const prod = { ...product };
-    if (typeof prod.categoryId === "string" && prod.categoryId.length === 24) {
-      const cat = categories.find((c) => c._id === prod.categoryId);
-      prod.categoryId = cat ? cat.name : prod.categoryId;
-    } else if (typeof prod.categoryId === "object") {
-      prod.categoryId = prod.categoryId.name || "";
-    }
-    if (typeof prod.brandId === "string" && prod.brandId.length === 24) {
-      const br = brands.find((b) => b._id === prod.brandId);
-      prod.brandId = br ? br.name : prod.brandId;
-    } else if (typeof prod.brandId === "object") {
-      prod.brandId = prod.brandId.name || "";
-    }
+    prod.brandName = resolveBrandName(prod.brandId);
+    prod.categoryName = resolveCategoryName(prod.categoryId);
     setDetailsProduct(prod);
     setDetailsModalOpen(true);
   };
@@ -280,17 +293,20 @@ export default function ProductsList() {
     setDetailsProduct(null);
   };
 
-  // -------------------------
+  // --------------------------------------------------
   // SAVE (ADD/EDIT) PRODUCT
-  // -------------------------
+  // --------------------------------------------------
   const saveProductDetails = async () => {
-    console.log(">>> saveProductDetails triggered.");
-    console.log(">>> editingProduct:", editingProduct);
     try {
       const payload = { ...editingProduct };
-      if (payload.quantity !== undefined) {
-        payload.quantity = Number(payload.quantity);
-      }
+
+      // Convert to Number & clamp
+      payload.quantity = Number(payload.quantity);
+      if (payload.quantity < 0) payload.quantity = 0;
+
+      payload.price = Number(payload.price);
+      if (payload.price < 0) payload.price = 0;
+
       if (!payload.brandId) {
         alert("Please select a brand. It must be predefined.");
         return;
@@ -299,22 +315,18 @@ export default function ProductsList() {
         alert("Please select a category. It must be predefined.");
         return;
       }
+
       if (isAddingNewProduct) {
         const response = await apiClient.post("/products", payload);
-        console.log(">>> Created product in DB:", response.data);
         const createdProd = response.data.data;
         if (createdProd) {
           setProducts((prev) => [...prev, createdProd]);
           fetchBrands();
           fetchCategories();
-        } else {
-          console.warn("No created product returned from server");
         }
       } else {
         const productId = getProductId(payload);
-        console.log(">>> Attempting PUT to /products/", productId);
         const response = await apiClient.put(`/products/${productId}`, payload);
-        console.log(">>> Updated product in DB:", response.data);
         const updatedProd = response.data.new;
         if (updatedProd) {
           setProducts((prev) =>
@@ -324,31 +336,34 @@ export default function ProductsList() {
           );
           fetchBrands();
           fetchCategories();
-        } else {
-          console.warn("No updated doc returned from server's response");
-          return;
         }
       }
+
       closeModal();
     } catch (err) {
-      console.error(
-        ">>> Error saving the product:",
-        err.response?.data || err.message || err
-      );
+      console.error(">>> Error saving the product:", err.response?.data || err);
     }
   };
 
-  // -------------------------
+  // --------------------------------------------------
   // INPUT HANDLER
-  // -------------------------
+  // --------------------------------------------------
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    if ((name === "quantity" || name === "price") && value !== "") {
+      const numVal = parseFloat(value);
+      if (numVal < 0) {
+        value = "0";
+      }
+    }
+
     setEditingProduct((prev) => ({ ...prev, [name]: value }));
   };
 
-  // -------------------------
-  // DELETE PRODUCT FUNCTIONS
-  // -------------------------
+  // --------------------------------------------------
+  // DELETE PRODUCT
+  // --------------------------------------------------
   const confirmDeleteProduct = (product) => {
     setSelectedProductForDelete(product);
     setConfirmOpen(true);
@@ -358,7 +373,6 @@ export default function ProductsList() {
     if (!selectedProductForDelete) return;
     const productId = getProductId(selectedProductForDelete);
     try {
-      console.log(">>> Deleting product with ID:", productId);
       await apiClient.delete(`/products/${productId}`);
       setProducts((prev) => prev.filter((p) => getProductId(p) !== productId));
       setConfirmOpen(false);
@@ -367,9 +381,9 @@ export default function ProductsList() {
     }
   };
 
-  // -------------------------
+  // --------------------------------------------------
   // CONDITIONAL RENDERS
-  // -------------------------
+  // --------------------------------------------------
   if (loading) {
     return <p className="mt-8 text-xl text-center">Loading products...</p>;
   }
@@ -377,17 +391,25 @@ export default function ProductsList() {
     return <p className="mt-8 text-xl text-center text-red-500">{error}</p>;
   }
 
-  // -------------------------
+  // --------------------------------------------------
   // RENDER
-  // -------------------------
+  // --------------------------------------------------
   return (
     <>
-      {/* Sticky Header */}
-      <div className="fixed top-0 z-10 w-full bg-blue-500 shadow-md">
+      {/* Sticky Header with color-coded role */}
+      <div
+        className={`fixed top-0 z-10 w-full shadow-md ${roleColors[userRole]}`}
+      >
         <div className="flex items-center justify-between px-4 py-4 text-white">
-          <h1 className="text-3xl font-bold">
-            Products ({filteredProducts.length})
-          </h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-3xl font-bold">
+              Products ({filteredProducts.length})
+            </h1>
+            {/* Label to show user role */}
+            <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
+              {userRole.toUpperCase()}
+            </span>
+          </div>
           <button
             onClick={navigateToDashboard}
             className="px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
@@ -440,8 +462,8 @@ export default function ProductsList() {
               className="w-full px-4 py-2 border rounded-lg"
             >
               <option value="all">All Stock Levels</option>
-              <option value="available">Available (5+)</option>
               <option value="low">Low Stock (1-4)</option>
+              <option value="available">Available (5+)</option>
               <option value="out">Out of Stock (0)</option>
             </select>
           </div>
@@ -449,9 +471,9 @@ export default function ProductsList() {
           <div className="mt-6">
             <h3 className="mb-2 text-lg font-bold">Stock Summary</h3>
             <p>Total Products: {totalProducts}</p>
-            <p>Available: {availableCount}</p>
-            <p>Low Stock: {lowStockCount}</p>
-            <p>Out of Stock: {outOfStockCount}</p>
+            <p>Out of Stock (0): {outOfStockCount}</p>
+            <p>Low Stock (1-4): {lowStockCount}</p>
+            <p>Available (5+): {availableCount}</p>
           </div>
           {/* Products Summary */}
           <div className="mt-6">
@@ -493,15 +515,23 @@ export default function ProductsList() {
                 className="hidden w-full px-4 py-2 text-black border rounded-lg sm:block focus:ring focus:ring-indigo-200"
               />
             </div>
-            <button
-              onClick={openAddNewModal}
-              className="hidden px-4 py-2 text-white bg-green-500 rounded-lg sm:flex hover:bg-green-600"
-            >
-              <FaPlusCircle className="inline-block mr-2" /> Add New Product
-            </button>
-            <button onClick={openAddNewModal} className="text-white sm:hidden">
-              <FaPlusCircle size={24} className="text-green-500" />
-            </button>
+            {/* "Add New Product" only for staff & admin */}
+            {(userRole === "staff" || userRole === "admin") && (
+              <>
+                <button
+                  onClick={openAddNewModal}
+                  className="hidden px-4 py-2 text-white bg-green-500 rounded-lg sm:flex hover:bg-green-600"
+                >
+                  <FaPlusCircle className="inline-block mr-2" /> Add New Product
+                </button>
+                <button
+                  onClick={openAddNewModal}
+                  className="text-white sm:hidden"
+                >
+                  <FaPlusCircle size={24} className="text-green-500" />
+                </button>
+              </>
+            )}
           </div>
 
           {currentProducts.length > 0 ? (
@@ -510,6 +540,7 @@ export default function ProductsList() {
                 const qty = product.quantity || 0;
                 let stockLabel = "";
                 let stockClasses = "";
+
                 if (qty === 0) {
                   stockLabel = "Out of Stock";
                   stockClasses = "bg-red-100 text-red-600";
@@ -517,9 +548,10 @@ export default function ProductsList() {
                   stockLabel = "Low Stock";
                   stockClasses = "bg-yellow-100 text-yellow-600";
                 } else {
-                  stockLabel = "In Stock";
+                  stockLabel = "Available";
                   stockClasses = "bg-green-100 text-green-600";
                 }
+
                 const productId = getProductId(product);
                 return (
                   <div
@@ -554,7 +586,10 @@ export default function ProductsList() {
                         <p className="text-gray-600">Price: ${product.price}</p>
                       </div>
                     </div>
+
+                    {/* Actions (Details/Edit/Delete) */}
                     <div className="flex justify-between mt-2">
+                      {/* Everyone can see Details */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -564,25 +599,33 @@ export default function ProductsList() {
                       >
                         Details
                       </button>
+
                       <div className="flex space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditModal(product);
-                          }}
-                          className="text-blue-500 hover:text-blue-700 focus:outline-none"
-                        >
-                          <FaEdit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDeleteProduct(product);
-                          }}
-                          className="text-red-500 hover:text-red-700 focus:outline-none"
-                        >
-                          <FaTrashAlt className="w-5 h-5" />
-                        </button>
+                        {/* Edit only for staff or admin */}
+                        {(userRole === "staff" || userRole === "admin") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(product);
+                            }}
+                            className="text-blue-500 hover:text-blue-700 focus:outline-none"
+                          >
+                            <FaEdit className="w-5 h-5" />
+                          </button>
+                        )}
+
+                        {/* Delete only for admin */}
+                        {userRole === "admin" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteProduct(product);
+                            }}
+                            className="text-red-500 hover:text-red-700 focus:outline-none"
+                          >
+                            <FaTrashAlt className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -601,7 +644,7 @@ export default function ProductsList() {
       <div className="fixed h-[4.5rem] bottom-0 left-0 w-full sm:ml-[25%] sm:w-[75%] bg-white border-t">
         <nav
           aria-label="Pagination"
-          className="flex items-center justify-between px-4 sm:px-6 py-2"
+          className="flex items-center justify-between px-4 py-2 sm:px-6"
         >
           <div className="hidden sm:block">
             <p className="text-sm text-gray-700">
@@ -654,12 +697,14 @@ export default function ProductsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
+
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
             >
               &#8203;
             </span>
+
             <Transition.Child
               as="div"
               enter="ease-out duration-300"
@@ -674,6 +719,7 @@ export default function ProductsList() {
                   <Dialog.Title className="text-2xl font-bold leading-6 text-gray-900">
                     {isAddingNewProduct ? "Add New Product" : "Edit Product"}
                   </Dialog.Title>
+
                   <div className="mt-4 space-y-4">
                     {/* Name */}
                     <div>
@@ -688,6 +734,7 @@ export default function ProductsList() {
                         className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
                       />
                     </div>
+
                     {/* Price */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -696,11 +743,15 @@ export default function ProductsList() {
                       <input
                         type="number"
                         name="price"
+                        min="0"
+                        step="0.01"
+                        onWheel={(e) => e.currentTarget.blur()}
                         value={editingProduct.price}
                         onChange={handleInputChange}
                         className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
                       />
                     </div>
+
                     {/* Quantity */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -709,11 +760,15 @@ export default function ProductsList() {
                       <input
                         type="number"
                         name="quantity"
+                        min="0"
+                        step="1"
+                        onWheel={(e) => e.currentTarget.blur()}
                         value={editingProduct.quantity}
                         onChange={handleInputChange}
                         className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
                       />
                     </div>
+
                     {/* Category Dropdown */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -723,18 +778,17 @@ export default function ProductsList() {
                         name="categoryId"
                         value={editingProduct.categoryId || ""}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200 max-h-64 overflow-y-auto"
+                        className="w-full px-4 py-2 overflow-y-auto border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
                       >
                         <option value="">Select a Category</option>
-                        {categories
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                          .map((cat) => (
-                            <option key={cat._id} value={cat.name}>
-                              {cat.name}
-                            </option>
-                          ))}
+                        {categories.map((cat) => (
+                          <option key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
+
                     {/* Brand Dropdown */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -744,18 +798,17 @@ export default function ProductsList() {
                         name="brandId"
                         value={editingProduct.brandId || ""}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200 max-h-64 overflow-y-auto"
+                        className="w-full px-4 py-2 overflow-y-auto border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
                       >
                         <option value="">Select a Brand</option>
-                        {brands
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                          .map((b) => (
-                            <option key={b._id} value={b.name}>
-                              {b.name}
-                            </option>
-                          ))}
+                        {brands.map((b) => (
+                          <option key={b._id} value={b._id}>
+                            {b.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
+
                     {/* Main Image */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -769,6 +822,7 @@ export default function ProductsList() {
                         className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
                       />
                     </div>
+
                     {/* Additional Image */}
                     <div>
                       <label className="block mb-2 text-sm font-semibold">
@@ -783,6 +837,7 @@ export default function ProductsList() {
                       />
                     </div>
                   </div>
+
                   <div className="flex justify-end mt-6 space-x-4">
                     <button
                       onClick={saveProductDetails}
@@ -823,6 +878,7 @@ export default function ProductsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
+
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
@@ -924,13 +980,10 @@ export default function ProductsList() {
                       Quantity: {detailsProduct.quantity}
                     </p>
                     <p className="text-gray-600">
-                      Category:{" "}
-                      {detailsProduct.categoryId?.name ||
-                        detailsProduct.categoryId}
+                      Category: {detailsProduct.categoryName}
                     </p>
                     <p className="text-gray-600">
-                      Brand:{" "}
-                      {detailsProduct.brandId?.name || detailsProduct.brandId}
+                      Brand: {detailsProduct.brandName}
                     </p>
                   </div>
                   <div className="flex justify-end mt-6">
@@ -949,8 +1002,4 @@ export default function ProductsList() {
       </Transition>
     </>
   );
-}
-
-function getProductId(prod) {
-  return prod._id || prod.id;
 }

@@ -7,34 +7,57 @@ import apiClient from "../services/apiClient";
 import defaultUser from "../assets/default-profile.png";
 
 function FirmsList() {
+  // ------------------------------------------------------------------
+  // 1) READ USER ROLE FROM REDUX
+  // ------------------------------------------------------------------
+  const { userInfo } = useSelector((state) => state.auth);
+  const userRole = userInfo?.role || "user";
+
+  // For color-coding the header
+  const roleColors = {
+    admin: "bg-red-500",
+    staff: "bg-yellow-500",
+    user: "bg-green-500",
+  };
+
+  // ------------------------------------------------------------------
+  // STATE
+  // ------------------------------------------------------------------
   const [firms, setFirms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Add/Edit Modal
   const [editingFirm, setEditingFirm] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isAddingNewFirm, setIsAddingNewFirm] = useState(false);
+
+  // Delete Confirmation
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedFirmForDelete, setSelectedFirmForDelete] = useState(null);
+
+  // Search toggle (for mobile)
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // Details Modal state
+  // Details Modal
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailsFirm, setDetailsFirm] = useState(null);
 
   const navigate = useNavigate();
-  const { userInfo } = useSelector((state) => state.auth);
 
-  // Helper function to get firm id
+  // ------------------------------------------------------------------
+  // HELPER: GET FIRM ID
+  // ------------------------------------------------------------------
   const getFirmId = (firm) => firm._id || firm.id;
 
-  // -------------------------
-  // FETCH FIRMS FUNCTION
-  // -------------------------
+  // ------------------------------------------------------------------
+  // FETCH FIRMS
+  // ------------------------------------------------------------------
   const fetchFirms = useCallback(async () => {
     try {
       const response = await apiClient.get("/firms?limit=100&page=1");
@@ -52,16 +75,16 @@ function FirmsList() {
     fetchFirms();
   }, [fetchFirms]);
 
-  // -------------------------
-  // FILTER FIRMS BASED ON SEARCH
-  // -------------------------
+  // ------------------------------------------------------------------
+  // FILTER & SEARCH
+  // ------------------------------------------------------------------
   const filteredFirms = firms.filter((firm) =>
     firm?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // -------------------------
-  // PAGINATION LOGIC
-  // -------------------------
+  // ------------------------------------------------------------------
+  // PAGINATION
+  // ------------------------------------------------------------------
   const indexOfLastFirm = currentPage * itemsPerPage;
   const indexOfFirstFirm = indexOfLastFirm - itemsPerPage;
   const currentFirms = filteredFirms.slice(indexOfFirstFirm, indexOfLastFirm);
@@ -79,16 +102,16 @@ function FirmsList() {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  // -------------------------
-  // NAVIGATION HANDLER
-  // -------------------------
+  // ------------------------------------------------------------------
+  // NAVIGATE
+  // ------------------------------------------------------------------
   const navigateToDashboard = () => {
     navigate("/dashboard", { replace: true });
   };
 
-  // -------------------------
-  // MODAL HANDLERS
-  // -------------------------
+  // ------------------------------------------------------------------
+  // MODALS: Add/Edit
+  // ------------------------------------------------------------------
   const openAddNewModal = () => {
     setEditingFirm({ name: "", image: "", phone: "", address: "" });
     setIsAddingNewFirm(true);
@@ -106,6 +129,9 @@ function FirmsList() {
     setEditingFirm(null);
   };
 
+  // ------------------------------------------------------------------
+  // MODALS: Details
+  // ------------------------------------------------------------------
   const openDetailsModal = (firm) => {
     setDetailsFirm(firm);
     setDetailsModalOpen(true);
@@ -116,9 +142,9 @@ function FirmsList() {
     setDetailsFirm(null);
   };
 
-  // -------------------------
-  // DELETE HANDLERS
-  // -------------------------
+  // ------------------------------------------------------------------
+  // DELETE
+  // ------------------------------------------------------------------
   const confirmDeleteFirm = (firm) => {
     setSelectedFirmForDelete(firm);
     setConfirmOpen(true);
@@ -136,9 +162,9 @@ function FirmsList() {
     }
   };
 
-  // -------------------------
-  // SAVE (ADD/EDIT) HANDLER
-  // -------------------------
+  // ------------------------------------------------------------------
+  // SAVE (ADD/EDIT)
+  // ------------------------------------------------------------------
   const saveFirmDetails = async () => {
     try {
       if (!editingFirm.name || !editingFirm.image) {
@@ -160,17 +186,17 @@ function FirmsList() {
     }
   };
 
-  // -------------------------
+  // ------------------------------------------------------------------
   // INPUT HANDLER
-  // -------------------------
+  // ------------------------------------------------------------------
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditingFirm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // -------------------------
-  // RENDERING
-  // -------------------------
+  // ------------------------------------------------------------------
+  // RENDER
+  // ------------------------------------------------------------------
   if (loading) {
     return <p className="mt-8 text-xl text-center">Loading firms...</p>;
   }
@@ -181,13 +207,24 @@ function FirmsList() {
 
   return (
     <>
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-10 bg-blue-500 shadow-md">
+      {/* Sticky Header with role color */}
+      <header className={`sticky top-0 z-10 shadow-md ${roleColors[userRole]}`}>
         <div className="flex items-center justify-between px-4 py-4 text-white">
-          <h1 className="text-3xl font-bold">Firms ({filteredFirms.length})</h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-3xl font-bold">
+              Firms ({filteredFirms.length})
+            </h1>
+            {/* Show role badge */}
+            <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
+              {userRole.toUpperCase()}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center justify-between px-4 py-2 bg-blue-500">
+
+        {/* Sub-header: Search + Buttons */}
+        <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center space-x-4">
+            {/* Desktop search */}
             <input
               type="text"
               placeholder="Search firms..."
@@ -195,6 +232,7 @@ function FirmsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="hidden w-full px-4 py-2 text-black border rounded-lg md:block focus:ring focus:ring-indigo-200"
             />
+            {/* Mobile search icon toggler */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="text-white md:hidden"
@@ -202,22 +240,36 @@ function FirmsList() {
               <FaSearch size={24} />
             </button>
           </div>
-          <button
-            onClick={navigateToDashboard}
-            className="flex items-center px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            ➤ Dashboard
-          </button>
-          <button
-            onClick={openAddNewModal}
-            className="flex items-center hidden px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 md:flex"
-          >
-            <FaPlusCircle className="inline-block mr-2" /> Add New Firm
-          </button>
-          <button onClick={openAddNewModal} className="text-white md:hidden">
-            <FaPlusCircle size={24} />
-          </button>
+
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={navigateToDashboard}
+              className="flex items-center px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
+              ➤ Dashboard
+            </button>
+
+            {/* Add new firm button only for staff/admin */}
+            {(userRole === "staff" || userRole === "admin") && (
+              <>
+                <button
+                  onClick={openAddNewModal}
+                  className="items-center hidden px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 md:flex"
+                >
+                  <FaPlusCircle className="inline-block mr-2" /> Add New Firm
+                </button>
+                <button
+                  onClick={openAddNewModal}
+                  className="text-white md:hidden"
+                >
+                  <FaPlusCircle size={24} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Mobile search field when toggled */}
         {isSearchOpen && (
           <div className="px-4 pb-2 md:hidden">
             <input
@@ -231,7 +283,7 @@ function FirmsList() {
         )}
       </header>
 
-      {/* Firms List as Responsive Grid */}
+      {/* Firms Grid */}
       <main className="p-4">
         {filteredFirms.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -262,20 +314,28 @@ function FirmsList() {
                       </h3>
                     </div>
                   </div>
+                  {/* Action buttons */}
                   <div className="flex justify-around p-4 border-t">
+                    {/* Everyone can see details */}
                     <button
                       onClick={() => openDetailsModal(firm)}
                       className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                     >
                       Details
                     </button>
-                    <button
-                      onClick={() => openEditModal(firm)}
-                      className="text-blue-500 hover:text-blue-700 focus:outline-none"
-                    >
-                      <FaEdit className="w-5 h-5" />
-                    </button>
-                    {userInfo?.role === "admin" && (
+
+                    {/* Edit only for staff/admin */}
+                    {(userRole === "staff" || userRole === "admin") && (
+                      <button
+                        onClick={() => openEditModal(firm)}
+                        className="text-blue-500 hover:text-blue-700 focus:outline-none"
+                      >
+                        <FaEdit className="w-5 h-5" />
+                      </button>
+                    )}
+
+                    {/* Delete only for admin */}
+                    {userRole === "admin" && (
                       <button
                         onClick={() => confirmDeleteFirm(firm)}
                         className="text-red-500 hover:text-red-700 focus:outline-none"
@@ -295,7 +355,7 @@ function FirmsList() {
         )}
       </main>
 
-      {/* Fixed Full-Width Pagination Footer */}
+      {/* Pagination Footer */}
       <div className="fixed bottom-0 left-0 flex items-center w-full h-16 bg-white border-t">
         <nav
           aria-label="Pagination"
@@ -333,7 +393,7 @@ function FirmsList() {
         </nav>
       </div>
 
-      {/* Modal: Add/Edit Firm */}
+      {/* MODAL: Add/Edit Firm */}
       <Transition appear show={modalOpen} as={React.Fragment}>
         <Dialog
           as="div"
@@ -373,7 +433,7 @@ function FirmsList() {
                     {isAddingNewFirm ? "Add New Firm" : "Edit Firm"}
                   </Dialog.Title>
                   <div className="mt-4">
-                    {/* Logo Section */}
+                    {/* Logo Field */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Logo
@@ -397,7 +457,8 @@ function FirmsList() {
                         placeholder="Enter logo URL"
                       />
                     </div>
-                    {/* Name Section */}
+
+                    {/* Name Field */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Name
@@ -411,7 +472,8 @@ function FirmsList() {
                         placeholder="Enter firm name"
                       />
                     </div>
-                    {/* Phone Section */}
+
+                    {/* Phone Field */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Phone
@@ -425,7 +487,8 @@ function FirmsList() {
                         placeholder="Enter firm phone"
                       />
                     </div>
-                    {/* Address Section */}
+
+                    {/* Address Field */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Address
@@ -461,7 +524,7 @@ function FirmsList() {
         </Dialog>
       </Transition>
 
-      {/* Confirm Delete Modal */}
+      {/* CONFIRM DELETE MODAL */}
       <Transition appear show={confirmOpen} as={React.Fragment}>
         <Dialog
           as="div"
@@ -523,7 +586,7 @@ function FirmsList() {
         </Dialog>
       </Transition>
 
-      {/* Details Modal */}
+      {/* DETAILS MODAL */}
       <Transition appear show={detailsModalOpen} as={React.Fragment}>
         <Dialog
           as="div"
