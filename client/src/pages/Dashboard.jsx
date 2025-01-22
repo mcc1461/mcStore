@@ -136,7 +136,6 @@ export default function Dashboard() {
                     <ul className="space-y-4">
                       {navigation.map((item) => (
                         <li key={item.name}>
-                          {/* Force absolute navigation by using a location object */}
                           <Link
                             to={{ pathname: item.href }}
                             className={classNames(
@@ -232,19 +231,24 @@ export default function Dashboard() {
                   leaveTo="transform opacity-0 scale-95"
                 >
                   <Menu.Items className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button
-                          onClick={navigateToProfile}
-                          className={classNames(
-                            active ? "bg-gray-100" : "",
-                            "block px-3 py-1 text-sm leading-6 text-gray-900"
-                          )}
-                        >
-                          Manage Profile
-                        </button>
-                      )}
-                    </Menu.Item>
+                    {/**
+                     * MANAGE PROFILE -> Only for admins
+                     */}
+                    {userInfo?.role === "admin" && (
+                      <Menu.Item>
+                        {({ active }) => (
+                          <button
+                            onClick={navigateToProfile}
+                            className={classNames(
+                              active ? "bg-gray-100" : "",
+                              "block px-3 py-1 text-sm leading-6 text-gray-900"
+                            )}
+                          >
+                            Manage Profile
+                          </button>
+                        )}
+                      </Menu.Item>
+                    )}
                     <Menu.Item>
                       {({ active }) => (
                         <button

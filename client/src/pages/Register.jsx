@@ -108,14 +108,17 @@ function Register() {
       const { data } = await axios.post("/api/auth/register", registrationData);
 
       // Save tokens and user data in localStorage
+      // 1) ... after a successful registration response:
       localStorage.setItem("token", data.bearer.accessToken);
       localStorage.setItem("refreshToken", data.bearer.refreshToken);
       localStorage.setItem("userInfo", JSON.stringify(data.user));
 
       // Update state with user information
+      // 2) Update local state
       setUserInfo(data.user);
 
       // Notify success and redirect
+      // 3) Redirect to dashboard
       toast.success(data.message || "Registration successful!");
       navigate("/dashboard");
     } catch (error) {

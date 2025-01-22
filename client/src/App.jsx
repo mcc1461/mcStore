@@ -24,9 +24,11 @@ import BrandList from "./utils/BrandList";
 import ProductList from "./utils/ProductList";
 
 import PrivateRoute from "./components/PrivateRoute";
+import AdminRoute from "./components/AdminRoute"; // <--- NEW import
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./components/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
+import AdminPanel from "./pages/AdminPanel"; // <--- Example of an admin-only page
 
 import { hydrateFromStorage } from "./slices/authSlice"; // Redux action
 
@@ -40,7 +42,7 @@ function App() {
 
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* --------------------- Public Routes --------------------- */}
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
@@ -51,26 +53,27 @@ function App() {
       <Route path="/firms" element={<FirmList />} />
       <Route path="/products" element={<ProductList />} />
 
-      {/* Protected Dashboard Routes */}
+      {/* --------------------- Private (Auth) Routes --------------------- */}
+      {/* Wrap them in <PrivateRoute> so user must be logged in */}
       <Route
-        path="/dashboard"
         element={
           <ErrorBoundary>
             <PrivateRoute />
           </ErrorBoundary>
         }
       >
-        <Route element={<DashboardLayout />}>
+        {/* Our main /dashboard path uses <DashboardLayout> as wrapper */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
 
-          {/* Nested Routes */}
+          {/* Nested routes inside /dashboard */}
           <Route path="board" element={<Board />} />
           <Route path="profile" element={<Profile />} />
           <Route path="issues" element={<Issues />} />
           <Route path="settings" element={<Settings />} />
           <Route path="update" element={<EditProfile />} />
 
-          {/* Products Nested Routes */}
+          {/* Example nested 'products' route */}
           <Route path="products">
             <Route index element={<Products />} />
             <Route path=":id" element={<Products />} />
@@ -81,7 +84,13 @@ function App() {
         </Route>
       </Route>
 
-      {/* Fallback Route */}
+      {/* --------------------- Admin-Only Routes --------------------- */}
+      {/* For example: /admin-panel is only for admins */}
+      <Route element={<AdminRoute />}>
+        <Route path="/admin-panel" element={<AdminPanel />} />
+      </Route>
+
+      {/* --------------------- Fallback Route --------------------- */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
