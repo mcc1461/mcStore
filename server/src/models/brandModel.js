@@ -3,14 +3,17 @@
     NODEJS EXPRESS | MusCo Dev
 ------------------------------------------------------- */
 const { mongoose } = require("../configs/dbConnection");
-/* ------------------------------------------------------- *
-{
-    "name": "Brand 1",
-    "image": "http://imageURL"
-}
-/* ------------------------------------------------------- */
-// Brand Model:
 
+/* -------------------------------------------------------
+   SAMPLE BODY SHAPE:
+   {
+     "name": "Brand 1",
+     "description": "Some new description",
+     "image": "http://imageURL"
+   }
+------------------------------------------------------- */
+
+// Brand Model:
 const BrandSchema = new mongoose.Schema(
   {
     name: {
@@ -19,7 +22,11 @@ const BrandSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     image: {
       // URL
       type: String,

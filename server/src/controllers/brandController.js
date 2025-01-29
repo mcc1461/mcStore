@@ -2,8 +2,6 @@
 /* -------------------------------------------------------
     NODEJS EXPRESS | MusCo Dev
 ------------------------------------------------------- */
-// Brand Controller:
-
 const Brand = require("../models/brandModel");
 
 module.exports = {
@@ -19,16 +17,16 @@ module.exports = {
                 - /?sort[field1]=asc&sort[field2]=desc
                 - /?limit=10&page=1
             `
-        */
+    */
     try {
-      // Fetch brand data with pagination and filters
+      // Fetch brand data with pagination and filters (assuming res.getModelList is a custom helper)
       const data = await res.getModelList(Brand);
 
-      // Fetch details like total records, pagination info
+      // Get total records + pagination info (assuming these are custom helpers)
       const totalRecords = await Brand.countDocuments({});
       const details = await res.getModelListDetails(Brand);
 
-      // Debug logs for validation
+      // Debug logs
       console.log("Total Brands in DB:", totalRecords);
       console.log("Brands Retrieved:", data.length);
       console.log("Pagination Details:", details);
@@ -56,10 +54,11 @@ module.exports = {
                 required: true,
                 schema: {
                     "name": "Brand 1",
+                    "description": "my brand description",
                     "image": "http://imageURL"
                 }
             }
-        */
+    */
     try {
       const data = await Brand.create(req.body);
       res.status(201).send({
@@ -79,7 +78,7 @@ module.exports = {
     /*
             #swagger.tags = ["Brands"]
             #swagger.summary = "Get Single Brand"
-        */
+    */
     try {
       const data = await Brand.findOne({ _id: req.params.id });
       if (!data) {
@@ -102,11 +101,24 @@ module.exports = {
   },
 
   update: async (req, res) => {
+    /*
+            #swagger.tags = ["Brands"]
+            #swagger.summary = "Update a Brand"
+            #swagger.parameters['body'] = {
+                in: 'body',
+                required: true,
+                schema: {
+                    "name": "Updated Brand 1",
+                    "description": "updated description"
+                }
+            }
+    */
     try {
+      // Return the updated document with { new: true }
       const updatedBrand = await Brand.findOneAndUpdate(
         { _id: req.params.id },
         req.body,
-        { new: true, runValidators: true } // Return updated document
+        { new: true, runValidators: true }
       );
 
       if (!updatedBrand) {
@@ -118,7 +130,7 @@ module.exports = {
 
       res.status(202).send({
         error: false,
-        updated: updatedBrand, // Simplify to include the updated brand
+        updated: updatedBrand,
       });
     } catch (err) {
       console.error("Error updating brand:", err.message, err.stack);
@@ -133,7 +145,7 @@ module.exports = {
     /*
             #swagger.tags = ["Brands"]
             #swagger.summary = "Delete Brand"
-        */
+    */
     try {
       const data = await Brand.deleteOne({ _id: req.params.id });
 

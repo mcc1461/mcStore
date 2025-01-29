@@ -183,12 +183,20 @@ export default function BrandsList() {
       const data = response?.data;
       if (!data) return null;
 
-      // If we're looking for "updated" brand from data.new
-      if (key === "updated" && data.new) {
+      // Debug log so you can see the actual shape from the server
+      console.log("Server response data:", data);
+
+      // If creating a brand, the server might return data.new
+      if (key === "new" && data.new) {
         return data.new;
       }
 
-      // Otherwise, look under data[key]
+      // If updating a brand, the server might return data.updated
+      if (key === "updated" && data.updated) {
+        return data.updated;
+      }
+
+      // If your server returns something else, adjust here.
       const brand = data[key];
       return brand && brand._id ? brand : null;
     } catch (err) {
@@ -200,18 +208,23 @@ export default function BrandsList() {
   const saveBrandDetails = async () => {
     try {
       if (!editingBrand) return;
+
       if (isAddingNewBrand) {
-        // Create
+        // ---------------------------
+        // CREATE
+        // ---------------------------
         const tempId = `temp-${Date.now()}`;
         const tempBrand = { ...editingBrand, _id: tempId };
 
-        setBrands((prev) => [...prev, tempBrand]); // optimistic
+        // Optimistic local update
+        setBrands((prev) => [...prev, tempBrand]);
 
+        // Actual API call
         const response = await apiClient.post("/brands", editingBrand);
         const newBrand = extractUpdatedBrand(response, "new");
 
         if (!newBrand) {
-          // fallback: re-fetch
+          // fallback: re-fetch if we cannot parse
           await refetchBrands();
         } else {
           setBrands((prevBrands) =>
@@ -219,13 +232,17 @@ export default function BrandsList() {
           );
         }
       } else {
-        // Update
+        // ---------------------------
+        // UPDATE
+        // ---------------------------
+        // Optimistic local update
         setBrands((prevBrands) =>
           prevBrands.map((b) =>
             b._id === editingBrand._id ? { ...b, ...editingBrand } : b
           )
         );
 
+        // Actual API call
         const response = await apiClient.put(
           `/brands/${editingBrand._id}`,
           editingBrand
@@ -236,13 +253,21 @@ export default function BrandsList() {
           console.error("Failed to extract updated brand, re-fetching...");
           await refetchBrands();
         } else {
+          // Update brand in local state with the real data from server
           setBrands((prevBrands) =>
             prevBrands.map((b) =>
               b._id === editingBrand._id ? updatedBrand : b
             )
           );
+
+          // If the user currently has this brand open in the Details modal,
+          // update it there too so they see the new description immediately.
+          if (detailsBrand && detailsBrand._id === editingBrand._id) {
+            setDetailsBrand(updatedBrand);
+          }
         }
       }
+
       setSearchTerm("");
       closeModal();
     } catch (error) {
@@ -398,6 +423,15 @@ export default function BrandsList() {
                       <h3 className="text-xl font-semibold text-gray-800">
                         {brand.name}
                       </h3>
+                      {brand.description ? (
+                        <p className="mt-2 text-sm text-gray-600">
+                          {brand.description}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm italic text-gray-400">
+                          No description provided.
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -405,7 +439,10 @@ export default function BrandsList() {
                   <div className="flex justify-around p-4 border-t">
                     {/* Everyone can see details */}
                     <button
-                      onClick={() => openDetailsModal(brand)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDetailsModal(brand);
+                      }}
                       className="text-sm font-medium text-blue-600 hover:underline focus:outline-none"
                     >
                       Details
@@ -414,7 +451,11 @@ export default function BrandsList() {
                     {/* Edit: staff or admin */}
                     {(userRole === "staff" || userRole === "admin") && (
                       <button
-                        onClick={() => openEditModal(brand)}
+                        onClick={(e) => {
+                          // prevent card click from also opening details
+                          e.stopPropagation();
+                          openEditModal(brand);
+                        }}
                         className="text-blue-500 hover:text-blue-700 focus:outline-none"
                       >
                         <FaEdit className="w-5 h-5" />
@@ -424,7 +465,10 @@ export default function BrandsList() {
                     {/* Delete: admin only */}
                     {userRole === "admin" && (
                       <button
-                        onClick={() => confirmDeleteBrand(brand)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          confirmDeleteBrand(brand);
+                        }}
                         className="text-red-500 hover:text-red-700 focus:outline-none"
                       >
                         <FaTrashAlt className="w-5 h-5" />
@@ -481,7 +525,7 @@ export default function BrandsList() {
       </footer>
 
       {/* MODAL for Add/Edit Brand */}
-      <Transition appear show={modalOpen} as={Fragment}>
+      <Transition appear show={modalOpen} as="div">
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -489,7 +533,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -499,14 +543,17 @@ export default function BrandsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
+
+            {/* Trick to center the modal content */}
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
             >
               &#8203;
             </span>
+
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -544,6 +591,7 @@ export default function BrandsList() {
                         placeholder="Enter logo URL"
                       />
                     </div>
+
                     {/* Name Section */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
@@ -558,6 +606,7 @@ export default function BrandsList() {
                         placeholder="Enter brand name"
                       />
                     </div>
+
                     {/* Description Section */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
@@ -594,7 +643,7 @@ export default function BrandsList() {
       </Transition>
 
       {/* DETAILS MODAL */}
-      <Transition appear show={detailsModalOpen} as={Fragment}>
+      <Transition appear show={detailsModalOpen} as="div">
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -602,7 +651,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -619,7 +668,7 @@ export default function BrandsList() {
               &#8203;
             </span>
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -675,7 +724,7 @@ export default function BrandsList() {
       </Transition>
 
       {/* CONFIRM DELETE MODAL */}
-      <Transition appear show={confirmOpen} as={Fragment}>
+      <Transition appear show={confirmOpen} as="div">
         <Dialog
           as="div"
           className="fixed inset-0 z-50 overflow-y-auto"
@@ -683,7 +732,7 @@ export default function BrandsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -700,7 +749,7 @@ export default function BrandsList() {
               &#8203;
             </span>
             <Transition.Child
-              as={Fragment}
+              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
