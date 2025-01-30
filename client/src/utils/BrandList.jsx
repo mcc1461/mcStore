@@ -58,16 +58,14 @@ export default function BrandsList() {
       try {
         const response = await apiClient.get("/brands?limit=100&page=1");
         console.log("Fetched brands from API:", response.data.data);
-
         setBrands(response.data.data);
         setLoading(false);
-      } catch (error) {
-        console.error("Error fetching brands:", error);
+      } catch (err) {
+        console.error("Error fetching brands:", err);
         setError("Error fetching brands");
         setLoading(false);
       }
     };
-
     fetchBrands();
   }, []);
 
@@ -89,11 +87,9 @@ export default function BrandsList() {
   const handlePreviousPage = () => {
     if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
-
   const handleNextPage = () => {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
-
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -112,7 +108,6 @@ export default function BrandsList() {
     setDetailsBrand(brand);
     setDetailsModalOpen(true);
   };
-
   const closeDetailsModal = () => {
     setDetailsModalOpen(false);
     setDetailsBrand(null);
@@ -125,13 +120,12 @@ export default function BrandsList() {
     setSelectedBrandForDelete(brand);
     setConfirmOpen(true);
   };
-
   const refetchBrands = async () => {
     try {
       const response = await apiClient.get("/brands?limit=100&page=1");
       setBrands(response.data.data);
-    } catch (error) {
-      console.error("Error refetching brands:", error);
+    } catch (err) {
+      console.error("Error refetching brands:", err);
       setError("Failed to refresh brand list.");
     }
   };
@@ -147,8 +141,8 @@ export default function BrandsList() {
       // Actual API call
       await apiClient.delete(`/brands/${brandId}`);
       setConfirmOpen(false);
-    } catch (error) {
-      console.error("Error deleting brand:", error);
+    } catch (err) {
+      console.error("Error deleting brand:", err);
       alert("Failed to delete brand. Reverting changes.");
       // Revert UI
       await refetchBrands();
@@ -163,40 +157,33 @@ export default function BrandsList() {
     setIsAddingNewBrand(false);
     setModalOpen(true);
   };
-
   const openAddNewModal = () => {
     setEditingBrand({ name: "", image: "", description: "" });
     setIsAddingNewBrand(true);
     setModalOpen(true);
   };
-
   const closeModal = () => {
     setModalOpen(false);
     setEditingBrand(null);
   };
 
   // ----------------------------------------------------------------
-  // SAVE HANDLER
+  // SAVE HANDLER (CREATE OR UPDATE)
   // ----------------------------------------------------------------
   const extractUpdatedBrand = (response, key) => {
     try {
       const data = response?.data;
       if (!data) return null;
-
-      // Debug log so you can see the actual shape from the server
       console.log("Server response data:", data);
 
-      // If creating a brand, the server might return data.new
       if (key === "new" && data.new) {
         return data.new;
       }
-
-      // If updating a brand, the server might return data.updated
       if (key === "updated" && data.updated) {
         return data.updated;
       }
 
-      // If your server returns something else, adjust here.
+      // If your server returns something else, adapt here
       const brand = data[key];
       return brand && brand._id ? brand : null;
     } catch (err) {
@@ -206,13 +193,12 @@ export default function BrandsList() {
   };
 
   const saveBrandDetails = async () => {
+    console.log("Saving brand details:", editingBrand);
     try {
       if (!editingBrand) return;
 
       if (isAddingNewBrand) {
-        // ---------------------------
         // CREATE
-        // ---------------------------
         const tempId = `temp-${Date.now()}`;
         const tempBrand = { ...editingBrand, _id: tempId };
 
@@ -221,47 +207,45 @@ export default function BrandsList() {
 
         // Actual API call
         const response = await apiClient.post("/brands", editingBrand);
-        const newBrand = extractUpdatedBrand(response, "new");
+        console.log("POST response:", response.data);
 
+        const newBrand = extractUpdatedBrand(response, "new");
         if (!newBrand) {
-          // fallback: re-fetch if we cannot parse
           await refetchBrands();
         } else {
-          setBrands((prevBrands) =>
-            prevBrands.map((b) => (b._id === tempId ? newBrand : b))
+          // Replace temp brand with final brand from server
+          setBrands((prev) =>
+            prev.map((b) => (b._id === tempId ? newBrand : b))
           );
         }
       } else {
-        // ---------------------------
         // UPDATE
-        // ---------------------------
-        // Optimistic local update
-        setBrands((prevBrands) =>
-          prevBrands.map((b) =>
+        // 1) Optimistic local update
+        setBrands((prev) =>
+          prev.map((b) =>
             b._id === editingBrand._id ? { ...b, ...editingBrand } : b
           )
         );
 
-        // Actual API call
+        // 2) Actual API call
         const response = await apiClient.put(
           `/brands/${editingBrand._id}`,
           editingBrand
         );
-        const updatedBrand = extractUpdatedBrand(response, "updated");
+        console.log("PUT response:", response.data);
 
+        // 3) Extract the updated brand from server
+        const updatedBrand = extractUpdatedBrand(response, "updated");
         if (!updatedBrand) {
           console.error("Failed to extract updated brand, re-fetching...");
           await refetchBrands();
         } else {
-          // Update brand in local state with the real data from server
-          setBrands((prevBrands) =>
-            prevBrands.map((b) =>
-              b._id === editingBrand._id ? updatedBrand : b
-            )
+          // 4) Use the EXACT brand from the server
+          setBrands((prev) =>
+            prev.map((b) => (b._id === editingBrand._id ? updatedBrand : b))
           );
 
-          // If the user currently has this brand open in the Details modal,
-          // update it there too so they see the new description immediately.
+          // If the brand is open in the details modal, update it
           if (detailsBrand && detailsBrand._id === editingBrand._id) {
             setDetailsBrand(updatedBrand);
           }
@@ -270,8 +254,8 @@ export default function BrandsList() {
 
       setSearchTerm("");
       closeModal();
-    } catch (error) {
-      console.error("Critical error in saveBrandDetails:", error);
+    } catch (err) {
+      console.error("Critical error in saveBrandDetails:", err);
       alert("A critical error occurred. Please try again.");
       await refetchBrands();
     }
@@ -282,6 +266,7 @@ export default function BrandsList() {
   // ----------------------------------------------------------------
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log("Input change:", name, value);
     setEditingBrand((prev) => ({
       ...prev,
       [name]: value,
@@ -298,7 +283,6 @@ export default function BrandsList() {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -312,25 +296,20 @@ export default function BrandsList() {
   // ----------------------------------------------------------------
   return (
     <>
-      {/* Sticky Header with color-coded background */}
+      {/* Sticky Header */}
       <header className={`sticky top-0 z-10 shadow-md ${roleColors[userRole]}`}>
-        {/* First row: Title */}
         <div className="flex items-center justify-between px-4 py-4 text-white">
           <div className="flex items-center space-x-3">
             <h1 className="text-3xl font-bold">
               Brands ({filteredBrands.length})
             </h1>
-            {/* Show user role badge */}
             <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
               {userRole.toUpperCase()}
             </span>
           </div>
         </div>
-
-        {/* Second row: search & add buttons */}
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center space-x-4">
-            {/* Desktop search */}
             <input
               type="text"
               placeholder="Search brands..."
@@ -338,7 +317,6 @@ export default function BrandsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="hidden w-full px-4 py-2 text-black border rounded-lg md:block focus:ring focus:ring-indigo-200"
             />
-            {/* Mobile search toggle */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="text-white md:hidden"
@@ -346,17 +324,13 @@ export default function BrandsList() {
               <FaSearch size={24} />
             </button>
           </div>
-
           <div className="flex items-center space-x-4">
-            {/* Navigate Dashboard */}
             <button
               onClick={navigateToDashboard}
               className="flex items-center px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
             >
               ➤ Dashboard
             </button>
-
-            {/* Add New Brand: only for staff & admin */}
             {(userRole === "staff" || userRole === "admin") && (
               <>
                 <button
@@ -375,8 +349,6 @@ export default function BrandsList() {
             )}
           </div>
         </div>
-
-        {/* Mobile search field when toggled */}
         {isSearchOpen && (
           <div className="px-4 pb-2 md:hidden">
             <input
@@ -390,12 +362,12 @@ export default function BrandsList() {
         )}
       </header>
 
-      {/* Brands List - Responsive Grid */}
+      {/* Brand Grid */}
       <main className="p-4 pb-20">
         {filteredBrands.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {currentBrands.map((brand) => {
-              if (!brand || !brand._id) {
+              if (!brand?._id) {
                 console.error("Skipping invalid brand:", brand);
                 return null;
               }
@@ -404,7 +376,7 @@ export default function BrandsList() {
                   key={brand._id}
                   className="overflow-hidden transition-shadow duration-300 bg-white rounded-lg shadow-lg hover:shadow-2xl"
                 >
-                  {/* Brand Card Clickable Area for Details */}
+                  {/* Clickable Area */}
                   <div
                     className="cursor-pointer"
                     onClick={() => openDetailsModal(brand)}
@@ -437,7 +409,6 @@ export default function BrandsList() {
 
                   {/* Action Buttons */}
                   <div className="flex justify-around p-4 border-t">
-                    {/* Everyone can see details */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -447,12 +418,9 @@ export default function BrandsList() {
                     >
                       Details
                     </button>
-
-                    {/* Edit: staff or admin */}
                     {(userRole === "staff" || userRole === "admin") && (
                       <button
                         onClick={(e) => {
-                          // prevent card click from also opening details
                           e.stopPropagation();
                           openEditModal(brand);
                         }}
@@ -461,8 +429,6 @@ export default function BrandsList() {
                         <FaEdit className="w-5 h-5" />
                       </button>
                     )}
-
-                    {/* Delete: admin only */}
                     {userRole === "admin" && (
                       <button
                         onClick={(e) => {
@@ -486,7 +452,7 @@ export default function BrandsList() {
         )}
       </main>
 
-      {/* Fixed Pagination Footer */}
+      {/* Pagination */}
       <footer className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t">
         <nav
           aria-label="Pagination"
@@ -543,15 +509,12 @@ export default function BrandsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
-
-            {/* Trick to center the modal content */}
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
             >
               &#8203;
             </span>
-
             <Transition.Child
               as="div"
               enter="ease-out duration-300"
@@ -567,7 +530,7 @@ export default function BrandsList() {
                     {isAddingNewBrand ? "Add New Brand" : "Edit Brand"}
                   </Dialog.Title>
                   <div className="mt-4">
-                    {/* Logo Section */}
+                    {/* Logo */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Logo
@@ -591,8 +554,7 @@ export default function BrandsList() {
                         placeholder="Enter logo URL"
                       />
                     </div>
-
-                    {/* Name Section */}
+                    {/* Name */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Name
@@ -606,8 +568,7 @@ export default function BrandsList() {
                         placeholder="Enter brand name"
                       />
                     </div>
-
-                    {/* Description Section */}
+                    {/* Description */}
                     <div className="mb-4">
                       <label className="block mb-2 text-sm font-semibold">
                         Description

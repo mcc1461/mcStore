@@ -6,27 +6,11 @@ const Brand = require("../models/brandModel");
 
 module.exports = {
   list: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "List Brands"
-            #swagger.description = `
-                Use <u>filter[], search[], sort[], page, and limit</u> queries with this endpoint.
-                Examples:
-                - /?filter[field1]=value1&filter[field2]=value2
-                - /?search[field1]=value1&search[field2]=value2
-                - /?sort[field1]=asc&sort[field2]=desc
-                - /?limit=10&page=1
-            `
-    */
     try {
-      // Fetch brand data with pagination and filters (assuming res.getModelList is a custom helper)
       const data = await res.getModelList(Brand);
-
-      // Get total records + pagination info (assuming these are custom helpers)
       const totalRecords = await Brand.countDocuments({});
       const details = await res.getModelListDetails(Brand);
 
-      // Debug logs
       console.log("Total Brands in DB:", totalRecords);
       console.log("Brands Retrieved:", data.length);
       console.log("Pagination Details:", details);
@@ -46,23 +30,13 @@ module.exports = {
   },
 
   create: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "Create Brand"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "name": "Brand 1",
-                    "description": "my brand description",
-                    "image": "http://imageURL"
-                }
-            }
-    */
     try {
+      console.log("Create route req.body:", req.body);
       const data = await Brand.create(req.body);
       res.status(201).send({
         error: false,
+        // If you want to match your front-end "data.new" logic, you can do:
+        // new: data
         data,
       });
     } catch (err) {
@@ -75,10 +49,6 @@ module.exports = {
   },
 
   read: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "Get Single Brand"
-    */
     try {
       const data = await Brand.findOne({ _id: req.params.id });
       if (!data) {
@@ -101,25 +71,27 @@ module.exports = {
   },
 
   update: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "Update a Brand"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "name": "Updated Brand 1",
-                    "description": "updated description"
-                }
-            }
-    */
     try {
-      // Return the updated document with { new: true }
+      console.log("Update route req.body:", req.body);
+      console.log("Update payload received", {
+        name: req.body.name,
+        description: req.body.description,
+        image: req.body.image,
+      });
+
+      const updateData = {
+        name: req.body.name,
+        description: req.body.description,
+        image: req.body.image,
+      };
+
       const updatedBrand = await Brand.findOneAndUpdate(
         { _id: req.params.id },
-        req.body,
+        { $set: updateData },
         { new: true, runValidators: true }
       );
+
+      console.log("Updated brand doc:", updatedBrand);
 
       if (!updatedBrand) {
         return res.status(404).send({
@@ -130,7 +102,7 @@ module.exports = {
 
       res.status(202).send({
         error: false,
-        updated: updatedBrand,
+        updated: updatedBrand, // matches the front-end "data.updated"
       });
     } catch (err) {
       console.error("Error updating brand:", err.message, err.stack);
@@ -142,13 +114,8 @@ module.exports = {
   },
 
   delete: async (req, res) => {
-    /*
-            #swagger.tags = ["Brands"]
-            #swagger.summary = "Delete Brand"
-    */
     try {
       const data = await Brand.deleteOne({ _id: req.params.id });
-
       if (!data.deletedCount) {
         return res.status(404).send({
           error: true,
