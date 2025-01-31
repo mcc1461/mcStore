@@ -2,27 +2,20 @@
 /* -------------------------------------------------------
     NODEJS EXPRESS | MusCo Dev
 ------------------------------------------------------- */
-// Purchase Controller:
-
 const Product = require("../models/productModel");
 const Purchase = require("../models/purchaseModel");
 
+// Purchase Controller:
 module.exports = {
+  // ----------------------------------------------------
+  // LIST
+  // ----------------------------------------------------
   list: async (req, res) => {
     /*
-            #swagger.tags = ["Purchases"]
-            #swagger.summary = "List Purchases"
-            #swagger.description = `
-                You can use <u>filter[] & search[] & sort[] & page & limit</u> queries with endpoint.
-                <ul> Examples:
-                    <li>URL/?<b>filter[field1]=value1&filter[field2]=value2</b></li>
-                    <li>URL/?<b>search[field1]=value1&search[field2]=value2</b></li>
-                    <li>URL/?<b>sort[field1]=asc&sort[field2]=desc</b></li>
-                    <li>URL/?<b>limit=10&page=1</b></li>
-                </ul>
-            `
-        */
-
+       #swagger.tags = ["Purchases"]
+       #swagger.summary = "List Purchases"
+       #swagger.description = "You can use filter[], search[], sort[], page, limit queries..."
+    */
     const data = await res.getModelList(Purchase, {}, [
       "firmId",
       "brandId",
@@ -36,31 +29,35 @@ module.exports = {
     });
   },
 
+  // ----------------------------------------------------
+  // CREATE
+  // ----------------------------------------------------
   create: async (req, res) => {
     /*
-            #swagger.tags = ["Purchases"]
-            #swagger.summary = "Create Purchase"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "firmId": "65343222b67e9681f937f304",
-                    "brandId": "65343222b67e9681f937f107",
-                    "productId": "65343222b67e9681f937f422",
-                    "quantity": 1,
-                    "price": 9.99
-                }
-            }
-        */
+       #swagger.tags = ["Purchases"]
+       #swagger.summary = "Create Purchase"
+       #swagger.parameters['body'] = {
+         in: 'body',
+         required: true,
+         schema: {
+           "firmId": "65343222b67e9681f937f304",
+           "brandId": "65343222b67e9681f937f107",
+           "productId": "65343222b67e9681f937f422",
+           "quantity": 1,
+           "purchasePrice": 9.99
+         }
+       }
+    */
 
-    // Auto add userId to req.body:
+    // Auto add userId from auth middleware:
     req.body.userId = req.user?._id;
 
-    // Create:
+    // Now create the new Purchase
     const data = await Purchase.create(req.body);
 
-    // set product-quantity when Purchase process:
-    const updateProduct = await Product.updateOne(
+    // If we want to also increment product quantity:
+    // (this adds to the total stock on hand for that product)
+    await Product.updateOne(
       { _id: data.productId },
       { $inc: { quantity: +data.quantity } }
     );
@@ -71,13 +68,14 @@ module.exports = {
     });
   },
 
+  // ----------------------------------------------------
+  // READ
+  // ----------------------------------------------------
   read: async (req, res) => {
     /*
-            #swagger.tags = ["Purchases"]
-            #swagger.summary = "Get Single Purchase"
-        */
-
-    // Read:
+       #swagger.tags = ["Purchases"]
+       #swagger.summary = "Get Single Purchase"
+    */
     const data = await Purchase.findOne({ _id: req.params.id }).populate([
       "firmId",
       "brandId",
@@ -90,62 +88,79 @@ module.exports = {
     });
   },
 
+  // ----------------------------------------------------
+  // UPDATE
+  // ----------------------------------------------------
   update: async (req, res) => {
     /*
-            #swagger.tags = ["Purchases"]
-            #swagger.summary = "Update Purchase"
-            #swagger.parameters['body'] = {
-                in: 'body',
-                required: true,
-                schema: {
-                    "firmId": "65343222b67e9681f937f304",
-                    "brandId": "65343222b67e9681f937f107",
-                    "productId": "65343222b67e9681f937f422",
-                    "quantity": 1,
-                    "price": 9.99
-                }
-            }
-        */
+       #swagger.tags = ["Purchases"]
+       #swagger.summary = "Update Purchase"
+       #swagger.parameters['body'] = {
+         in: 'body',
+         required: true,
+         schema: {
+           "firmId": "65343222b67e9681f937f304",
+           "brandId": "65343222b67e9681f937f107",
+           "productId": "65343222b67e9681f937f422",
+           "quantity": 1,
+           "purchasePrice": 9.99
+         }
+       }
+    */
 
-    if (req.body?.quantity) {
-      // get current product-quantity from the Purchase:
+    // If quantity changed, we adjust product quantity
+    if (req.body?.quantity !== undefined) {
       const currentPurchase = await Purchase.findOne({ _id: req.params.id });
-      // different:
-      const quantity = req.body.quantity - currentPurchase.quantity;
-      // set product-quantity when Purchase process:
-      const updateProduct = await Product.updateOne(
-        { _id: currentPurchase.productId },
-        { $inc: { quantity: +quantity } }
-      );
+      if (currentPurchase) {
+        // difference in quantity from old to new
+        const quantityDiff = req.body.quantity - currentPurchase.quantity;
+
+        // If quantityDiff is positive, it means we are adding more
+        // If negative, we remove from product quantity
+        await Product.updateOne(
+          { _id: currentPurchase.productId },
+          { $inc: { quantity: +quantityDiff } }
+        );
+      }
     }
 
-    // Update:
-    const data = await Purchase.updateOne({ _id: req.params.id }, req.body, {
+    // Perform the update
+    await Purchase.updateOne({ _id: req.params.id }, req.body, {
       runValidators: true,
     });
 
+    // Return the updated doc
+    const newDoc = await Purchase.findOne({ _id: req.params.id });
     res.status(202).send({
       error: false,
-      data,
-      new: await Purchase.findOne({ _id: req.params.id }),
+      data: newDoc,
     });
   },
 
+  // ----------------------------------------------------
+  // DELETE
+  // ----------------------------------------------------
   delete: async (req, res) => {
     /*
-            #swagger.tags = ["Purchases"]
-            #swagger.summary = "Delete Purchase"
-        */
+       #swagger.tags = ["Purchases"]
+       #swagger.summary = "Delete Purchase"
+    */
 
-    // get current product-quantity from the Purchase:
+    // find the purchase first
     const currentPurchase = await Purchase.findOne({ _id: req.params.id });
-    // console.log(currentPurchase)
+    if (!currentPurchase) {
+      return res.status(404).send({
+        error: true,
+        data: null,
+        message: "Purchase not found",
+      });
+    }
 
-    // Delete:
+    // delete the purchase doc
     const data = await Purchase.deleteOne({ _id: req.params.id });
 
-    // set product-quantity when Purchase process:
-    const updateProduct = await Product.updateOne(
+    // subtract that quantity from product
+    await Product.updateOne(
       { _id: currentPurchase.productId },
       { $inc: { quantity: -currentPurchase.quantity } }
     );
