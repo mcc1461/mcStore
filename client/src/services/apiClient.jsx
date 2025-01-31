@@ -14,7 +14,9 @@ const apiClient = axios.create({
   },
 });
 
+// ----------------------------
 // Request Interceptor
+// ----------------------------
 // Automatically attach Authorization: Bearer <token> if token is in localStorage
 apiClient.interceptors.request.use(
   (config) => {
@@ -24,25 +26,33 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    // Handle request error
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
+// ----------------------------
 // Response Interceptor
-// If we get 401 (Unauthorized), we log out / remove tokens
+// ----------------------------
+// If we get 401 (Unauthorized), we remove tokens, then show a friendly message & link to login
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.error("Unauthorized! Please log in again.");
-      // Optionally remove or refresh the token
+      // Remove any stored credentials
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("userInfo");
-      // You could also redirect to /login or dispatch a logout action
+
+      // Show a user-friendly alert. Alternatively, you could use a toast or modal.
+      alert(
+        "Login is required to continue.\n\nClick OK to go to the Login page."
+      );
+
+      // Optionally redirect the user to the login page
+      // If you're using React Router, you can do window.location = "/login"
+      window.location.href = "/login";
     }
+
+    // For other errors, just reject as usual
     return Promise.reject(error);
   }
 );

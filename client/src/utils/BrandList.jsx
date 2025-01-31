@@ -255,6 +255,12 @@ export default function BrandsList() {
       setSearchTerm("");
       closeModal();
     } catch (err) {
+      // === Only show "Critical error" if it's NOT a 401. ===
+      if (err.response?.status === 401) {
+        // Our Axios interceptor will handle logout/alert/redirect
+        return;
+      }
+
       console.error("Critical error in saveBrandDetails:", err);
       alert("A critical error occurred. Please try again.");
       await refetchBrands();
@@ -395,7 +401,7 @@ export default function BrandsList() {
                       <h3 className="text-xl font-semibold text-gray-800">
                         {brand.name}
                       </h3>
-                      {brand.description ? (
+                      {/* {brand.description ? (
                         <p className="mt-2 text-sm text-gray-600">
                           {brand.description}
                         </p>
@@ -403,7 +409,7 @@ export default function BrandsList() {
                         <p className="mt-2 text-sm italic text-gray-400">
                           No description provided.
                         </p>
-                      )}
+                      )} */}
                     </div>
                   </div>
 

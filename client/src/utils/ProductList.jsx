@@ -6,52 +6,49 @@ import apiClient from "../services/apiClient";
 import defaultUser from "../assets/default-profile.png";
 
 export default function ProductsList() {
-  // --------------------------------------------------
-  // 1) USER ROLE FROM LOCALSTORAGE
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // USER ROLE from localStorage
+  // ----------------------------------------------------------------
   const savedUser = localStorage.getItem("userInfo");
   const initialRole = savedUser ? JSON.parse(savedUser).role : "user";
-  // This sets the userRole to whatever is in localStorage, or "user" if none found
-  const [userRole, setUserRole] = useState(initialRole);
+  const [userRole] = useState(initialRole);
 
-  // For color-coding the top bar by role
+  // For color-coding top bar
   const roleColors = {
     admin: "bg-red-500",
     staff: "bg-yellow-500",
     user: "bg-green-500",
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   // NAVIGATION
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   const navigate = useNavigate();
   const navigateToDashboard = () => {
     navigate("/dashboard", { replace: true });
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   // STATE: Data & UI
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filter & Search
+  // Filters & Search
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [filterStockStatus, setFilterStockStatus] = useState("all");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Brands & Categories (for dropdowns, filter, etc.)
+  // Brands & Categories
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
 
   // Add/Edit Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [isAddingNewProduct, setIsAddingNewProduct] = useState(false);
-
-  // The product state used in Add or Edit forms
   const [editingProduct, setEditingProduct] = useState(null);
 
   // Details Modal
@@ -67,32 +64,80 @@ export default function ProductsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // --------------------------------------------------
-  // HELPER FUNCTIONS
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 1) HELPER: getProductId
+  // ----------------------------------------------------------------
+  /** Safely returns the ID from a product that may have `_id` or `id`. */
   function getProductId(prod) {
-    return prod._id || prod.id;
+    if (!prod) return null;
+    return prod._id || prod.id || null;
   }
 
-  function resolveCategoryName(catId) {
-    if (!catId) return "";
-    const found = categories.find((c) => c._id === catId);
-    return found ? found.name : catId;
+  // ----------------------------------------------------------------
+  // 2) HELPER: unifyCategoryId / unifyBrandId
+  // ----------------------------------------------------------------
+  function unifyCategoryId(catRef) {
+    if (!catRef) return null;
+    // If it's an object, assume catRef._id is the real ID
+    if (typeof catRef === "object" && catRef._id) {
+      return catRef._id;
+    }
+    // If it's a string of length 24, maybe it's an _id
+    if (typeof catRef === "string" && catRef.length === 24) {
+      return catRef;
+    }
+    // Otherwise, maybe it's a category NAME
+    if (typeof catRef === "string") {
+      const found = categories.find((c) => c.name === catRef);
+      if (found) {
+        return found._id;
+      }
+    }
+    return null;
   }
 
-  function resolveBrandName(brandId) {
-    if (!brandId) return "";
-    const found = brands.find((b) => b._id === brandId);
-    return found ? b.name : brandId;
+  function unifyBrandId(brandRef) {
+    if (!brandRef) return null;
+    if (typeof brandRef === "object" && brandRef._id) {
+      return brandRef._id;
+    }
+    if (typeof brandRef === "string" && brandRef.length === 24) {
+      return brandRef;
+    }
+    if (typeof brandRef === "string") {
+      const found = brands.find((b) => b.name === brandRef);
+      if (found) {
+        return found._id;
+      }
+    }
+    return null;
   }
 
-  // --------------------------------------------------
-  // FETCH PRODUCTS
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 3) HELPER: resolveCategoryName / resolveBrandName
+  // ----------------------------------------------------------------
+  function resolveCategoryName(catRef) {
+    const realCatId = unifyCategoryId(catRef);
+    if (!realCatId) return "";
+    const found = categories.find((c) => c._id === realCatId);
+    return found ? found.name : "";
+  }
+
+  function resolveBrandName(brandRef) {
+    const realBrandId = unifyBrandId(brandRef);
+    if (!realBrandId) return "";
+    const found = brands.find((b) => b._id === realBrandId);
+    return found ? found.name : "";
+  }
+
+  // ----------------------------------------------------------------
+  // 4) FETCH PRODUCTS
+  // ----------------------------------------------------------------
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const response = await apiClient.get("/products?limit=100&page=1");
+        console.log("Fetched products:", response.data.data);
         setProducts(response.data.data);
         setLoading(false);
       } catch (err) {
@@ -104,16 +149,17 @@ export default function ProductsList() {
     fetchProducts();
   }, []);
 
-  // --------------------------------------------------
-  // FETCH BRANDS & CATEGORIES
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 5) FETCH BRANDS & CATEGORIES
+  // ----------------------------------------------------------------
   const fetchBrands = async () => {
     try {
       const response = await apiClient.get("/brands?limit=0");
-      const sortedBrands = response.data.data.sort((a, b) =>
+      const sorted = (response.data.data || []).sort((a, b) =>
         a.name.localeCompare(b.name)
       );
-      setBrands(sortedBrands || []);
+      console.log("Fetched brands:", sorted);
+      setBrands(sorted);
     } catch (err) {
       console.error("Error fetching brands:", err);
     }
@@ -122,10 +168,11 @@ export default function ProductsList() {
   const fetchCategories = async () => {
     try {
       const response = await apiClient.get("/categories?limit=0");
-      const sortedCategories = response.data.data.sort((a, b) =>
+      const sorted = (response.data.data || []).sort((a, b) =>
         a.name.localeCompare(b.name)
       );
-      setCategories(sortedCategories || []);
+      console.log("Fetched categories:", sorted);
+      setCategories(sorted);
     } catch (err) {
       console.error("Error fetching categories:", err);
     }
@@ -136,80 +183,94 @@ export default function ProductsList() {
     fetchCategories();
   }, []);
 
-  // --------------------------------------------------
-  // SIDEBAR FILTER DROPDOWN OPTIONS
-  // --------------------------------------------------
-  const allCategoriesForFilter = [
-    "all",
-    ...categories.map((c) => c.name).sort(),
-  ];
+  // ----------------------------------------------------------------
+  // 6) DROPDOWN OPTIONS (ONE-WAY DEPENDENCY: BRAND → CATEGORY)
+  // ----------------------------------------------------------------
+  // 6a) Brand dropdown: always "all" + every brand name
+  const allBrandNames = ["all", ...brands.map((b) => b.name).sort()];
 
-  const filteredBrandsForSidebar =
-    selectedCategory === "all"
-      ? ["all", ...brands.map((b) => b.name).sort()]
-      : [
-          "all",
-          ...Array.from(
-            new Set(
-              products
-                .filter(
-                  (p) => resolveCategoryName(p.categoryId) === selectedCategory
-                )
-                .map((p) => resolveBrandName(p.brandId))
-            )
-          ).sort(),
-        ];
+  // 6b) Category dropdown depends on the selected brand:
+  //     - If brand = "all", show all category names.
+  //     - Otherwise, show only categories that appear in products for that brand.
+  const allCategoryNames = categories.map((c) => c.name);
+  let brandCategoryNames = [];
 
-  // --------------------------------------------------
-  // STOCK SUMMARY
-  // --------------------------------------------------
-  const totalProducts = products.length;
+  if (selectedBrand === "all") {
+    brandCategoryNames = allCategoryNames;
+  } else {
+    // Gather categories used by products that match the current brand
+    brandCategoryNames = Array.from(
+      new Set(
+        products
+          .filter((p) => resolveBrandName(p.brandId) === selectedBrand)
+          .map((p) => resolveCategoryName(p.categoryId))
+      )
+    );
+  }
 
-  // 0 => Out of Stock, 1–4 => Low Stock, 5+ => Available
-  const outOfStockCount = products.filter((p) => p.quantity === 0).length;
-  const lowStockCount = products.filter(
-    (p) => p.quantity > 0 && p.quantity < 5
-  ).length;
-  const availableCount = products.filter((p) => p.quantity >= 5).length;
+  const filteredCategoriesForSidebar = ["all", ...brandCategoryNames.sort()];
 
-  // --------------------------------------------------
-  // FILTER PRODUCTS (Listing)
-  // --------------------------------------------------
+  // If our current selectedCategory isn't valid for the new brand, reset it to "all"
+  useEffect(() => {
+    if (
+      selectedCategory !== "all" &&
+      !brandCategoryNames.includes(selectedCategory)
+    ) {
+      setSelectedCategory("all");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBrand, brandCategoryNames]);
+
+  // ----------------------------------------------------------------
+  // 7) FILTERED PRODUCTS
+  // ----------------------------------------------------------------
   const filteredProducts = products
-    .filter((product) =>
-      selectedCategory === "all"
-        ? true
-        : resolveCategoryName(product.categoryId) === selectedCategory
-    )
+    // Filter by Brand
     .filter((product) =>
       selectedBrand === "all"
         ? true
         : resolveBrandName(product.brandId) === selectedBrand
     )
+    // Filter by Category
+    .filter((product) =>
+      selectedCategory === "all"
+        ? true
+        : resolveCategoryName(product.categoryId) === selectedCategory
+    )
+    // Filter by Stock
     .filter((product) => {
       if (filterStockStatus === "all") return true;
       if (filterStockStatus === "low") {
-        // 1–4 => “Low Stock”
         return product.quantity > 0 && product.quantity < 5;
       }
       if (filterStockStatus === "available") {
-        // 5+ => “Available”
         return product.quantity >= 5;
       }
       if (filterStockStatus === "out") {
-        // 0 => “Out of Stock”
         return product.quantity === 0;
       }
       return true;
     })
-    // search by product name
+    // Filter by Search (product name)
     .filter((product) =>
       product.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  // --------------------------------------------------
-  // PAGINATION
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 8) STOCK SUMMARY (Filtered)
+  // ----------------------------------------------------------------
+  const totalFiltered = filteredProducts.length;
+  const outOfStockCount = filteredProducts.filter(
+    (p) => p.quantity === 0
+  ).length;
+  const lowStockCount = filteredProducts.filter(
+    (p) => p.quantity > 0 && p.quantity < 5
+  ).length;
+  const availableCount = filteredProducts.filter((p) => p.quantity >= 5).length;
+
+  // ----------------------------------------------------------------
+  // 9) PAGINATION
+  // ----------------------------------------------------------------
   const indexOfLastProduct = currentPage * itemsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - itemsPerPage;
   const currentProducts = filteredProducts.slice(
@@ -218,21 +279,21 @@ export default function ProductsList() {
   );
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
+  // Reset to page 1 whenever filters/search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, selectedBrand, filterStockStatus, searchTerm]);
+  }, [selectedBrand, selectedCategory, filterStockStatus, searchTerm]);
 
   const handlePreviousPage = () => {
     if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
-
   const handleNextPage = () => {
     if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
-  // --------------------------------------------------
-  // ADD / EDIT PRODUCT MODAL
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 10) ADD/EDIT MODALS
+  // ----------------------------------------------------------------
   const openAddNewModal = () => {
     setEditingProduct({
       name: "",
@@ -250,21 +311,30 @@ export default function ProductsList() {
   const openEditModal = (product) => {
     const prod = { ...product };
 
-    if (prod.brandId && typeof prod.brandId === "object") {
-      prod.brandId = prod.brandId._id;
-    } else if (typeof prod.brandId === "string" && prod.brandId.length !== 24) {
-      const foundBrand = brands.find((b) => b.name === prod.brandId);
-      if (foundBrand) prod.brandId = foundBrand._id;
+    // unify brandId
+    if (prod.brandId) {
+      if (typeof prod.brandId === "object" && prod.brandId._id) {
+        prod.brandId = prod.brandId._id;
+      } else if (
+        typeof prod.brandId === "string" &&
+        prod.brandId.length !== 24
+      ) {
+        const foundBrand = brands.find((b) => b.name === prod.brandId);
+        if (foundBrand) prod.brandId = foundBrand._id;
+      }
     }
 
-    if (prod.categoryId && typeof prod.categoryId === "object") {
-      prod.categoryId = prod.categoryId._id;
-    } else if (
-      typeof prod.categoryId === "string" &&
-      prod.categoryId.length !== 24
-    ) {
-      const foundCategory = categories.find((c) => c.name === prod.categoryId);
-      if (foundCategory) prod.categoryId = foundCategory._id;
+    // unify categoryId
+    if (prod.categoryId) {
+      if (typeof prod.categoryId === "object" && prod.categoryId._id) {
+        prod.categoryId = prod.categoryId._id;
+      } else if (
+        typeof prod.categoryId === "string" &&
+        prod.categoryId.length !== 24
+      ) {
+        const foundCat = categories.find((c) => c.name === prod.categoryId);
+        if (foundCat) prod.categoryId = foundCat._id;
+      }
     }
 
     setEditingProduct(prod);
@@ -277,11 +347,12 @@ export default function ProductsList() {
     setEditingProduct(null);
   };
 
-  // --------------------------------------------------
-  // DETAILS MODAL
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 11) DETAILS MODAL
+  // ----------------------------------------------------------------
   const openDetailsModal = (product) => {
     const prod = { ...product };
+    // store brandName & categoryName for the modal
     prod.brandName = resolveBrandName(prod.brandId);
     prod.categoryName = resolveCategoryName(prod.categoryId);
     setDetailsProduct(prod);
@@ -293,19 +364,16 @@ export default function ProductsList() {
     setDetailsProduct(null);
   };
 
-  // --------------------------------------------------
-  // SAVE (ADD/EDIT) PRODUCT
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 12) SAVE PRODUCT (Add or Edit)
+  // ----------------------------------------------------------------
   const saveProductDetails = async () => {
     try {
       const payload = { ...editingProduct };
 
-      // Convert to Number & clamp
-      payload.quantity = Number(payload.quantity);
-      if (payload.quantity < 0) payload.quantity = 0;
-
-      payload.price = Number(payload.price);
-      if (payload.price < 0) payload.price = 0;
+      // clamp numeric
+      payload.quantity = Math.max(0, Number(payload.quantity) || 0);
+      payload.price = Math.max(0, Number(payload.price) || 0);
 
       if (!payload.brandId) {
         alert("Please select a brand. It must be predefined.");
@@ -318,52 +386,45 @@ export default function ProductsList() {
 
       if (isAddingNewProduct) {
         const response = await apiClient.post("/products", payload);
-        const createdProd = response.data.data;
-        if (createdProd) {
-          setProducts((prev) => [...prev, createdProd]);
+        const created = response.data.data;
+        if (created) {
+          setProducts((prev) => [...prev, created]);
+          // Re-fetch brand/category lists (in case new product introduced new brand/cat)
           fetchBrands();
           fetchCategories();
         }
       } else {
         const productId = getProductId(payload);
         const response = await apiClient.put(`/products/${productId}`, payload);
-        const updatedProd = response.data.new;
-        if (updatedProd) {
+        const updated = response.data.new;
+        if (updated) {
           setProducts((prev) =>
             prev.map((p) =>
-              getProductId(p) === getProductId(updatedProd) ? updatedProd : p
+              getProductId(p) === getProductId(updated) ? updated : p
             )
           );
+          // Re-fetch brand/category lists
           fetchBrands();
           fetchCategories();
         }
       }
-
       closeModal();
     } catch (err) {
-      console.error(">>> Error saving the product:", err.response?.data || err);
+      console.error(">>> Error saving product:", err.response?.data || err);
     }
   };
 
-  // --------------------------------------------------
-  // INPUT HANDLER
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 13) INPUT HANDLER
+  // ----------------------------------------------------------------
   const handleInputChange = (e) => {
-    let { name, value } = e.target;
-
-    if ((name === "quantity" || name === "price") && value !== "") {
-      const numVal = parseFloat(value);
-      if (numVal < 0) {
-        value = "0";
-      }
-    }
-
+    const { name, value } = e.target;
     setEditingProduct((prev) => ({ ...prev, [name]: value }));
   };
 
-  // --------------------------------------------------
-  // DELETE PRODUCT
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
+  // 14) DELETE PRODUCT
+  // ----------------------------------------------------------------
   const confirmDeleteProduct = (product) => {
     setSelectedProductForDelete(product);
     setConfirmOpen(true);
@@ -377,13 +438,13 @@ export default function ProductsList() {
       setProducts((prev) => prev.filter((p) => getProductId(p) !== productId));
       setConfirmOpen(false);
     } catch (err) {
-      console.error(">>> Error deleting the product:", err);
+      console.error(">>> Error deleting product:", err);
     }
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   // CONDITIONAL RENDERS
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   if (loading) {
     return <p className="mt-8 text-xl text-center">Loading products...</p>;
   }
@@ -391,21 +452,18 @@ export default function ProductsList() {
     return <p className="mt-8 text-xl text-center text-red-500">{error}</p>;
   }
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   // RENDER
-  // --------------------------------------------------
+  // ----------------------------------------------------------------
   return (
     <>
       {/* Sticky Header with color-coded role */}
-      <div
+      <header
         className={`fixed top-0 z-10 w-full shadow-md ${roleColors[userRole]}`}
       >
         <div className="flex items-center justify-between px-4 py-4 text-white">
           <div className="flex items-center space-x-3">
-            <h1 className="text-3xl font-bold">
-              Products ({filteredProducts.length})
-            </h1>
-            {/* Label to show user role */}
+            <h1 className="text-3xl font-bold">Products ({totalFiltered})</h1>
             <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
               {userRole.toUpperCase()}
             </span>
@@ -417,13 +475,14 @@ export default function ProductsList() {
             ➤ Dashboard
           </button>
         </div>
-      </div>
+      </header>
 
       <div className="flex">
-        {/* Sidebar for Filters */}
+        {/* Sidebar Filters */}
         <aside className="fixed top-[4.5rem] left-0 w-1/4 h-[calc(100vh-4.5rem)] p-4 bg-gray-100 z-50 hidden sm:block">
           <h2 className="mb-4 text-xl font-bold">Filters</h2>
-          {/* Category Filter */}
+
+          {/* Category Filter (dependent on selectedBrand) */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">Category</label>
             <select
@@ -431,14 +490,15 @@ export default function ProductsList() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg"
             >
-              {allCategoriesForFilter.map((cat) => (
+              {filteredCategoriesForSidebar.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
             </select>
           </div>
-          {/* Brand Filter */}
+
+          {/* Brand Filter (independent) */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">Brand</label>
             <select
@@ -446,14 +506,15 @@ export default function ProductsList() {
               onChange={(e) => setSelectedBrand(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg"
             >
-              {filteredBrandsForSidebar.map((b) => (
+              {allBrandNames.map((b) => (
                 <option key={b} value={b}>
                   {b}
                 </option>
               ))}
             </select>
           </div>
-          {/* Stock Status Filter */}
+
+          {/* Stock Status */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">Stock Status</label>
             <select
@@ -467,29 +528,32 @@ export default function ProductsList() {
               <option value="out">Out of Stock (0)</option>
             </select>
           </div>
-          {/* Stock Summary */}
+
+          {/* Stock Summary (Filtered) */}
           <div className="mt-6">
             <h3 className="mb-2 text-lg font-bold">Stock Summary</h3>
-            <p>Total Products: {totalProducts}</p>
+            <p>Total Products: {totalFiltered}</p>
             <p>Out of Stock (0): {outOfStockCount}</p>
             <p>Low Stock (1-4): {lowStockCount}</p>
             <p>Available (5+): {availableCount}</p>
           </div>
-          {/* Products Summary */}
+
+          {/* Products Summary (Filtered) */}
           <div className="mt-6">
             <h3 className="mb-2 text-lg font-bold">Products Summary</h3>
             <p>
-              {filteredProducts.length === 0
+              {totalFiltered === 0
                 ? "There is no product."
-                : filteredProducts.length === 1
+                : totalFiltered === 1
                   ? "There is 1 product."
-                  : `There are ${filteredProducts.length} products.`}
+                  : `There are ${totalFiltered} products.`}
             </p>
           </div>
         </aside>
 
-        {/* Main Products Section */}
+        {/* Main Section */}
         <main className="w-full sm:w-3/4 ml-0 sm:ml-[25%] pt-[4.5rem] pb-20">
+          {/* Mobile Search/Buttons */}
           <div className="fixed top-[4.5rem] w-full sm:w-[75%] z-50 flex items-center justify-between p-3 mb-4 bg-gray-100">
             <div className="flex items-center space-x-4">
               <button
@@ -507,6 +571,7 @@ export default function ProductsList() {
                   className="block w-full px-4 py-2 text-black border rounded-lg sm:hidden focus:ring focus:ring-indigo-200"
                 />
               )}
+              {/* Desktop search always visible */}
               <input
                 type="text"
                 placeholder="Search products..."
@@ -515,7 +580,7 @@ export default function ProductsList() {
                 className="hidden w-full px-4 py-2 text-black border rounded-lg sm:block focus:ring focus:ring-indigo-200"
               />
             </div>
-            {/* "Add New Product" only for staff & admin */}
+
             {(userRole === "staff" || userRole === "admin") && (
               <>
                 <button
@@ -534,6 +599,7 @@ export default function ProductsList() {
             )}
           </div>
 
+          {/* Products Grid */}
           {currentProducts.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 p-4 mt-20 sm:grid-cols-2 lg:grid-cols-3">
               {currentProducts.map((product) => {
@@ -553,6 +619,7 @@ export default function ProductsList() {
                 }
 
                 const productId = getProductId(product);
+
                 return (
                   <div
                     key={productId}
@@ -587,9 +654,9 @@ export default function ProductsList() {
                       </div>
                     </div>
 
-                    {/* Actions (Details/Edit/Delete) */}
+                    {/* Actions */}
                     <div className="flex justify-between mt-2">
-                      {/* Everyone can see Details */}
+                      {/* Details (any user) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -601,7 +668,7 @@ export default function ProductsList() {
                       </button>
 
                       <div className="flex space-x-2">
-                        {/* Edit only for staff or admin */}
+                        {/* Edit (staff/admin) */}
                         {(userRole === "staff" || userRole === "admin") && (
                           <button
                             onClick={(e) => {
@@ -614,7 +681,7 @@ export default function ProductsList() {
                           </button>
                         )}
 
-                        {/* Delete only for admin */}
+                        {/* Delete (admin) */}
                         {userRole === "admin" && (
                           <button
                             onClick={(e) => {
@@ -641,7 +708,7 @@ export default function ProductsList() {
       </div>
 
       {/* Pagination Footer */}
-      <div className="fixed h-[4.5rem] bottom-0 left-0 w-full sm:ml-[25%] sm:w-[75%] bg-white border-t">
+      <div className="fixed bottom-0 left-0 w-full h-[4.5rem] sm:ml-[25%] sm:w-[75%] bg-white border-t">
         <nav
           aria-label="Pagination"
           className="flex items-center justify-between px-4 py-2 sm:px-6"
@@ -663,14 +730,14 @@ export default function ProductsList() {
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center px-3 py-2 ml-3 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center px-3 py-2 ml-3 text-sm font-semibold text-gray-900 bg-white rounded-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>
@@ -678,7 +745,7 @@ export default function ProductsList() {
         </nav>
       </div>
 
-      {/* MODAL: Add/Edit Product */}
+      {/* ADD/EDIT MODAL */}
       <Transition appear show={modalOpen} as="div">
         <Dialog
           as="div"
@@ -687,7 +754,6 @@ export default function ProductsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -706,7 +772,6 @@ export default function ProductsList() {
             </span>
 
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -778,7 +843,7 @@ export default function ProductsList() {
                         name="categoryId"
                         value={editingProduct.categoryId || ""}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 overflow-y-auto border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
                       >
                         <option value="">Select a Category</option>
                         {categories.map((cat) => (
@@ -798,7 +863,7 @@ export default function ProductsList() {
                         name="brandId"
                         value={editingProduct.brandId || ""}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 overflow-y-auto border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200 max-h-64"
                       >
                         <option value="">Select a Brand</option>
                         {brands.map((b) => (
@@ -868,7 +933,6 @@ export default function ProductsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -886,7 +950,6 @@ export default function ProductsList() {
               &#8203;
             </span>
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -934,7 +997,6 @@ export default function ProductsList() {
         >
           <div className="min-h-screen px-4 text-center">
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0"
               enterTo="opacity-100"
@@ -944,6 +1006,7 @@ export default function ProductsList() {
             >
               <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             </Transition.Child>
+
             <span
               className="inline-block h-screen align-middle"
               aria-hidden="true"
@@ -951,7 +1014,6 @@ export default function ProductsList() {
               &#8203;
             </span>
             <Transition.Child
-              as="div"
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
