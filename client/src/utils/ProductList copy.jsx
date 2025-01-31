@@ -61,7 +61,7 @@ export default function ProductsList() {
     useState(null);
 
   // Pagination
-  // const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
   // ----------------------------------------------------------------

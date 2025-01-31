@@ -13,11 +13,8 @@ import Issues from "./pages/Issues";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
-import Addproducts from "./pages/Addproducts";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import Editproduct from "./pages/Editproduct";
-import Deleteproducts from "./pages/Deleteproducts";
 import CategoriesList from "./utils/CategoryList";
 import FirmList from "./utils/FirmList";
 import BrandList from "./utils/BrandList";
@@ -28,6 +25,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./components/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
 import AdminPanel from "./pages/AdminPanel";
+import PurchasesList from "./utils/PurchasesList";
+import SalesList from "./utils/SalesList";
 
 import { hydrateFromStorage } from "./slices/authSlice"; // Redux action
 
@@ -51,6 +50,8 @@ function App() {
       <Route path="/brands" element={<BrandList />} />
       <Route path="/firms" element={<FirmList />} />
       <Route path="/products" element={<ProductList />} />
+      <Route path="/purchases" element={<PurchasesList />} />
+      <Route path="/sales" element={<SalesList />} />
 
       {/* --------------------- Private (Auth) Routes --------------------- */}
       {/* Wrap them in <PrivateRoute> so user must be logged in */}
@@ -76,9 +77,6 @@ function App() {
           <Route path="products">
             <Route index element={<Products />} />
             <Route path=":id" element={<Products />} />
-            <Route path="editproduct/:id" element={<Editproduct />} />
-            <Route path="addproducts" element={<Addproducts />} />
-            <Route path="deleteproduct/:id" element={<Deleteproducts />} />
           </Route>
         </Route>
       </Route>
