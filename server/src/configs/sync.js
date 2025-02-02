@@ -1486,10 +1486,10 @@ module.exports = async function () {
     price: 75,
   });
 
-  /* Sale */
-  const Sale = require("../models/sale");
-  await Sale.deleteMany();
-  await Sale.create({
+  /* Sell */
+  const Sell = require("../models/sell");
+  await Sell.deleteMany();
+  await Sell.create({
     _id: "b111aaaa2222bbbb3333a111",
     userId: "1111aaaa2222bbbb3333a001",
     brandId: "1111aaaa2222bbbb3333b027",
@@ -1497,7 +1497,7 @@ module.exports = async function () {
     quantity: 100,
     price: 30,
   });
-  await Sale.create({
+  await Sell.create({
     _id: "b111aaaa2222bbbb3333a112",
     userId: "1111aaaa2222bbbb3333a001",
     brandId: "1111aaaa2222bbbb3333b030",
@@ -1505,7 +1505,7 @@ module.exports = async function () {
     quantity: 250,
     price: 40,
   });
-  await Sale.create({
+  await Sell.create({
     _id: "b111aaaa2222bbbb3333a113",
     userId: "1111aaaa2222bbbb3333a001",
     brandId: "1111aaaa2222bbbb3333b031",
@@ -1513,7 +1513,7 @@ module.exports = async function () {
     quantity: 100,
     price: 6,
   });
-  await Sale.create({
+  await Sell.create({
     _id: "b111aaaa2222bbbb3333a114",
     userId: "1111aaaa2222bbbb3333a002",
     brandId: "1111aaaa2222bbbb3333b024",
@@ -1521,7 +1521,7 @@ module.exports = async function () {
     quantity: 10,
     price: 3500,
   });
-  await Sale.create({
+  await Sell.create({
     _id: "b111aaaa2222bbbb3333a115",
     userId: "1111aaaa2222bbbb3333a002",
     brandId: "1111aaaa2222bbbb3333b022",

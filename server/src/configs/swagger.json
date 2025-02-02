@@ -1149,7 +1149,7 @@
       },
       "post": {
         "tags": ["Sales"],
-        "summary": "Create Sale",
+        "summary": "Create Sell",
         "description": "",
         "parameters": [
           {
@@ -1189,7 +1189,7 @@
     "/sales/{id}": {
       "get": {
         "tags": ["Sales"],
-        "summary": "Get Single Sale",
+        "summary": "Get Single Sell",
         "description": "",
         "parameters": [
           {
@@ -1207,7 +1207,7 @@
       },
       "put": {
         "tags": ["Sales"],
-        "summary": "Update Sale",
+        "summary": "Update Sell",
         "description": "",
         "parameters": [
           {
@@ -1251,7 +1251,7 @@
       },
       "delete": {
         "tags": ["Sales"],
-        "summary": "Delete Sale",
+        "summary": "Delete Sell",
         "description": "",
         "parameters": [
           {
@@ -1272,7 +1272,7 @@
       },
       "patch": {
         "tags": ["Sales"],
-        "summary": "Update Sale",
+        "summary": "Update Sell",
         "description": "",
         "parameters": [
           {
@@ -1757,7 +1757,7 @@
         }
       }
     },
-    "Sale": {
+    "Sell": {
       "type": "object",
       "properties": {
         "userId": {

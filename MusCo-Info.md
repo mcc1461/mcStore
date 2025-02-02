@@ -53,7 +53,7 @@ To install the project, you need to have the following tools installed:
 
 4. ERD file is under `src/erdStockAPI.png` is the core element of the project and means Entity Relationship Diagram.
    It is a visual representation of the database schema.
-   According to the ERD, the project has 8 collections: - users - tokens - firms - brands - categories - products - purchases - sales
+   According to the ERD, the project has 8 collections: - users - tokens - firms - brands - categories - products - purchases - sells
 
 5. Via MVC pattern, the project is divided into 3 main parts and created by the following structure:
 

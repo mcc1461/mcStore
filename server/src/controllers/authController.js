@@ -11,8 +11,13 @@ const JWT_REFRESH_SECRET =
 
 // Helper: Generate Token
 const generateToken = (user, secret, expiresIn) => {
+  // Important: we store user._id as "_id"
   return jwt.sign(
-    { id: user._id, username: user.username, role: user.role },
+    {
+      _id: user._id,
+      username: user.username,
+      role: user.role,
+    },
     secret || JWT_SECRET,
     { expiresIn }
   );
@@ -49,7 +54,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Create new user (password will be hashed by the pre-save hook in the model)
+    // Create new user (password hashed by pre-save hook)
     const newUser = new User({
       username,
       password,
@@ -61,7 +66,7 @@ const register = async (req, res) => {
 
     await newUser.save();
 
-    // Generate tokens (1h for access, 30d for refresh)
+    // Generate tokens
     const accessToken = generateToken(newUser, JWT_SECRET, "1d");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
@@ -105,13 +110,13 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    // Verify password with Argon2
+    // Verify password
     const validPassword = await argon2.verify(user.password, password);
     if (!validPassword) {
       return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    // Generate access & refresh tokens
+    // Generate tokens
     const accessToken = generateToken(user, JWT_SECRET, "1d");
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
@@ -154,14 +159,14 @@ const refresh = async (req, res) => {
         });
       }
 
-      const user = await User.findById(decoded.id);
+      // decoded has _id, username, role
+      const user = await User.findById(decoded._id);
       if (!user) {
         return res.status(403).json({
           message: "User not found.",
         });
       }
 
-      // Generate new 1h access token
       const newAccessToken = generateToken(user, JWT_SECRET, "1d");
       return res.json({
         message: "Token refreshed successfully",
@@ -194,7 +199,7 @@ const requestPasswordReset = async (req, res) => {
     }
 
     // Create reset token valid for 1 hour
-    const resetToken = generateToken({ id: user._id }, JWT_SECRET, "1h");
+    const resetToken = generateToken(user, JWT_SECRET, "1h");
 
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1h
@@ -223,7 +228,6 @@ const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
 
-    // Check password complexity
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         message:
@@ -232,7 +236,7 @@ const resetPassword = async (req, res) => {
     }
 
     const decoded = jwt.verify(resetToken, JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded._id);
 
     if (!user || user.resetPasswordToken !== resetToken) {
       return res.status(403).json({
@@ -240,7 +244,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Update user's password (pre-save will handle hashing)
+    // Update user's password
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;

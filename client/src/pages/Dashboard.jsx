@@ -39,8 +39,8 @@ const navigation = [
     current: false,
   },
   {
-    name: "Sales",
-    href: "/sales",
+    name: "Sells",
+    href: "/sells",
     icon: DocumentDuplicateIcon,
     current: false,
   },

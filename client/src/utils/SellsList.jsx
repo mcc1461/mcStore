@@ -1,6 +1,6 @@
 /********************************************************************************************
- * FILE: src/utils/PurchasesList.jsx
- * LINES: ~1080 (full code with minimal modifications to ensure product quantity is updated)
+ * FILE: src/utils/SellsList.jsx
+ * LINES: ~1000 (similar structure to PurchasesList, with modifications for Sells)
  ********************************************************************************************/
 
 import React, { useEffect, useState, Fragment } from "react";
@@ -12,59 +12,56 @@ import apiClient from "../services/apiClient";
 /************************************************************************************
  * 1) ROLE & NAVIGATION
  ************************************************************************************/
-export default function PurchasesList() {
+export default function SellsList() {
   // Access user info from Redux
   const { userInfo } = useSelector((state) => state.auth);
   const userRole = userInfo?.role || "user";
   const navigate = useNavigate();
 
-  // Determine if user can add/edit/delete (admin/staff)
-  const canAddPurchase = userRole === "admin" || userRole === "staff";
+  // Only admin/staff can add/edit/delete sells
+  const canAddSell = userRole === "admin" || userRole === "staff";
 
   /************************************************************************************
    * 2) STATES
    ************************************************************************************/
-  const [purchases, setPurchases] = useState([]);
+  const [sells, setSells] = useState([]);
+  const [purchases, setPurchases] = useState([]); // to compute average purchase price
   const [products, setProducts] = useState([]);
-  const [firms, setFirms] = useState([]);
-  const [users, setUsers] = useState([]); // staff+admin list for Buyer dropdown
-  const [allUsers, setAllUsers] = useState([]); // for filtering & name lookups
+  const [users, setUsers] = useState([]); // staff+admin for Seller dropdown
+  const [allUsers, setAllUsers] = useState([]); // for lookups
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // CREATE Purchase modal
+  // CREATE Sell modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [newPurchase, setNewPurchase] = useState({
+  const [newSell, setNewSell] = useState({
     productId: "",
     quantity: 1,
-    purchasePrice: 0,
-    firmId: "",
-    userId: userInfo?._id || "",
-    buyerId: "",
+    sellPrice: 0,
+    userId: userInfo?._id || "", // the user who is making this record
+    sellerId: "", // the staff/admin responsible for the sell
   });
 
-  // EDIT Purchase modal
+  // EDIT Sell modal
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editPurchase, setEditPurchase] = useState({
+  const [editSell, setEditSell] = useState({
     _id: null,
     productId: "",
     quantity: 1,
-    purchasePrice: 0,
-    firmId: "",
-    buyerId: "",
+    sellPrice: 0,
+    sellerId: "",
   });
 
   /************************************************************************************
-   * 3) FILTERS (top-level)
+   * 3) FILTERS
    ************************************************************************************/
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState("all");
-  const [selectedFirm, setSelectedFirm] = useState("all");
-  const [selectedBuyer, setSelectedBuyer] = useState("all");
-  const [selectedUser, setSelectedUser] = useState("all");
+  const [selectedSeller, setSelectedSeller] = useState("all");
 
   /************************************************************************************
    * 4) FETCH DATA (Initial load)
@@ -74,26 +71,27 @@ export default function PurchasesList() {
       try {
         setLoading(true);
 
-        // 1) Purchases from /purchases
-        const respPurch = await apiClient.get("/purchases?limit=0");
-        setPurchases(respPurch.data.data || []);
+        // 1) Sells
+        const respSells = await apiClient.get("/sells?limit=0");
+        setSells(respSells.data.data || []);
 
-        // 2) Products from /products
+        // 2) Purchases (for average purchase price)
+        const respPurchases = await apiClient.get("/purchases?limit=0");
+        setPurchases(respPurchases.data.data || []);
+
+        // 3) Products
         const respProd = await apiClient.get("/products?limit=0");
         setProducts(respProd.data.data || []);
-
-        // 3) Firms
-        const respFirms = await apiClient.get("/firms?limit=0");
-        setFirms(respFirms.data.data || []);
 
         // 4) All users
         const respUsers = await apiClient.get("/users?limit=0");
         const allFetchedUsers = respUsers.data.data || [];
+        // staff+admin as "sellers"
         const staffAdmins = allFetchedUsers.filter(
           (u) => u.role === "staff" || u.role === "admin"
         );
-        setUsers(staffAdmins); // for Buyer dropdown
-        setAllUsers(allFetchedUsers); // entire list for name lookups
+        setUsers(staffAdmins);
+        setAllUsers(allFetchedUsers);
 
         // 5) Categories
         const respCats = await apiClient.get("/categories?limit=0");
@@ -105,7 +103,7 @@ export default function PurchasesList() {
 
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching data in PurchasesList:", err);
+        console.error("Error fetching data in SellsList:", err);
         setError("Failed to load data");
         setLoading(false);
       }
@@ -114,19 +112,18 @@ export default function PurchasesList() {
   }, []);
 
   /************************************************************************************
-   * 5) CREATE PURCHASE
+   * 5) CREATE SELL
    ************************************************************************************/
   const [modalCategory, setModalCategory] = useState("all");
   const [modalBrand, setModalBrand] = useState("all");
 
   const openModal = () => {
-    setNewPurchase({
+    setNewSell({
       productId: "",
       quantity: 1,
-      purchasePrice: 0,
-      firmId: "",
+      sellPrice: 0,
       userId: userInfo?._id || "",
-      buyerId: "",
+      sellerId: "",
     });
     setModalCategory("all");
     setModalBrand("all");
@@ -136,10 +133,10 @@ export default function PurchasesList() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewPurchase((prev) => ({ ...prev, [name]: value }));
+    setNewSell((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Filter products by chosen category/brand in create modal
+  // Filter products by category/brand in create modal
   const modalFilteredProducts = products.filter((p) => {
     const catId = p.categoryId?._id || p.categoryId;
     const brId = p.brandId?._id || p.brandId;
@@ -149,33 +146,29 @@ export default function PurchasesList() {
     return true;
   });
 
-  // Save purchase => increments product quantity on server side
-  async function savePurchase() {
+  // Save Sell => decrements product quantity on server side
+  async function saveSell() {
     try {
-      const quantity = Number(newPurchase.quantity) || 1;
-      const purchasePrice = Number(newPurchase.purchasePrice) || 0;
+      const quantity = Number(newSell.quantity) || 1;
+      const sellPrice = Number(newSell.sellPrice) || 0;
 
       // quick validations
-      if (!newPurchase.productId) {
+      if (!newSell.productId) {
         alert("Please select a product.");
         return;
       }
-      if (!newPurchase.firmId) {
-        alert("Please select a firm.");
+      if (!newSell.sellerId) {
+        alert("Please select a seller (staff/admin).");
         return;
       }
-      if (!newPurchase.buyerId) {
-        alert("Please select a buyer.");
-        return;
-      }
-      if (!newPurchase.userId) {
+      if (!newSell.userId) {
         alert("No user ID found! Are you logged in?");
         return;
       }
 
       // find brandId from chosen product
       const chosenProduct = products.find(
-        (prod) => prod._id === newPurchase.productId
+        (prod) => prod._id === newSell.productId
       );
       const brandId =
         chosenProduct?.brandId?._id || chosenProduct?.brandId || null;
@@ -184,46 +177,50 @@ export default function PurchasesList() {
         return;
       }
 
+      // Check if enough quantity is available
+      if (chosenProduct.quantity < quantity) {
+        alert(`Not enough stock! Only ${chosenProduct.quantity} in stock.`);
+        return;
+      }
+
       const payload = {
-        productId: newPurchase.productId,
+        productId: newSell.productId,
         brandId,
-        userId: newPurchase.userId,
-        firmId: newPurchase.firmId,
-        buyerId: newPurchase.buyerId,
+        userId: newSell.userId,
+        sellerId: newSell.sellerId,
         quantity,
-        purchasePrice,
+        sellPrice,
       };
 
-      // POST /purchases => increments product quantity
-      const resp = await apiClient.post("/purchases", payload);
+      // POST /sells => should decrement product quantity
+      const resp = await apiClient.post("/sells", payload);
 
-      // Re-fetch products to see updated quantity
+      // Re-fetch products => updated quantity
       const respProd = await apiClient.get("/products?limit=0");
       setProducts(respProd.data.data || []);
 
-      // Add new purchase to local state
+      // Add new sell to local state
       const created = resp.data.data;
       if (created) {
-        setPurchases((prev) => [...prev, created]);
+        setSells((prev) => [...prev, created]);
         closeModal();
       }
     } catch (err) {
-      console.error("Error saving purchase:", err);
-      alert("Could not save purchase. See console for details.");
+      console.error("Error saving sell:", err);
+      alert("Could not save sell. See console for details.");
     }
   }
 
   /************************************************************************************
-   * 6) EDIT PURCHASE
+   * 6) EDIT SELL
    ************************************************************************************/
-  function openEditModal(purchase) {
-    setEditPurchase({
-      _id: purchase._id,
-      productId: purchase.productId,
-      quantity: purchase.quantity,
-      purchasePrice: purchase.purchasePrice,
-      firmId: purchase.firmId,
-      buyerId: purchase.buyerId,
+  function openEditModal(sell) {
+    setEditSell({
+      _id: sell._id,
+      productId: sell.productId,
+      quantity: sell.quantity,
+      sellPrice: sell.sellPrice,
+      sellerId: sell.sellerId,
     });
     setEditModalOpen(true);
   }
@@ -232,35 +229,52 @@ export default function PurchasesList() {
   }
   function handleEditChange(e) {
     const { name, value } = e.target;
-    setEditPurchase((prev) => ({ ...prev, [name]: value }));
+    setEditSell((prev) => ({ ...prev, [name]: value }));
   }
 
-  // Update purchase => adjusts product quantity by difference
-  async function updatePurchase() {
+  // Update sell => adjusts product quantity by difference
+  async function updateSell() {
     try {
-      if (!editPurchase._id) return;
+      if (!editSell._id) return;
 
-      const quantity = Number(editPurchase.quantity) || 1;
-      const purchasePrice = Number(editPurchase.purchasePrice) || 0;
+      const quantity = Number(editSell.quantity) || 1;
+      const sellPrice = Number(editSell.sellPrice) || 0;
+
+      // Get the original Sell object from local state, to see old quantity if needed
+      const oldSell = sells.find((s) => s._id === editSell._id);
+      if (!oldSell) {
+        alert("Could not find original sell. Please refresh and try again.");
+        return;
+      }
+      const oldQty = oldSell ? oldSell.quantity : 0;
+
+      // Find the product
+      const chosenProduct = products.find((p) => p._id === editSell.productId);
+      if (!chosenProduct) {
+        alert("Could not find product. Please refresh and try again.");
+        return;
+      }
+
+      const diff = quantity - oldQty;
+      if (diff > 0 && chosenProduct.quantity < diff) {
+        alert(`Not enough stock! Only ${chosenProduct.quantity} in stock.`);
+        return;
+      }
 
       const payload = {
-        firmId: editPurchase.firmId,
-        buyerId: editPurchase.buyerId,
+        sellerId: editSell.sellerId,
         quantity,
-        purchasePrice,
+        sellPrice,
       };
 
-      // PUT /purchases/:id => re-fetch products
-      const resp = await apiClient.put(
-        `/purchases/${editPurchase._id}`,
-        payload
-      );
+      // PUT /sells/:id => re-fetch products
+      const resp = await apiClient.put(`/sells/${editSell._id}`, payload);
       if (resp.data && resp.data.data) {
         const updated = resp.data.data;
 
-        // update local purchases
-        setPurchases((prev) =>
-          prev.map((p) => (p._id === updated._id ? updated : p))
+        // update local sells
+        setSells((prev) =>
+          prev.map((s) => (s._id === updated._id ? updated : s))
         );
 
         // re-fetch products => updated quantity
@@ -270,8 +284,8 @@ export default function PurchasesList() {
         closeEditModal();
       }
     } catch (err) {
-      console.error("Error updating purchase:", err);
-      alert("Could not update purchase. See console for details.");
+      console.error("Error updating sell:", err);
+      alert("Could not update sell. See console for details.");
     }
   }
 
@@ -302,22 +316,37 @@ export default function PurchasesList() {
     const br = brands.find((b) => b._id === brId);
     return br ? br.name : "Unknown Brand";
   }
-  function getFirmNameById(id) {
-    const f = firms.find((firm) => firm._id === id);
-    return f ? f.name : "Unknown Firm";
-  }
-  function getBuyerNameById(id) {
-    if (!id) return "Unknown Buyer";
-    const strId = id.toString();
+  function getSellerNameById(sellerId) {
+    if (!sellerId) return "Unknown Seller";
+
+    // If we got a populated object like { _id, username }, we use ._id
+    const strId = sellerId._id ? sellerId._id.toString() : sellerId.toString();
+
     const found = allUsers.find((u) => u._id === strId);
-    return found ? capitalize(found.username) : "Unknown Buyer";
+    return found ? capitalize(found.username) : "Unknown Seller";
+  }
+
+  // Build a map: productId => { totalSpent, totalQty } for average purchase cost
+  const purchaseMap = {};
+  purchases.forEach((p) => {
+    if (!purchaseMap[p.productId]) {
+      purchaseMap[p.productId] = { totalSpent: 0, totalQty: 0 };
+    }
+    purchaseMap[p.productId].totalSpent +=
+      (p.quantity || 0) * (p.purchasePrice || 0);
+    purchaseMap[p.productId].totalQty += p.quantity || 0;
+  });
+  function getAveragePurchasePrice(productId) {
+    const data = purchaseMap[productId];
+    if (!data || data.totalQty === 0) return 0;
+    return data.totalSpent / data.totalQty;
   }
 
   /************************************************************************************
    * 8) FILTER
    ************************************************************************************/
-  function matchesFilter(purchase) {
-    const product = getProductById(purchase.productId);
+  function matchesFilter(sell) {
+    const product = getProductById(sell.productId);
 
     // Category
     if (selectedCategory !== "all") {
@@ -332,71 +361,61 @@ export default function PurchasesList() {
       if (brId !== selectedBrand) return false;
     }
     // Product
-    if (selectedProduct !== "all" && purchase.productId !== selectedProduct) {
+    if (selectedProduct !== "all" && sell.productId !== selectedProduct) {
       return false;
     }
-    // Firm
-    if (selectedFirm !== "all" && purchase.firmId !== selectedFirm) {
-      return false;
-    }
-    // Buyer
-    if (selectedBuyer !== "all") {
-      const purchaseBuyerId = purchase.buyerId?._id || purchase.buyerId;
-      if (purchaseBuyerId?.toString() !== selectedBuyer) {
-        return false;
-      }
-    }
-    // user
-    if (selectedUser !== "all" && purchase.userId !== selectedUser) {
+    // Seller
+    if (selectedSeller !== "all" && sell.sellerId !== selectedSeller) {
       return false;
     }
     return true;
   }
 
-  const filteredPurchases = purchases.filter(matchesFilter);
+  const filteredSells = sells.filter(matchesFilter);
 
   /************************************************************************************
    * 9) DELETE
    ************************************************************************************/
-  async function handleDeletePurchase(purchaseId) {
+  async function handleDeleteSell(sellId) {
     try {
       const confirmDelete = window.confirm(
-        "Are you sure you want to delete this purchase?"
+        "Are you sure you want to delete this sell?"
       );
       if (!confirmDelete) return;
 
-      // DELETE /purchases/:id => reverts product quantity
-      await apiClient.delete(`/purchases/${purchaseId}`);
-      setPurchases((prev) => prev.filter((p) => p._id !== purchaseId));
+      // DELETE /sells/:id => reverts product quantity
+      await apiClient.delete(`/sells/${sellId}`);
+      setSells((prev) => prev.filter((s) => s._id !== sellId));
 
       // re-fetch products => updated quantity
       const respProd = await apiClient.get("/products?limit=0");
       setProducts(respProd.data.data || []);
     } catch (err) {
-      console.error("Failed to delete purchase:", err);
-      alert("Could not delete purchase. See console for details.");
+      console.error("Failed to delete sell:", err);
+      alert("Could not delete sell. See console for details.");
     }
   }
 
   /************************************************************************************
    * 10) TABLE ROWS
    ************************************************************************************/
-  const tableRows = filteredPurchases.map((purchase, index) => {
-    const product = getProductById(purchase.productId);
-    const marketPrice = product?.price || 0; // "market price" in DB
-    const purchasePrice = purchase.purchasePrice || 0; // actual paid
-    const qty = purchase.quantity || 0;
-    const total = qty * purchasePrice;
-    const actualBuyerId = purchase.buyerId?._id || purchase.buyerId;
+  const tableRows = filteredSells.map((sell, index) => {
+    const product = getProductById(sell.productId);
+    const avgPurchasePrice = getAveragePurchasePrice(sell.productId);
+    const inStock = product ? product.quantity : 0;
+    const sellPrice = sell.sellPrice || 0;
+    const qty = sell.quantity || 0;
+    const total = sellPrice * qty;
+    const profit = (sellPrice - avgPurchasePrice) * qty;
 
     return (
       <tr
-        key={purchase._id}
+        key={sell._id}
         className="transition bg-white border-b hover:bg-gray-50"
       >
         <td className="px-4 py-2 text-sm text-gray-600">{index + 1}</td>
         <td className="px-4 py-2 text-sm font-semibold text-gray-900">
-          {getProductNameById(purchase.productId)}
+          {getProductNameById(sell.productId)}
         </td>
         <td className="px-4 py-2 text-sm text-gray-600">
           {getCategoryName(product)}
@@ -404,35 +423,36 @@ export default function PurchasesList() {
         <td className="px-4 py-2 text-sm text-gray-600">
           {getBrandName(product)}
         </td>
+        <td className="px-4 py-2 text-sm text-gray-600">{inStock}</td>
         <td className="px-4 py-2 text-sm text-gray-600">
-          ${marketPrice.toFixed(2)}
+          ${avgPurchasePrice.toFixed(2)}
         </td>
         <td className="px-4 py-2 text-sm text-gray-600">
-          ${purchasePrice.toFixed(2)}
+          ${sellPrice.toFixed(2)}
         </td>
         <td className="px-4 py-2 text-sm text-gray-600">{qty}</td>
-        <td className="px-4 py-2 text-sm font-bold text-gray-800">
+        <td className="px-4 py-2 text-sm font-semibold text-gray-700">
           ${total.toFixed(2)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
-          {getFirmNameById(purchase.firmId)}
+        <td className="px-4 py-2 text-sm font-semibold text-gray-700">
+          ${profit.toFixed(2)}
         </td>
         <td className="px-4 py-2 text-sm text-gray-600">
-          {getBuyerNameById(actualBuyerId)}
+          {getSellerNameById(sell.sellerId)}
         </td>
         {/* Action Buttons */}
         <td className="px-4 py-2 space-x-2 text-center">
-          {canAddPurchase && (
+          {canAddSell && (
             <button
-              onClick={() => openEditModal(purchase)}
+              onClick={() => openEditModal(sell)}
               className="px-2 py-1 text-xs font-medium text-white bg-yellow-500 rounded hover:bg-yellow-600"
             >
               Edit
             </button>
           )}
-          {canAddPurchase && (
+          {canAddSell && (
             <button
-              onClick={() => handleDeletePurchase(purchase._id)}
+              onClick={() => handleDeleteSell(sell._id)}
               className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600"
             >
               Delete
@@ -446,47 +466,67 @@ export default function PurchasesList() {
   /************************************************************************************
    * 11) AGGREGATIONS
    ************************************************************************************/
-  // Global total
-  const totalPaidAll = filteredPurchases.reduce(
-    (sum, p) => sum + (p.quantity || 0) * (p.purchasePrice || 0),
-    0
-  );
-
-  // Buyer totals
-  const buyerMap = {};
-  filteredPurchases.forEach((p) => {
-    const rawBuyer = p.buyerId?._id || p.buyerId;
-    const bId = rawBuyer?.toString() || "unknown";
-    if (!buyerMap[bId]) {
-      buyerMap[bId] = 0;
-    }
-    buyerMap[bId] += (p.quantity || 0) * (p.purchasePrice || 0);
+  // 1) Global totals for the filtered sells
+  let totalRevenue = 0;
+  let totalProfit = 0;
+  filteredSells.forEach((s) => {
+    const qty = s.quantity || 0;
+    const sp = s.sellPrice || 0;
+    const avgPP = getAveragePurchasePrice(s.productId);
+    totalRevenue += sp * qty;
+    totalProfit += (sp - avgPP) * qty;
   });
-  const buyerTotals = Object.keys(buyerMap).map((bId) => ({
-    buyerId: bId,
-    total: buyerMap[bId],
+
+  // 2) Average sell price per product (filtered)
+  const sellMap = {};
+  filteredSells.forEach((s) => {
+    if (!sellMap[s.productId]) {
+      sellMap[s.productId] = { totalSell: 0, totalQty: 0 };
+    }
+    sellMap[s.productId].totalSell += (s.sellPrice || 0) * (s.quantity || 0);
+    sellMap[s.productId].totalQty += s.quantity || 0;
+  });
+  const productSellAverages = Object.keys(sellMap).map((prodId) => {
+    const { totalSell, totalQty } = sellMap[prodId];
+    const avgSellPrice = totalQty > 0 ? totalSell / totalQty : 0;
+    const avgPurchasePrice = getAveragePurchasePrice(prodId);
+    const avgProfit = avgSellPrice - avgPurchasePrice;
+    return { productId: prodId, avgSellPrice, avgProfit };
+  });
+
+  // 3) Total sold by each seller (filtered)
+  const sellerTotalsMap = {};
+  filteredSells.forEach((s) => {
+    let sid;
+    // If sellerId is an object with ._id, extract that. Otherwise treat it as a string
+    if (s.sellerId && typeof s.sellerId === "object" && s.sellerId._id) {
+      sid = s.sellerId._id.toString();
+    } else {
+      sid = s.sellerId?.toString() || "unknown";
+    }
+
+    if (!sellerTotalsMap[sid]) {
+      sellerTotalsMap[sid] = { totalSold: 0, totalProfit: 0 };
+    }
+
+    const qty = s.quantity || 0;
+    const sp = s.sellPrice || 0;
+    const avgPP = getAveragePurchasePrice(s.productId);
+
+    sellerTotalsMap[sid].totalSold += sp * qty;
+    sellerTotalsMap[sid].totalProfit += (sp - avgPP) * qty;
+  });
+  const sellerTotals = Object.keys(sellerTotalsMap).map((sid) => ({
+    sellerId: sid,
+    totalSold: sellerTotalsMap[sid].totalSold,
+    totalProfit: sellerTotalsMap[sid].totalProfit,
   }));
-
-  // Average purchase price per product
-  const productMap = {};
-  filteredPurchases.forEach((p) => {
-    if (!productMap[p.productId]) {
-      productMap[p.productId] = { totalSpent: 0, totalQty: 0 };
-    }
-    productMap[p.productId].totalSpent += (p.quantity || 0) * p.purchasePrice;
-    productMap[p.productId].totalQty += p.quantity;
-  });
-  const productAverages = Object.keys(productMap).map((prodId) => {
-    const { totalSpent, totalQty } = productMap[prodId];
-    const avgPrice = totalQty > 0 ? totalSpent / totalQty : 0;
-    return { productId: prodId, avgPrice };
-  });
 
   /************************************************************************************
    * 12) CONDITIONAL RENDER
    ************************************************************************************/
   if (loading) {
-    return <p className="m-4 text-lg">Loading purchases...</p>;
+    return <p className="m-4 text-lg">Loading sells...</p>;
   }
   if (error) {
     return <p className="m-4 text-lg text-red-600">{error}</p>;
@@ -499,7 +539,7 @@ export default function PurchasesList() {
     <div className="px-4 py-6 mx-auto max-w-7xl">
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Purchases List</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Sells List</h1>
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate("/dashboard")}
@@ -507,12 +547,12 @@ export default function PurchasesList() {
           >
             ➤ Dashboard
           </button>
-          {canAddPurchase && (
+          {canAddSell && (
             <button
               onClick={openModal}
               className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700"
             >
-              + Add Purchase
+              + Add Sell
             </button>
           )}
         </div>
@@ -538,7 +578,6 @@ export default function PurchasesList() {
             ))}
           </select>
         </div>
-
         {/* Brand filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
@@ -557,7 +596,6 @@ export default function PurchasesList() {
             ))}
           </select>
         </div>
-
         {/* Product filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
@@ -576,38 +614,18 @@ export default function PurchasesList() {
             ))}
           </select>
         </div>
-
-        {/* Firm filter */}
+        {/* Seller filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
-            Firm
+            Seller
           </label>
           <select
-            value={selectedFirm}
-            onChange={(e) => setSelectedFirm(e.target.value)}
+            value={selectedSeller}
+            onChange={(e) => setSelectedSeller(e.target.value)}
             className="w-48 px-2 py-1 border rounded"
           >
-            <option value="all">All Firms</option>
-            {firms.map((f) => (
-              <option key={f._id} value={f._id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Buyer filter */}
-        <div>
-          <label className="block mb-1 text-sm font-semibold text-gray-600">
-            Buyer
-          </label>
-          <select
-            value={selectedBuyer}
-            onChange={(e) => setSelectedBuyer(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
-          >
-            <option value="all">All Buyers</option>
-            {allUsers.map((u) => (
+            <option value="all">All Sellers</option>
+            {users.map((u) => (
               <option key={u._id} value={u._id}>
                 {capitalize(u.username)} ({u.role})
               </option>
@@ -634,10 +652,13 @@ export default function PurchasesList() {
                 Brand
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
-                Market Price
+                In Stock
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
-                Purchase Price
+                Avg Purchase Price
+              </th>
+              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+                Sell Price
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
                 Qty
@@ -646,10 +667,10 @@ export default function PurchasesList() {
                 Total
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
-                Firm
+                Profit
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
-                Buyer
+                Seller
               </th>
               <th className="px-4 py-3 text-xs font-medium text-gray-700">
                 Action
@@ -660,45 +681,52 @@ export default function PurchasesList() {
         </table>
       </div>
 
-      {/* Summaries (Global total, product averages, buyer totals) */}
+      {/* Summaries (Global totals, product averages, seller totals) */}
       <div className="mt-6 space-y-4">
-        {/* Global total */}
+        {/* Global totals */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Global Totals (Filtered)
           </h2>
           <p className="text-gray-700">
-            <strong>Total Paid:</strong> ${totalPaidAll.toFixed(2)}
+            <strong>Total Revenue:</strong> ${totalRevenue.toFixed(2)}
+          </p>
+          <p className="text-gray-700">
+            <strong>Total Profit:</strong> ${totalProfit.toFixed(2)}
           </p>
         </div>
 
-        {/* Average purchase price per product (filtered) */}
+        {/* Average sell price & profit per product (filtered) */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
-            Average Purchase Price per Product (Filtered)
+            Average Sell Price & Profit per Product (Filtered)
           </h2>
-          {productAverages.map(({ productId, avgPrice }) => (
-            <p key={productId} className="text-gray-700">
-              <strong>{getProductNameById(productId)}</strong>: $
-              {avgPrice.toFixed(2)}
-            </p>
+          {productSellAverages.map(({ productId, avgSellPrice, avgProfit }) => (
+            <div key={productId} className="text-gray-700">
+              <strong>{getProductNameById(productId)}</strong>:
+              <ul className="ml-4 list-disc">
+                <li>Avg Sell Price: ${avgSellPrice.toFixed(2)}</li>
+                <li>Avg Profit (per unit): ${avgProfit.toFixed(2)}</li>
+              </ul>
+            </div>
           ))}
         </div>
 
-        {/* Total paid by each buyer (filtered) */}
+        {/* Total sold & profit by seller (filtered) */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
-            Total Paid by Buyer (Filtered)
+            Total Sold by Seller (Filtered)
           </h2>
-          {buyerTotals.map(({ buyerId, total }) => (
-            <p key={buyerId} className="text-gray-700">
-              <strong>{getBuyerNameById(buyerId)}</strong>: ${total.toFixed(2)}
+          {sellerTotals.map(({ sellerId, totalSold, totalProfit }) => (
+            <p key={sellerId} className="text-gray-700">
+              <strong>{getSellerNameById(sellerId)}</strong>: Sold $
+              {totalSold.toFixed(2)}, Profit ${totalProfit.toFixed(2)}
             </p>
           ))}
         </div>
       </div>
 
-      {/* ADD PURCHASE MODAL */}
+      {/* ADD SELL MODAL */}
       <Transition appear show={modalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={closeModal}>
           <Transition.Child
@@ -724,16 +752,14 @@ export default function PurchasesList() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {/* 
-                  CREATE Purchase Modal Panel
-                */}
+                {/* CREATE Sell Modal Panel */}
                 <Dialog.Panel className="w-full max-w-md p-6 overflow-hidden text-left bg-white rounded shadow-xl">
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
-                    Add New Purchase
+                    Add New Sell
                   </Dialog.Title>
 
                   <div className="space-y-4">
-                    {/* Category Filter for modalCategory */}
+                    {/* Category Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Category
@@ -753,7 +779,7 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* Brand Filter for modalBrand */}
+                    {/* Brand Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Brand
@@ -773,14 +799,14 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* Product (Filtered) */}
+                    {/* Product (filtered) */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Product
                       </label>
                       <select
                         name="productId"
-                        value={newPurchase.productId}
+                        value={newSell.productId}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded"
                       >
@@ -793,8 +819,8 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* If product chosen, show read-only info (category, brand, market price) */}
-                    {newPurchase.productId && (
+                    {/* If product chosen, read-only info about it */}
+                    {newSell.productId && (
                       <>
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
@@ -806,7 +832,7 @@ export default function PurchasesList() {
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
                             value={(function () {
                               const chosen = products.find(
-                                (prod) => prod._id === newPurchase.productId
+                                (prod) => prod._id === newSell.productId
                               );
                               if (!chosen) return "Unknown Category";
                               const catId =
@@ -829,7 +855,7 @@ export default function PurchasesList() {
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
                             value={(function () {
                               const chosen = products.find(
-                                (prod) => prod._id === newPurchase.productId
+                                (prod) => prod._id === newSell.productId
                               );
                               if (!chosen) return "Unknown Brand";
                               const brId =
@@ -842,7 +868,7 @@ export default function PurchasesList() {
 
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
-                            Market Price (from DB)
+                            In Stock
                           </label>
                           <input
                             type="text"
@@ -850,49 +876,44 @@ export default function PurchasesList() {
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
                             value={(function () {
                               const chosen = products.find(
-                                (prod) => prod._id === newPurchase.productId
+                                (prod) => prod._id === newSell.productId
                               );
-                              if (!chosen) return "$0.00";
-                              const mp = chosen.price || 0;
-                              return `$${mp.toFixed(2)}`;
+                              return chosen ? chosen.quantity : 0;
+                            })()}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block mb-1 text-sm font-semibold">
+                            Avg Purchase Price (computed)
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            className="w-full px-3 py-2 bg-gray-100 border rounded"
+                            value={(function () {
+                              const app = getAveragePurchasePrice(
+                                newSell.productId
+                              );
+                              return `$${app.toFixed(2)}`;
                             })()}
                           />
                         </div>
                       </>
                     )}
 
-                    {/* Firm */}
+                    {/* Seller */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
-                        Firm
+                        Seller
                       </label>
                       <select
-                        name="firmId"
-                        value={newPurchase.firmId}
+                        name="sellerId"
+                        value={newSell.sellerId}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded"
                       >
-                        <option value="">-- Select Firm --</option>
-                        {firms.map((f) => (
-                          <option key={f._id} value={f._id}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Buyer */}
-                    <div>
-                      <label className="block mb-1 text-sm font-semibold">
-                        Buyer
-                      </label>
-                      <select
-                        name="buyerId"
-                        value={newPurchase.buyerId}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded"
-                      >
-                        <option value="">-- Select Buyer --</option>
+                        <option value="">-- Select Seller --</option>
                         {users.map((u) => (
                           <option key={u._id} value={u._id}>
                             {capitalize(u.username)} ({u.role})
@@ -910,16 +931,16 @@ export default function PurchasesList() {
                         type="number"
                         name="quantity"
                         min="1"
-                        value={newPurchase.quantity}
+                        value={newSell.quantity}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded"
                       />
                     </div>
 
-                    {/* Purchase Price */}
+                    {/* Sell Price */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
-                        Purchase Price
+                        Sell Price
                       </label>
                       <div className="relative">
                         <span className="absolute text-gray-500 left-3 top-2">
@@ -927,10 +948,10 @@ export default function PurchasesList() {
                         </span>
                         <input
                           type="number"
-                          name="purchasePrice"
+                          name="sellPrice"
                           step="0.01"
                           min="0"
-                          value={newPurchase.purchasePrice}
+                          value={newSell.sellPrice}
                           onChange={handleInputChange}
                           className="w-full py-2 border rounded px-7"
                         />
@@ -941,7 +962,7 @@ export default function PurchasesList() {
                   {/* Modal Footer: Save, Cancel */}
                   <div className="flex justify-end mt-6 space-x-3">
                     <button
-                      onClick={savePurchase}
+                      onClick={saveSell}
                       className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
                     >
                       Save
@@ -961,7 +982,7 @@ export default function PurchasesList() {
         </Dialog>
       </Transition>
 
-      {/* EDIT PURCHASE MODAL */}
+      {/* EDIT SELL MODAL */}
       <Transition appear show={editModalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={closeEditModal}>
           <Transition.Child
@@ -988,12 +1009,10 @@ export default function PurchasesList() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {/* 
-                  EDIT Purchase Modal Panel
-                */}
+                {/* EDIT Sell Modal Panel */}
                 <Dialog.Panel className="w-full max-w-md p-6 overflow-hidden text-left bg-white rounded shadow-xl">
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
-                    Edit Purchase
+                    Edit Sell
                   </Dialog.Title>
 
                   <div className="space-y-4">
@@ -1006,16 +1025,16 @@ export default function PurchasesList() {
                         type="number"
                         name="quantity"
                         min="1"
-                        value={editPurchase.quantity}
+                        value={editSell.quantity}
                         onChange={handleEditChange}
                         className="w-full px-3 py-2 border rounded"
                       />
                     </div>
 
-                    {/* Purchase Price */}
+                    {/* Sell Price */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
-                        Purchase Price
+                        Sell Price
                       </label>
                       <div className="relative">
                         <span className="absolute text-gray-500 left-3 top-2">
@@ -1023,51 +1042,31 @@ export default function PurchasesList() {
                         </span>
                         <input
                           type="number"
-                          name="purchasePrice"
+                          name="sellPrice"
                           step="0.01"
                           min="0"
-                          value={editPurchase.purchasePrice}
+                          value={editSell.sellPrice}
                           onChange={handleEditChange}
                           className="w-full py-2 border rounded px-7"
                         />
                       </div>
                     </div>
 
-                    {/* Buyer */}
+                    {/* Seller */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
-                        Buyer
+                        Seller
                       </label>
                       <select
-                        name="buyerId"
-                        value={editPurchase.buyerId}
+                        name="sellerId"
+                        value={editSell.sellerId}
                         onChange={handleEditChange}
                         className="w-full px-3 py-2 border rounded"
                       >
-                        <option value="">-- Select Buyer --</option>
+                        <option value="">-- Select Seller --</option>
                         {users.map((u) => (
                           <option key={u._id} value={u._id}>
                             {capitalize(u.username)} ({u.role})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Firm */}
-                    <div>
-                      <label className="block mb-1 text-sm font-semibold">
-                        Firm
-                      </label>
-                      <select
-                        name="firmId"
-                        value={editPurchase.firmId}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border rounded"
-                      >
-                        <option value="">-- Select Firm --</option>
-                        {firms.map((f) => (
-                          <option key={f._id} value={f._id}>
-                            {f.name}
                           </option>
                         ))}
                       </select>
@@ -1077,7 +1076,7 @@ export default function PurchasesList() {
                   {/* Modal Footer: Update, Cancel */}
                   <div className="flex justify-end mt-6 space-x-3">
                     <button
-                      onClick={updatePurchase}
+                      onClick={updateSell}
                       className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
                     >
                       Update
@@ -1100,5 +1099,5 @@ export default function PurchasesList() {
   );
 }
 /********************************************************************/
-/* END OF FILE: PurchasesList.jsx ~1080 lines (full logic preserved)*/
+/* END OF FILE: SellsList.jsx (with aggregator fix)                  */
 /********************************************************************/

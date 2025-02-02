@@ -1,28 +1,24 @@
 "use strict";
 const { mongoose } = require("../configs/dbConnection");
 
-/* 
-   Purchase Model:
-   - quantity
-   - purchasePrice
-   - brandId, productId, firmId, buyerId, userId, etc.
-*/
-
-const PurchaseSchema = new mongoose.Schema(
+/**
+ * Sell Model:
+ * - userId: who created the record
+ * - sellerId: the staff/admin performing the sell
+ * - brandId, productId
+ * - quantity, sellPrice
+ * - amount = sellPrice * quantity
+ */
+const SellSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    buyerId: {
+    sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
-    },
-    firmId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Firm",
       required: true,
     },
     brandId: {
@@ -39,22 +35,22 @@ const PurchaseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    purchasePrice: {
+    sellPrice: {
       type: Number,
       default: 0,
     },
-    // amount = purchasePrice * quantity
+    // amount = sellPrice * quantity
     amount: {
       type: Number,
       default: function () {
-        return this.purchasePrice * this.quantity;
+        return this.sellPrice * this.quantity;
       },
       transform: function () {
-        return this.purchasePrice * this.quantity;
+        return this.sellPrice * this.quantity;
       },
     },
   },
-  { collection: "purchases", timestamps: true }
+  { collection: "sells", timestamps: true }
 );
 
-module.exports = mongoose.model("Purchase", PurchaseSchema);
+module.exports = mongoose.model("Sell", SellSchema);

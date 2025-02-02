@@ -11,7 +11,11 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
 // Helper function to generate JWT
 const generateToken = (user) => {
   return jwt.sign(
-    { _id: user._id, username: user.username, role: user.role },
+    {
+      _id: user._id,
+      username: user.username,
+      role: user.role,
+    },
     JWT_SECRET,
     { expiresIn: "30d" }
   );
@@ -32,7 +36,7 @@ const deleteFile = (filePath) => {
 };
 
 module.exports = {
-  // List all users (Admin only) or self-profile for non-admin
+  // List all users (Admin) or self only (non-admin)
   list: async (req, res) => {
     try {
       const filters = req.user.role === "admin" ? {} : { _id: req.user._id };
@@ -44,10 +48,10 @@ module.exports = {
           .json({ error: true, message: "No users found." });
       }
 
-      res.status(200).json({ error: false, data: users });
+      return res.status(200).json({ error: false, data: users });
     } catch (error) {
       console.error("Error listing users:", error);
-      res.status(500).json({ error: true, message: "Server error." });
+      return res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -92,7 +96,7 @@ module.exports = {
       await newUser.save();
       const token = generateToken(newUser);
 
-      res.status(201).json({
+      return res.status(201).json({
         error: false,
         message: "User registered successfully.",
         token,
@@ -108,11 +112,11 @@ module.exports = {
       });
     } catch (error) {
       console.error("Error creating user:", error);
-      res.status(500).json({ error: true, message: "Server error." });
+      return res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
-  // Read user details (self or admin for specific user)
+  // Read user details
   read: async (req, res) => {
     try {
       const filters =
@@ -127,10 +131,10 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      res.status(200).json({ error: false, data: user });
+      return res.status(200).json({ error: false, data: user });
     } catch (error) {
       console.error("Error reading user:", error);
-      res.status(500).json({ error: true, message: "Server error." });
+      return res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -149,7 +153,7 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // Delete the old image file if a new file is uploaded
+      // If a new file is uploaded, delete old file
       if (req.file) {
         const oldFilePath = path.join(
           __dirname,
@@ -168,19 +172,20 @@ module.exports = {
       }).select("-password");
 
       if (!updatedUser) {
-        return res
-          .status(404)
-          .json({ error: true, message: "User not found or no changes made." });
+        return res.status(404).json({
+          error: true,
+          message: "User not found or no changes made.",
+        });
       }
 
-      res.status(202).json({
+      return res.status(202).json({
         error: false,
         message: "Profile updated successfully.",
         data: updatedUser,
       });
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).json({ error: true, message: "Server error." });
+      return res.status(500).json({ error: true, message: "Server error." });
     }
   },
 
@@ -192,7 +197,6 @@ module.exports = {
       }
 
       const deletedUser = await User.findOneAndDelete({ _id: req.params.id });
-
       if (!deletedUser) {
         return res
           .status(404)
@@ -209,13 +213,12 @@ module.exports = {
         deleteFile(imagePath);
       }
 
-      res.status(200).json({
-        error: false,
-        message: "User deleted successfully.",
-      });
+      return res
+        .status(200)
+        .json({ error: false, message: "User deleted successfully." });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ error: true, message: "Server error." });
+      return res.status(500).json({ error: true, message: "Server error." });
     }
   },
 };

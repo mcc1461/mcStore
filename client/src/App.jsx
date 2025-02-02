@@ -26,7 +26,7 @@ import NotFound from "./components/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
 import AdminPanel from "./pages/AdminPanel";
 import PurchasesList from "./utils/PurchasesList";
-import SalesList from "./utils/SalesList";
+import SellsList from "./utils/SellsList";
 
 import { hydrateFromStorage } from "./slices/authSlice"; // Redux action
 
@@ -51,7 +51,7 @@ function App() {
       <Route path="/firms" element={<FirmList />} />
       <Route path="/products" element={<ProductList />} />
       <Route path="/purchases" element={<PurchasesList />} />
-      <Route path="/sales" element={<SalesList />} />
+      <Route path="/sells" element={<SellsList />} />
 
       {/* --------------------- Private (Auth) Routes --------------------- */}
       {/* Wrap them in <PrivateRoute> so user must be logged in */}
