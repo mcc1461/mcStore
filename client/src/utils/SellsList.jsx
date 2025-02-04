@@ -365,9 +365,21 @@ export default function SellsList() {
       return false;
     }
     // Seller
-    if (selectedSeller !== "all" && sell.sellerId !== selectedSeller) {
-      return false;
+    if (selectedSeller !== "all") {
+      let sellerIdValue = "";
+      if (sell.sellerId) {
+        if (typeof sell.sellerId === "object" && sell.sellerId._id) {
+          sellerIdValue = sell.sellerId._id.toString();
+        } else if (typeof sell.sellerId === "object") {
+          // If sellerId is an object but doesn't have an _id, default to empty string.
+          sellerIdValue = "";
+        } else {
+          sellerIdValue = sell.sellerId.toString();
+        }
+      }
+      if (sellerIdValue !== selectedSeller.toString()) return false;
     }
+
     return true;
   }
 
@@ -626,11 +638,28 @@ export default function SellsList() {
           >
             <option value="all">All Sellers</option>
             {users.map((u) => (
-              <option key={u._id} value={u._id}>
+              <option key={u._id} value={String(u._id)}>
                 {capitalize(u.username)} ({u.role})
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className="block mb-1 text-sm font-semibold text-gray-600">
+            {/* Empty space for alignment */}
+            {"Reset Filters"}
+          </label>
+          <button
+            onClick={() => {
+              setSelectedCategory("all");
+              setSelectedBrand("all");
+              setSelectedProduct("all");
+              setSelectedSeller("all");
+            }}
+            className="px-4 py-2 text-red-900 bg-orange-200 rounded hover:bg-orange-300"
+          >
+            ✖︎ Reset
+          </button>
         </div>
       </div>
 

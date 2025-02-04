@@ -18,6 +18,7 @@ import axios from "axios";
 import { logout } from "../slices/authSlice";
 
 import logo from "../assets/logo.png";
+import logo2 from "../assets/logo2.png";
 import defaultUser from "../assets/default-profile.png";
 
 function classNames(...classes) {
@@ -132,7 +133,7 @@ export default function Dashboard() {
         {/* Logo/Title */}
         <div className="flex items-center">
           <img src={logo} alt="Logo" className="w-auto h-8 mr-2 rounded-full" />
-          <h2 className="text-xl font-bold">Musco Store</h2>
+          <h2 className="text-xl font-bold text-blue-600">Musco Store</h2>
         </div>
 
         {/* Spacer */}
@@ -322,6 +323,15 @@ export default function Dashboard() {
         <div className="flex-1 ml-0 lg:ml-64">
           {/* The 'Outlet' area - your pages show here */}
           <main className="min-h-screen p-4 bg-gray-100">
+            {/* Logo/Title */}
+            <div className="flex items-center">
+              <img
+                src={logo2}
+                alt="Logo"
+                className="w-auto m-auto rounded-full h-96"
+              />
+            </div>
+
             <Outlet />
           </main>
         </div>

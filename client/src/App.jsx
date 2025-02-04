@@ -9,7 +9,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import Products from "./pages/Products";
-import Issues from "./pages/Issues";
+import Overview from "./pages/Overview";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
@@ -68,7 +68,7 @@ function App() {
 
           {/* Nested routes inside /dashboard */}
           <Route path="profile" element={<Profile />} />
-          <Route path="issues" element={<Issues />} />
+          <Route path="overview" element={<Overview />} />
           <Route path="settings" element={<Settings />} />
           <Route path="update" element={<EditProfile />} />
           <Route path="board" element={<Board />} />

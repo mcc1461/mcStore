@@ -9,7 +9,7 @@ import Table, {
   TableRow,
   TableHeader,
   TableCell,
-} from "../components/table";
+} from "../components/Table";
 
 // --------------------------------------------------------------------
 // Global Helper Functions
@@ -59,24 +59,49 @@ function getBrandName(product) {
   return "Unknown Brand";
 }
 
-// In stock view, the average market price is stored in product.price.
 function getAverageMarketPrice(product) {
   if (!product) return 0;
   return Number(product.price) || 0;
 }
 
-// For non-stock views (purchases/sells), lookup product name using its ID.
 function getDisplayProductName(item, products, viewMode) {
   if (viewMode === "stock") return item.name;
-  const prod = products.find((p) => p._id === item.productId);
-  return prod ? prod.name : "Unknown Product";
+  const prod = products.find((p) => String(p._id) === String(item.productId));
+  return prod ? getCategoryName(prod) || prod.name : "Unknown Product";
+}
+
+// NEW: Define a wrapper function so that breakdown calculations can call it.
+// This simply wraps getDisplayProductName with the current products and viewMode.
+function getDisplayProductNameWrapper(item, products, viewMode) {
+  return getDisplayProductName(item, products, viewMode);
+}
+
+// --------------------------------------------------------------------
+// Revised getDisplayCategory Helper
+// This helper returns the category for an item by checking in order:
+// 1. If the item already has a non‑empty category (or categoryName), use it.
+// 2. If the item has a populated product field, use that product’s category.
+// 3. Otherwise, if the item has a productId, look up the matching product in the local products array.
+// 4. If none of these steps yield a valid value, return "Unknown Category".
+function getDisplayCategory(item, products, viewMode) {
+  if (viewMode === "stock") return getCategoryName(item);
+  if (item.category && item.category.trim() !== "") return item.category;
+  if (item.categoryName && item.categoryName.trim() !== "")
+    return item.categoryName;
+  if (item.product) {
+    return getCategoryName(item.product);
+  }
+  if (item.productId) {
+    const prod = products.find((p) => String(p._id) === String(item.productId));
+    if (prod) return getCategoryName(prod);
+  }
+  return "Unknown Category";
 }
 
 // --------------------------------------------------------------------
 // ExpandedDetails Component
 // Displays detailed information (including product name and category)
-// for the expanded breakdown row. Receives viewMode, getDisplayProductName, and products
-// to properly look up product details for purchases and sells.
+// for the expanded breakdown row.
 function ExpandedDetails({
   category,
   items = [],
@@ -203,7 +228,7 @@ function DashboardBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // "See All Products" modal state and filters
+  // "See All" modal state and filters
   const [allProductsModalOpen, setAllProductsModalOpen] = useState(false);
   const [modalFilterCategory, setModalFilterCategory] = useState("all");
   const [modalFilterBrand, setModalFilterBrand] = useState("all");
@@ -270,16 +295,11 @@ function DashboardBoard() {
   }, [products]);
 
   // --------------------------------------------------------------------
-  // Local Helper Functions
+  // Revised getDisplayCategory is used in breakdown calculations.
+  // It accepts (item, products, viewMode)
   // --------------------------------------------------------------------
-  function getDisplayCategory(item) {
-    if (viewMode === "stock") return getCategoryName(item);
-    const prod = products.find((p) => p._id === item.productId);
-    return getCategoryName(prod);
-  }
-
-  function getDisplayProductNameWrapper(item) {
-    return getDisplayProductName(item, products, viewMode);
+  function getDisplayCategoryForBreakdown(item) {
+    return getDisplayCategory(item, products, viewMode);
   }
 
   // --------------------------------------------------------------------
@@ -306,7 +326,7 @@ function DashboardBoard() {
   function computeBreakdown(data, priceField) {
     const breakdown = {};
     data.forEach((item) => {
-      const cat = getDisplayCategory(item);
+      const cat = getDisplayCategoryForBreakdown(item);
       if (!breakdown[cat]) breakdown[cat] = { total: 0, value: 0, items: [] };
       breakdown[cat].total += 1;
       const itemValue = Number(item[priceField]) * Number(item.quantity);
@@ -321,11 +341,11 @@ function DashboardBoard() {
 
   const purchaseBreakdown = useMemo(
     () => computeBreakdown(purchases, "purchasePrice"),
-    [purchases]
+    [purchases, products, viewMode]
   );
   const sellBreakdown = useMemo(
     () => computeBreakdown(sells, "sellPrice"),
-    [sells]
+    [sells, products, viewMode]
   );
 
   const purchaseMap = useMemo(() => {
@@ -348,7 +368,7 @@ function DashboardBoard() {
   const sellProfitBreakdown = useMemo(() => {
     const breakdown = {};
     sells.forEach((sell) => {
-      const cat = getDisplayCategory(sell);
+      const cat = getDisplayCategoryForBreakdown(sell);
       if (!breakdown[cat]) breakdown[cat] = { totalProfit: 0, items: [] };
       const avgPP = getAveragePurchasePrice(sell.productId);
       const profit = (Number(sell.sellPrice) - avgPP) * Number(sell.quantity);
@@ -359,7 +379,7 @@ function DashboardBoard() {
       category,
       ...values,
     }));
-  }, [sells, purchaseMap]);
+  }, [sells, purchaseMap, products, viewMode]);
 
   let breakdownData = [];
   if (viewMode === "stock") {
@@ -377,7 +397,9 @@ function DashboardBoard() {
         .slice(0, 3)
         .map(
           (it) =>
-            `${it.name} - $${formatCurrency(getAverageMarketPrice(it) * it.quantity)}`
+            `${it.name} - $${formatCurrency(
+              getAverageMarketPrice(it) * it.quantity
+            )}`
         ),
     }));
   } else if (viewMode === "purchases") {
@@ -407,7 +429,9 @@ function DashboardBoard() {
           .slice(0, 3)
           .map(
             (it) =>
-              `${getDisplayProductName(it, products, viewMode)} - $${formatCurrency(it.profit)}`
+              `${getDisplayProductName(it, products, viewMode)} - $${formatCurrency(
+                it.profit
+              )}`
           ),
       }));
     } else {
@@ -440,20 +464,57 @@ function DashboardBoard() {
     }
   }, [breakdownData, viewMode, currentBreakdownType]);
 
+  const totalItems = useMemo(() => {
+    return breakdownData.reduce((acc, row) => acc + (row.total || 0), 0);
+  }, [breakdownData]);
+
   function toggleExpand(category) {
     setExpandedCategory((prev) => (prev === category ? null : category));
   }
 
-  const modalFilteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-      const brId = p.brandId ? p.brandId._id || p.brandId : "";
-      if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-        return false;
-      if (modalFilterBrand !== "all" && brId !== modalFilterBrand) return false;
-      return true;
-    });
-  }, [products, modalFilterCategory, modalFilterBrand]);
+  // --------------------------------------------------------------------
+  // Modal Data Filtering Based on View Mode
+  // --------------------------------------------------------------------
+  const modalFilteredData = useMemo(() => {
+    if (viewMode === "stock") {
+      return products.filter((p) => {
+        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+        const brId = p.brandId ? p.brandId._id || p.brandId : "";
+        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
+          return false;
+        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
+          return false;
+        return true;
+      });
+    } else if (viewMode === "purchases") {
+      return purchases.filter((p) => {
+        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+        const brId = p.brandId ? p.brandId._id || p.brandId : "";
+        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
+          return false;
+        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
+          return false;
+        return true;
+      });
+    } else if (viewMode === "sells") {
+      return sells.filter((p) => {
+        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+        const brId = p.brandId ? p.brandId._id || p.brandId : "";
+        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
+          return false;
+        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
+          return false;
+        return true;
+      });
+    }
+  }, [
+    viewMode,
+    products,
+    purchases,
+    sells,
+    modalFilterCategory,
+    modalFilterBrand,
+  ]);
 
   const availableBrands = useMemo(() => {
     if (modalFilterCategory === "all") return brands;
@@ -485,13 +546,28 @@ function DashboardBoard() {
     return Array.from(new Map(prodCats.map((c) => [c._id, c])).values());
   }, [modalFilterBrand, products, categories]);
 
+  // --------------------------------------------------------------------
+  // "See All" Modal Component
+  // --------------------------------------------------------------------
   function AllProductsModal() {
     const modalTotal = useMemo(() => {
-      return modalFilteredProducts.reduce(
-        (acc, p) => acc + Number(p.price) * Number(p.quantity),
-        0
-      );
-    }, [modalFilteredProducts]);
+      return modalFilteredData.reduce((acc, p) => {
+        const price =
+          viewMode === "stock"
+            ? Number(p.price)
+            : viewMode === "purchases"
+              ? Number(p.purchasePrice)
+              : Number(p.sellPrice);
+        return acc + price * Number(p.quantity);
+      }, 0);
+    }, [modalFilteredData, viewMode]);
+
+    const priceLabel =
+      viewMode === "stock"
+        ? "Avg. Market Price"
+        : viewMode === "purchases"
+          ? "Purchase Price"
+          : "Sell Price";
 
     return (
       <Transition appear show={allProductsModalOpen} as={Fragment}>
@@ -524,7 +600,11 @@ function DashboardBoard() {
               >
                 <Dialog.Panel className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl">
                   <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
-                    All Products
+                    {viewMode === "stock"
+                      ? "All Products"
+                      : viewMode === "purchases"
+                        ? "All Purchases"
+                        : "All Sells"}
                   </Dialog.Title>
                   <div className="flex flex-col gap-4 mb-4 sm:flex-row">
                     <div>
@@ -594,7 +674,7 @@ function DashboardBoard() {
                             style={{ minWidth: "150px" }}
                             className="px-4 py-2 text-sm font-bold text-right text-blue-900"
                           >
-                            Avg. Market Price
+                            {priceLabel}
                           </TableHeader>
                           <TableHeader
                             style={{ minWidth: "80px" }}
@@ -611,37 +691,43 @@ function DashboardBoard() {
                         </tr>
                       </TableHead>
                       <TableBody>
-                        {modalFilteredProducts.map((p, idx) => (
-                          <TableRow
-                            key={p._id}
-                            className="transition bg-white border-b hover:bg-gray-50"
-                          >
-                            <TableCell className="px-4 py-2 text-sm text-gray-700">
-                              {idx + 1}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm font-semibold text-gray-900 break-words whitespace-normal">
-                              {p.name}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm text-gray-700">
-                              {getCategoryName(p)}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm text-gray-700">
-                              {getBrandName(p)}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
-                              ${formatCurrency(Number(p.price))}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
-                              {Number(p.quantity).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-sm font-bold text-right text-gray-900">
-                              $
-                              {formatCurrency(
-                                Number(p.price) * Number(p.quantity)
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {modalFilteredData.map((p, idx) => {
+                          const price =
+                            viewMode === "stock"
+                              ? Number(p.price)
+                              : viewMode === "purchases"
+                                ? Number(p.purchasePrice)
+                                : Number(p.sellPrice);
+                          const qty = Number(p.quantity) || 0;
+                          return (
+                            <TableRow
+                              key={p._id}
+                              className="transition bg-white border-b hover:bg-gray-50"
+                            >
+                              <TableCell className="px-4 py-2 text-sm text-gray-700">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm font-semibold text-gray-900 break-words whitespace-normal">
+                                {p.name}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm text-gray-700">
+                                {getCategoryName(p)}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm text-gray-700">
+                                {getBrandName(p)}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
+                                ${formatCurrency(price)}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
+                                {qty.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="px-4 py-2 text-sm font-bold text-right text-gray-900">
+                                ${formatCurrency(price * qty)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                         <TableRow className="bg-indigo-700">
                           <TableCell
                             className="px-4 py-2 text-sm font-bold text-white"
@@ -700,7 +786,7 @@ function DashboardBoard() {
           </TableCell>
         </TableRow>
         {expandedCategory === row.category && (
-          <TableRow>
+          <TableRow className="bg-blue-100">
             <TableCell colSpan={4}>
               <ExpandedDetails
                 category={row.category}
@@ -800,30 +886,55 @@ function DashboardBoard() {
             <TableRow className="bg-indigo-700">
               <TableCell
                 className="px-4 py-2 text-sm font-bold text-white"
-                colSpan={3}
+                colSpan={1}
                 align="right"
               >
                 Grand Total:
               </TableCell>
-              <TableCell className="px-4 py-2 text-sm font-bold text-right text-white">
+              <TableCell
+                className="px-4 py-2 text-sm font-bold text-white"
+                colSpan={1}
+                align="right"
+              >
+                {Number(totalItems).toLocaleString()}
+              </TableCell>
+              <TableCell
+                className="px-4 py-2 text-sm font-bold text-right text-white"
+                colSpan={1}
+              >
                 ${formatCurrency(grandTotal)}
+              </TableCell>
+              <TableCell className="px-4 py-2 text-sm font-bold text-left text-white">
+                {/* Empty cell */}
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
       </div>
 
-      {/* "See All Products" Button */}
+      {/* Note for Stock View */}
+      {viewMode === "stock" && (
+        <div className="mt-4 text-sm text-center text-gray-600">
+          Note: In the Stock view, the grand total is calculated using the
+          average market price.
+        </div>
+      )}
+
+      {/* "See All" Button (text changes based on viewMode) */}
       <div className="flex justify-center mt-6">
         <button
           onClick={() => setAllProductsModalOpen(true)}
           className="px-6 py-2 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
         >
-          See All Products
+          {viewMode === "stock"
+            ? "See All Products"
+            : viewMode === "purchases"
+              ? "See All Purchases"
+              : "See All Sells"}
         </button>
       </div>
 
-      {/* "See All Products" Modal */}
+      {/* "See All" Modal */}
       {allProductsModalOpen && <AllProductsModal />}
     </div>
   );

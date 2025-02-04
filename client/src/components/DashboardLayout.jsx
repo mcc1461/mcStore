@@ -40,14 +40,14 @@ const DashboardLayout = () => {
             Board
           </NavLink>
           <NavLink
-            to="issues"
+            to="overview"
             className={({ isActive }) =>
               isActive
                 ? "text-white px-3 py-2 rounded-md text-sm font-medium uppercase underline"
                 : "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
             }
           >
-            Issues
+            Overview
           </NavLink>
           <NavLink
             to="settings"

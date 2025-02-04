@@ -39,6 +39,7 @@ export default function ProductsList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
+  const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
   const [filterStockStatus, setFilterStockStatus] = useState("all");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -112,6 +113,31 @@ export default function ProductsList() {
     if (!realBrandId) return "";
     const found = brands.find((b) => b._id === realBrandId);
     return found ? found.name : "";
+  }
+
+  function isPriceInAnySelectedRange(price, ranges) {
+    if (ranges.length === 0) return true;
+
+    return ranges.some((range) => {
+      switch (range) {
+        case "$0-10":
+          return price >= 0 && price <= 10;
+        case "$11-50":
+          return price > 10 && price <= 50;
+        case "$51-100":
+          return price > 50 && price <= 100;
+        case "$101-200":
+          return price > 100 && price <= 200;
+        case "$201-500":
+          return price > 200 && price <= 500;
+        case "$501-1000":
+          return price > 500 && price <= 1000;
+        case "$1000+":
+          return price > 1000;
+        default:
+          return true;
+      }
+    });
   }
 
   // ----------------------------------------------------------------
@@ -260,6 +286,11 @@ export default function ProductsList() {
       }
       return true;
     })
+    // Filter by Price
+    .filter((product) =>
+      isPriceInAnySelectedRange(product.price, selectedPriceRanges)
+    )
+
     // Filter by Search
     .filter((product) =>
       product.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -513,23 +544,38 @@ export default function ProductsList() {
           {/* Price Filter */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">
-              Avg Sell Price
+              Price (Avg Market)
             </label>
-            {/* [CHANGE] call handleBrandChange */}
-            <select
-              value={filterStockStatus}
-              onChange={(e) => setFilterPriceValue(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg"
-            >
-              <option value="all">All Prices</option>
-              <option value="$0-10">$0-10</option>
-              <option value="$11-50">$11-50</option>
-              <option value="$51-100">Out of Stock (0)</option>
-              <option value="$101-200">Out of Stock (0)</option>
-              <option value="$201-500">Out of Stock (0)</option>
-              <option value="$501-1000">Out of Stock (0)</option>
-              <option value="$1000+">Out of Stock (0)</option>
-            </select>
+            {[
+              { label: "$0-10", value: "$0-10" },
+              { label: "$11-50", value: "$11-50" },
+              { label: "$51-100", value: "$51-100" },
+              { label: "$101-200", value: "$101-200" },
+              { label: "$201-500", value: "$201-500" },
+              { label: "$501-1000", value: "$501-1000" },
+              { label: "$1000+", value: "$1000+" },
+            ].map((option) => (
+              <div key={option.value} className="flex items-center mt-1">
+                <input
+                  type="checkbox"
+                  value={option.value}
+                  checked={selectedPriceRanges.includes(option.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Toggle the selected value in the array:
+                    if (selectedPriceRanges.includes(value)) {
+                      setSelectedPriceRanges(
+                        selectedPriceRanges.filter((v) => v !== value)
+                      );
+                    } else {
+                      setSelectedPriceRanges([...selectedPriceRanges, value]);
+                    }
+                  }}
+                  className="form-checkbox"
+                />
+                <span className="ml-2 text-sm">{option.label}</span>
+              </div>
+            ))}
           </div>
 
           {/* Stock Status */}

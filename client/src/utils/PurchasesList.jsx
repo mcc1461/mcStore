@@ -425,7 +425,7 @@ export default function PurchasesList() {
           {canAddPurchase && (
             <button
               onClick={() => openEditModal(purchase)}
-              className="px-2 py-1 text-xs font-medium text-white bg-yellow-500 rounded hover:bg-yellow-600"
+              className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-800"
             >
               Edit
             </button>
@@ -613,6 +613,24 @@ export default function PurchasesList() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block mb-1 text-sm font-semibold text-gray-600">
+            {/* Empty space for alignment */}
+            {"Reset Filters"}
+          </label>
+          <button
+            onClick={() => {
+              setSelectedCategory("all");
+              setSelectedBrand("all");
+              setSelectedProduct("all");
+              setSelectedSeller("all");
+            }}
+            className="px-4 py-2 text-red-900 bg-orange-200 rounded hover:bg-orange-300"
+          >
+            ✖︎ Reset
+          </button>
         </div>
       </div>
 

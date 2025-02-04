@@ -120,12 +120,12 @@ export default function Menu() {
         </div>
         <div className=" w-[60%] flex items-start">
           <Link
-            to="/dashboard/issues"
+            to="/dashboard/overview"
             className="font-semi-bold text-xl text-[20px] flex items-center justify-center gap-3 text-black  no-underline"
           >
             <p className="flex items-center gap-3 hover:text-red-500 focus:text-red-500">
               <BsFillExclamationCircleFill />
-              Report issues
+              Oveview
             </p>
           </Link>
         </div>
