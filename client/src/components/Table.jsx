@@ -5,15 +5,17 @@ import { HiOutlineRefresh } from "react-icons/hi";
 import { ImBin } from "react-icons/im";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import Search from "./search";
+import Search from "./Search";
+
 import { deleteProduct, setProducts } from "../slices/products/productSlice";
 
 export default function Table() {
   const [showModal, setShowModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null); // Track the product for deletion
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [search, setSearch] = useState("");
+
   const dispatch = useDispatch();
   const products = useSelector((state) => state.product.products);
-  const [search, setSearch] = useState("");
 
   // Fetch products on component mount
   useEffect(() => {
@@ -26,18 +28,21 @@ export default function Table() {
           },
         });
 
+        // Make sure the data is an array. If not, store an empty array or adjust to your API shape.
         if (response.status === 200) {
-          dispatch(setProducts(response.data));
+          const fetched = Array.isArray(response.data) ? response.data : [];
+          dispatch(setProducts(fetched));
         }
       } catch (error) {
         console.error("Error Fetching Products:", error);
+        alert("Failed to fetch products.");
       }
     };
 
     fetchProducts();
   }, [dispatch]);
 
-  // Handle deletion of a product
+  // Delete product
   const handleDeleteProduct = async (id) => {
     try {
       const token = localStorage.getItem("token");
@@ -46,11 +51,12 @@ export default function Table() {
           Authorization: `Bearer ${token}`,
         },
       });
+      // Remove from Redux
       dispatch(deleteProduct(id));
-      toast.success("Product deleted successfully!");
+      alert("Product deleted successfully!");
     } catch (error) {
       console.error("Error Deleting Product:", error);
-      toast.error("Failed to delete product.");
+      alert("Failed to delete product.");
     } finally {
       setShowModal(false);
     }
@@ -58,8 +64,11 @@ export default function Table() {
 
   // Filtered products based on search input
   const filteredProducts = useMemo(() => {
+    // Guard in case `products` is not an array
+    if (!Array.isArray(products)) return [];
+
     return products.filter((product) =>
-      product.name.toLowerCase().includes(search.toLowerCase())
+      product?.name?.toLowerCase().includes(search.toLowerCase())
     );
   }, [products, search]);
 
@@ -93,16 +102,19 @@ export default function Table() {
                 <td>{index + 1}</td>
                 <td>{product?.name || "-"}</td>
                 <td>{product?.category || "-"}</td>
-                <td>#{product?.price || "-"}</td>
-                <td>{product?.quantity || "-"}</td>
-                <td>#{product?.value || "-"}</td>
+                <td>#{product?.price ?? "-"}</td>
+                <td>{product?.quantity ?? "-"}</td>
+                <td>#{product?.value ?? "-"}</td>
                 <td className="flex items-center justify-center gap-3 mt-3">
+                  {/* View product */}
                   <Link to={`/dashboard/products/${product?._id}`}>
                     <BsEye className="text-[#0F1377]" />
                   </Link>
+                  {/* Edit product */}
                   <Link to={`/dashboard/editproduct/${product?._id}`}>
                     <HiOutlineRefresh className="text-[#0A6502]" />
                   </Link>
+                  {/* Delete product */}
                   <button
                     onClick={() => {
                       setSelectedProduct(product);
