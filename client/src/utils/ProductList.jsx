@@ -510,6 +510,27 @@ export default function ProductsList() {
               ))}
             </select>
           </div>
+          {/* Price Filter */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold">
+              Avg Sell Price
+            </label>
+            {/* [CHANGE] call handleBrandChange */}
+            <select
+              value={filterStockStatus}
+              onChange={(e) => setFilterPriceValue(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg"
+            >
+              <option value="all">All Prices</option>
+              <option value="$0-10">$0-10</option>
+              <option value="$11-50">$11-50</option>
+              <option value="$51-100">Out of Stock (0)</option>
+              <option value="$101-200">Out of Stock (0)</option>
+              <option value="$201-500">Out of Stock (0)</option>
+              <option value="$501-1000">Out of Stock (0)</option>
+              <option value="$1000+">Out of Stock (0)</option>
+            </select>
+          </div>
 
           {/* Stock Status */}
           <div className="mb-4">

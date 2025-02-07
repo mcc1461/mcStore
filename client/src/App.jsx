@@ -67,11 +67,11 @@ function App() {
           <Route index element={<Dashboard />} />
 
           {/* Nested routes inside /dashboard */}
-          <Route path="board" element={<Board />} />
           <Route path="profile" element={<Profile />} />
           <Route path="issues" element={<Issues />} />
           <Route path="settings" element={<Settings />} />
           <Route path="update" element={<EditProfile />} />
+          <Route path="board" element={<Board />} />
 
           {/* Example nested 'products' route */}
           <Route path="products">

@@ -445,7 +445,7 @@ export default function SellsList() {
           {canAddSell && (
             <button
               onClick={() => openEditModal(sell)}
-              className="px-2 py-1 text-xs font-medium text-white bg-yellow-500 rounded hover:bg-yellow-600"
+              className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-800"
             >
               Edit
             </button>
@@ -879,6 +879,22 @@ export default function SellsList() {
                                 (prod) => prod._id === newSell.productId
                               );
                               return chosen ? chosen.quantity : 0;
+                            })()}
+                          />
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-sm font-semibold">
+                            Avg Market Price
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            className="w-full px-3 py-2 bg-gray-100 border rounded"
+                            value={(function () {
+                              const chosen = products.find(
+                                (prod) => prod._id === newSell.productId
+                              );
+                              return chosen ? `$${chosen.price.toFixed(2)}` : 0;
                             })()}
                           />
                         </div>

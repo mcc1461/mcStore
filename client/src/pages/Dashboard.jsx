@@ -44,9 +44,19 @@ const navigation = [
     icon: DocumentDuplicateIcon,
     current: false,
   },
-  { name: "Calendar", href: "/calendar", icon: CalendarIcon, current: false },
+  {
+    name: "Board",
+    href: "/dashboard/board",
+    icon: CalendarIcon,
+    current: false,
+  },
   { name: "Reports", href: "/reports", icon: ChartPieIcon, current: false },
 ];
+
+// Function to capitalize the first letter of a string
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -142,7 +152,12 @@ export default function Dashboard() {
           <Menu as="div" className="relative">
             <Menu.Button>
               <div className="flex items-center space-x-3">
-                <h3 className="text-base italic font-bold">Hello</h3>
+                <h3 className="text-base italic font-bold">
+                  Hello{" "}
+                  <span className="text-blue-800">
+                    {userInfo ? capitalize(userInfo.username) : " "}
+                  </span>
+                </h3>
                 <span className="hidden text-base italic font-bold text-red-800 lg:block">
                   {userInfo?.username || "Guest"}
                 </span>

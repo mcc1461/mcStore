@@ -33,7 +33,7 @@ const DashboardLayout = () => {
             to="board"
             className={({ isActive }) =>
               isActive
-                ? "text-white px-3 py-2 rounded-md text-sm font-medium"
+                ? "text-white px-3 py-2 rounded-md text-sm font-medium underline"
                 : "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
             }
           >
@@ -43,7 +43,7 @@ const DashboardLayout = () => {
             to="issues"
             className={({ isActive }) =>
               isActive
-                ? "text-white px-3 py-2 rounded-md text-sm font-medium"
+                ? "text-white px-3 py-2 rounded-md text-sm font-medium uppercase underline"
                 : "text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
             }
           >

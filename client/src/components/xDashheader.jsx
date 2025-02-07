@@ -26,7 +26,7 @@ export default function Dasheader() {
   return (
     <div className="flex items-center justify-between w-[80vw] h-[10vh] bg-white rounded-md shadow-lg px-5 text-black">
       <p className="text-xl font-bold">
-        Hello,{" "}
+        ***Hello mcc,{userInfo ? userInfo.username : " "}
         {userInfo ? (
           <Link to="/dashboard/profile" className="text-red-500 no-underline">
             {userInfo.username}
@@ -39,7 +39,7 @@ export default function Dasheader() {
         className="bg-red-500 hover:bg-red-600 text-white font-semibold text-center p-2 no-underline rounded-[50px] w-[100px] transition ease-in-out delay-150 hover:-translate-1 hover:scale-110"
         onClick={logoutHandler}
       >
-        Log Out
+        Log *** Out
       </button>
     </div>
   );
