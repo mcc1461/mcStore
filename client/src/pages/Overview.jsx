@@ -42,6 +42,30 @@ const categoryColors = {
   "Unknown Category": "#95A5A6", // Gray for unknown
 };
 
+// Format Number
+function formatNumber(num) {
+  const absVal = Math.abs(num);
+  // Check if there's any decimal remainder
+  const decimalRemainder = num % 1 !== 0;
+
+  // 1) Less than 1000
+  if (absVal < 1000) {
+    const integerPart = Math.floor(num);
+    return decimalRemainder ? integerPart + "+" : String(integerPart);
+  }
+
+  // 2) 1000 <= value < 1,000,000
+  if (absVal < 1_000_000) {
+    // e.g., 23000 => 23k
+    const thousands = Math.floor(num / 1000);
+    return thousands + "k" + (decimalRemainder ? "+" : "");
+  }
+
+  // 3) 1,000,000 or more => X M
+  const millions = Math.floor(num / 1_000_000);
+  return millions + "M" + (decimalRemainder ? "+" : "");
+}
+
 // Title Case
 function toTitleCase(str) {
   if (!str) return "";
@@ -511,7 +535,7 @@ function Overview() {
               let formatted = rawValue;
               if (isMoneyChart) {
                 // Money: 2 decimals + $
-                formatted = "$" + Number(rawValue).toFixed(2);
+                formatted = "$" + formatNumber(Number(rawValue).toFixed(2));
               }
               // Otherwise just the raw integer for product counts
               return {
@@ -540,7 +564,12 @@ function Overview() {
         formatter: (value) => {
           if (isMoneyChart) {
             // 2 decimals + $
-            return "$" + Number(value).toFixed(2);
+            return (
+              "$" +
+              Number(value)
+                .toFixed(2)
+                .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+            );
           }
           // just raw integer for product chart
           return value;
