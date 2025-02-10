@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import Loader from "../components/Loader";
-import photo from "../assets/product.jfif";
 import { Link } from "react-router-dom";
 
 export default function Products() {
@@ -35,51 +34,51 @@ export default function Products() {
             <h2 className="text-2xl font-bold">Product</h2>
             <p className="font-bold border-t-2 border-b-2 border-gray-300">
               Products Availability :{" "}
-              <span className="text-green-700 font-semibold">In Stock</span>
+              <span className="font-semibold text-green-700">In Stock</span>
             </p>
           </div>
 
           <div className="h-[73vh] w-[95%]">
             <p>
-              <b className="red bg-red-500 p-1 mb-2 text-xl text-white">
+              <b className="p-1 mb-2 text-xl text-white bg-red-500 red">
                 Name:
               </b>{" "}
               <span>{name}</span>
             </p>
             <p>
               <b>SKU: {sku}</b>{" "}
-              <span className="text-gray-500 font-semibold">
+              <span className="font-semibold text-gray-500">
                 -183547496489307
               </span>
             </p>
             <p>
               <b>Categories:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">
+              <span className="ml-3 font-semibold text-gray-500">
                 {categories}
               </span>
             </p>
             <p>
               <b>Price:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">#{price}</span>
+              <span className="ml-3 font-semibold text-gray-500">#{price}</span>
             </p>
             <p>
               <b>Quantity in Stock:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">
+              <span className="ml-3 font-semibold text-gray-500">
                 {quantity}
               </span>
             </p>
             <p className="border-b-2 border-gray-300">
               <b>Total value in Stock:</b>{" "}
-              <span className="text-gray-500 font-semibold ml-3">
+              <span className="ml-3 font-semibold text-gray-500">
                 #{price * quantity}
               </span>
             </p>
             <b>Description:</b>
-            <p className="text-gray-500 font-semibold">{description}</p>
+            <p className="font-semibold text-gray-500">{description}</p>
           </div>
 
           <Link to={`/dashboard/editproduct/${id}`}>
-            <button className="bg-red-500 hover:bg-red-600 text-white font-semibold text-center p-1 rounded mt-2 no-underline">
+            <button className="p-1 mt-2 font-semibold text-center text-white no-underline bg-red-500 rounded hover:bg-red-600">
               Edit Product
             </button>
           </Link>

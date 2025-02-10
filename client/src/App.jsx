@@ -52,6 +52,9 @@ function App() {
       <Route path="/products" element={<ProductList />} />
       <Route path="/purchases" element={<PurchasesList />} />
       <Route path="/sells" element={<SellsList />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/board" element={<Board />} />
+      <Route path="/overview" element={<Overview />} />
 
       {/* --------------------- Private (Auth) Routes --------------------- */}
       {/* Wrap them in <PrivateRoute> so user must be logged in */}
@@ -72,6 +75,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="update" element={<EditProfile />} />
           <Route path="board" element={<Board />} />
+          <Route path="overview" element={<Overview />} />
 
           {/* Example nested 'products' route */}
           <Route path="products">

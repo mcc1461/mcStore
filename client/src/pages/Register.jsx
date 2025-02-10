@@ -3,7 +3,7 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import log from "../assets/logo2.png";
-import Logo from "../components/Logo1";
+// import Logo from "../assets/logo.png";
 import Loader from "../components/Loader";
 
 function Register() {
@@ -138,7 +138,7 @@ function Register() {
     <div className="flex items-center justify-center w-screen h-screen">
       <img src={log} alt="Log" className="w-1/3 h-auto" />
 
-      <div className="h-[90%] w-2/3 flex flex-col items-center justify-between">
+      <div className="h-[50%] w-2/3 flex flex-col items-center justify-between">
         {/* Header */}
         <div className="w-3/5 mt-10">
           <div className="flex items-center justify-between w-full">

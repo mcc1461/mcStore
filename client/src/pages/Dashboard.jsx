@@ -51,7 +51,12 @@ const navigation = [
     icon: CalendarIcon,
     current: false,
   },
-  { name: "Reports", href: "/reports", icon: ChartPieIcon, current: false },
+  {
+    name: "Overview",
+    href: "/overview",
+    icon: ChartPieIcon,
+    current: false,
+  },
 ];
 
 // Function to capitalize the first letter of a string
