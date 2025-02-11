@@ -4,14 +4,12 @@ const argon2 = require("argon2");
 const User = require("../models/userModel");
 const sendResetEmail = require("../helpers/sendResetEmail");
 
-// Fallback secrets if no environment variables are set
 const JWT_SECRET = process.env.JWT_SECRET || "mcc1461_default_jwt_secret";
 const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "mcc1461_default_refresh_secret";
 
 // Helper: Generate Token
 const generateToken = (user, secret, expiresIn) => {
-  // Important: we store user._id as "_id"
   return jwt.sign(
     {
       _id: user._id,
@@ -26,9 +24,10 @@ const generateToken = (user, secret, expiresIn) => {
 // Helper: Validate Password Complexity
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-/* ----------------------------- Controllers ----------------------------- */
+/* ------------------------------------------------------------------
+   Registration / Login / Logout / Refresh
+------------------------------------------------------------------ */
 
-// Register User
 const register = async (req, res) => {
   try {
     const { username, password, email, firstName, lastName, role, roleCode } =
@@ -54,7 +53,6 @@ const register = async (req, res) => {
       });
     }
 
-    // Create new user (password hashed by pre-save hook)
     const newUser = new User({
       username,
       password,
@@ -92,31 +90,26 @@ const register = async (req, res) => {
   }
 };
 
-// Login User
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Basic validation
     if (!username || !password) {
       return res
         .status(400)
         .json({ message: "Username and password are required." });
     }
 
-    // Find user by username
     const user = await User.findOne({ username });
     if (!user) {
       return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    // Verify password
     const validPassword = await argon2.verify(user.password, password);
     if (!validPassword) {
       return res.status(401).json({ message: "Invalid username or password." });
     }
 
-    // Generate tokens
     const accessToken = generateToken(user, JWT_SECRET, "1d");
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
@@ -141,7 +134,6 @@ const login = async (req, res) => {
   }
 };
 
-// Refresh Token
 const refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -159,7 +151,6 @@ const refresh = async (req, res) => {
         });
       }
 
-      // decoded has _id, username, role
       const user = await User.findById(decoded._id);
       if (!user) {
         return res.status(403).json({
@@ -181,12 +172,15 @@ const refresh = async (req, res) => {
   }
 };
 
-// Logout User
 const logout = (req, res) => {
   return res.json({ message: "Logged out successfully." });
 };
 
-// Request Password Reset
+/* ------------------------------------------------------------------
+   Forgot Password Flow
+------------------------------------------------------------------ */
+
+// 1) Request Password Reset (aka forgot password)
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
@@ -194,18 +188,25 @@ const requestPasswordReset = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
-        message: "User not found.",
+        // Updated message here
+        message: "No account found with this email address.",
       });
     }
 
     // Create reset token valid for 1 hour
     const resetToken = generateToken(user, JWT_SECRET, "1h");
 
+    // Store token in user doc to compare on reset
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1h
+    user.resetPasswordExpires = Date.now() + 3600000; // 1h from now
     await user.save();
 
-    const resetLink = `${process.env.FRONTEND_BASE_URL}/reset-password?token=${resetToken}`;
+    // The link your user will click (FRONTEND_BASE_URL from .env or fallback)
+    const resetLink = `${
+      process.env.FRONTEND_BASE_URL || "http://localhost:3061"
+    }/reset-password?token=${resetToken}`;
+
+    // Send the email (assuming you have a helper function)
     await sendResetEmail(
       user.email,
       "Password Reset Request",
@@ -216,6 +217,7 @@ const requestPasswordReset = async (req, res) => {
       message: "Password reset link sent to email.",
     });
   } catch (error) {
+    console.error("Error in requestPasswordReset:", error);
     return res.status(500).json({
       message: "Failed to send password reset link",
       error: error.message,
@@ -223,11 +225,12 @@ const requestPasswordReset = async (req, res) => {
   }
 };
 
-// Reset Password
+// 2) Reset Password
 const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
 
+    // Check password complexity
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         message:
@@ -236,15 +239,16 @@ const resetPassword = async (req, res) => {
     }
 
     const decoded = jwt.verify(resetToken, JWT_SECRET);
-    const user = await User.findById(decoded._id);
 
+    // The user _id from token
+    const user = await User.findById(decoded._id);
     if (!user || user.resetPasswordToken !== resetToken) {
       return res.status(403).json({
         message: "Invalid or expired reset token.",
       });
     }
 
-    // Update user's password
+    // Everything checks out, update password
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
@@ -252,6 +256,10 @@ const resetPassword = async (req, res) => {
 
     return res.json({ message: "Password reset successfully." });
   } catch (error) {
+    console.error("Error in resetPassword:", error);
+    if (error.name === "TokenExpiredError") {
+      return res.status(400).json({ message: "Reset token expired." });
+    }
     return res.status(500).json({
       message: "Failed to reset password",
       error: error.message,
@@ -264,6 +272,6 @@ module.exports = {
   login,
   refresh,
   logout,
-  requestPasswordReset,
+  requestPasswordReset, // rename if you want to "forgotPassword"
   resetPassword,
 };

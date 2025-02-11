@@ -19,7 +19,10 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       // Make an API call manually (replace endpoint as needed)
-      const response = await axios.post("/api/forgot-password", { email });
+      const response = await axios.post(
+        `${import.meta.env.VITE_APP_API_URL}/forgotPassword`,
+        { email }
+      );
 
       // Check your actual API response shape
       if (response?.data?.message === "Password reset link sent to email.") {

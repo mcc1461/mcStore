@@ -70,6 +70,11 @@ app.use(findSearchSortPage);
 /* ------------------------------------------------------- */
 // Routes
 
+// Forgotten Password Routes (No authentication required)
+// Since these routes are not protected, they are placed before the authentication middleware ***!SECTION
+app.post("/forgotPassword", requestPasswordReset);
+app.post("/reset-password", resetPassword);
+
 // Authentication Routes
 app.use("/api/auth", require("./src/routes/authRoutes"));
 
@@ -78,10 +83,6 @@ app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
 
 // Product and Other Entity Routes
 app.use("/api", authenticate, require("./src/routes"));
-
-// Forgotten Password Routes
-app.post("/api/users/forgotPassword", requestPasswordReset);
-app.post("/api/users/reset-password", resetPassword);
 
 // API Documentation Route
 app.all("/api/documents", (req, res) => {
