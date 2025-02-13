@@ -9,11 +9,13 @@ const path = require("path");
 const cors = require("cors");
 const app = express();
 
-// Load environment variables
+// Load environment variables from the project root
 if (process.env.NODE_ENV === "production") {
-  require("dotenv").config({ path: ".env.production" });
+  require("dotenv").config({
+    path: path.join(__dirname, "../.env.production"),
+  });
 } else {
-  require("dotenv").config(); // defaults to .env
+  require("dotenv").config({ path: path.join(__dirname, "../.env") });
 }
 
 let HOST = process.env.HOST || "127.0.0.1";
@@ -101,13 +103,13 @@ app.all("/api/documents", (req, res) => {
 });
 
 /* ------------------------------------------------------- */
-// Serve frontend static files from Vite build output ("dist")
-app.use(express.static(path.join(__dirname, "dist")));
+// Serve frontend static files from the client’s production build ("dist")
+app.use(express.static(path.join(__dirname, "../client/dist")));
 
 // Frontend Catch-all Route for non-API requests
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+  res.sendFile(path.join(__dirname, "../client/dist", "index.html"));
 });
 
 /* ------------------------------------------------------- */
