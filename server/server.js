@@ -103,13 +103,14 @@ app.all("/api/documents", (req, res) => {
 });
 
 /* ------------------------------------------------------- */
-// Serve frontend static files from the client’s production build ("dist")
-app.use(express.static(path.join(__dirname, "../client/dist")));
+// Serve frontend static files from the client's production build ("dist")
+const clientDistPath = path.join(__dirname, "../client/dist");
+app.use(express.static(clientDistPath));
 
 // Frontend Catch-all Route for non-API requests
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
-  res.sendFile(path.join(__dirname, "../client/dist", "index.html"));
+  res.sendFile(path.join(clientDistPath, "index.html"));
 });
 
 /* ------------------------------------------------------- */
