@@ -9,19 +9,21 @@ const path = require("path");
 const cors = require("cors");
 const app = express();
 
-// Load environment variables from the project root
+// Load environment variables from the same folder as server.js
 if (process.env.NODE_ENV === "production") {
   require("dotenv").config({
-    path: path.join(__dirname, "../.env.production"),
+    path: path.join(__dirname, ".env.production"),
   });
 } else {
-  require("dotenv").config({ path: path.join(__dirname, "../.env") });
+  require("dotenv").config({ path: path.join(__dirname, ".env") });
 }
 
+// Force host/port if desired
 let HOST = process.env.HOST || "127.0.0.1";
 let PORT = process.env.PORT || 8061;
 PORT = 8061;
 HOST = "127.0.0.1";
+
 /* ------------------------------------------------------- */
 
 // Handle async errors
@@ -103,9 +105,9 @@ app.all("/api/documents", (req, res) => {
 });
 
 /* ------------------------------------------------------- */
-// Serve frontend static files from the client's production build ("dist")
-const clientDistPath = path.join(__dirname, "../client/dist");
-console.log("Serving client from:", clientDistPath);
+// Serve frontend static files from "client/dist" relative to server.js
+const clientDistPath = path.join(__dirname, "client", "dist");
+console.log("Serving client build from:", clientDistPath);
 app.use(express.static(clientDistPath));
 
 // Frontend Catch-all Route for non-API requests
