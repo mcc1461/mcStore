@@ -25,11 +25,16 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
-/** Your full nav items, including "Products", "Firms", etc. */
+/** Full nav items, including "Products", "Firms", etc. */
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
-  { name: "Team", href: "/dashboard/team", icon: UsersIcon, current: false },
-  { name: "Categories", href: "/categories", icon: FolderIcon, current: false },
+  { name: "Team", href: "/team", icon: UsersIcon, current: false },
+  {
+    name: "Categories",
+    href: "/categories",
+    icon: FolderIcon,
+    current: false,
+  },
   { name: "Firms", href: "/firms", icon: FolderIcon, current: false },
   { name: "Brands", href: "/brands", icon: FolderIcon, current: false },
   { name: "Products", href: "/products", icon: FolderIcon, current: false },
@@ -188,7 +193,7 @@ export default function Dashboard() {
               leaveTo="transform opacity-0 scale-95"
             >
               <Menu.Items className="absolute right-0 z-10 w-32 py-2 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black/5 focus:outline-none">
-                {userInfo?.role === "admin" && (
+                {(userInfo?.role === "admin" || userInfo?.role === "staff") && (
                   <Menu.Item>
                     {({ active }) => (
                       <button

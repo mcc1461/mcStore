@@ -10,7 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import Products from "./pages/Products";
 import Overview from "./pages/Overview";
-import Settings from "./pages/Settings";
+import Settings from "./pages/x_Settings";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -27,6 +27,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import AdminPanel from "./pages/AdminPanel";
 import PurchasesList from "./utils/PurchasesList";
 import SellsList from "./utils/SellsList";
+import Team from "./pages/Team";
 
 import { hydrateFromStorage } from "./slices/authSlice"; // Redux action
 
@@ -55,6 +56,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/board" element={<Board />} />
       <Route path="/overview" element={<Overview />} />
+      <Route path="/team" element={<Team />} />
 
       {/* --------------------- Private (Auth) Routes --------------------- */}
       {/* Wrap them in <PrivateRoute> so user must be logged in */}
@@ -71,8 +73,6 @@ function App() {
 
           {/* Nested routes inside /dashboard */}
           <Route path="profile" element={<Profile />} />
-          <Route path="overview" element={<Overview />} />
-          <Route path="settings" element={<Settings />} />
           <Route path="update" element={<EditProfile />} />
           <Route path="board" element={<Board />} />
           <Route path="overview" element={<Overview />} />

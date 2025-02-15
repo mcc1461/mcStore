@@ -3,11 +3,11 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import log from "../assets/logo2.png";
-// import Logo from "../assets/logo.png";
+import defaultProfile from "../assets/default-profile.png";
 import Loader from "../components/Loader";
 
 function Register() {
-  // State for form data
+  // Form fields
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -19,35 +19,44 @@ function Register() {
     roleCode: "",
   });
 
-  // Local state for user info (based on localStorage)
+  // New state to allow the user to select image source:
+  // "upload" for a file, "url" for an image URL.
+  const [imageSource, setImageSource] = useState("upload");
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [imageUrl, setImageUrl] = useState("");
+
+  // Other states
   const [userInfo, setUserInfo] = useState(
     JSON.parse(localStorage.getItem("userInfo")) || null
   );
-
-  // State for toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showRoleCode, setShowRoleCode] = useState(false);
-
-  // Local loading state
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  // Redirect to dashboard if already logged in
+  // Redirect if already logged in
   useEffect(() => {
     if (userInfo) {
       navigate("/dashboard/board");
     }
   }, [userInfo, navigate]);
 
-  // Update form data
+  // Update form fields
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Reset form fields
+  // Handle file selection for image upload
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedImageFile(e.target.files[0]);
+    }
+  };
+
+  // Reset all form fields and image states
   const resetForm = () => {
     setFormData({
       firstName: "",
@@ -59,12 +68,14 @@ function Register() {
       role: "user",
       roleCode: "",
     });
+    setSelectedImageFile(null);
+    setImageUrl("");
+    setImageSource("upload");
   };
 
-  // Submit the registration form
+  // Submit registration form
   const submitHandler = async (e) => {
     e.preventDefault();
-
     const {
       firstName,
       lastName,
@@ -76,15 +87,13 @@ function Register() {
       roleCode,
     } = formData;
 
-    console.log("Registration Form Data:", formData);
-
-    // Password validation
+    // Validate passwords match
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
     }
 
-    // Role code validation for admin or staff
+    // Validate role code for admin/staff
     if ((role === "admin" || role === "staff") && !roleCode.trim()) {
       toast.error(`Please provide the ${role} code.`);
       return;
@@ -93,38 +102,38 @@ function Register() {
     try {
       setIsLoading(true);
 
-      // Prepare registration payload
-      const registrationData = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        username: username.trim(),
-        email: email.trim(),
-        password,
-        role,
-        roleCode: roleCode ? roleCode.trim() : undefined, // Only include if provided
-      };
+      // Prepare a FormData payload
+      const form = new FormData();
+      form.append("firstName", firstName.trim());
+      form.append("lastName", lastName.trim());
+      form.append("username", username.trim());
+      form.append("email", email.trim());
+      form.append("password", password);
+      form.append("role", role);
+      if (roleCode) form.append("roleCode", roleCode.trim());
 
-      // Send registration request
-      const { data } = await axios.post("/api/auth/register", registrationData);
+      // Append the image based on the user’s selection:
+      if (imageSource === "upload" && selectedImageFile) {
+        form.append("image", selectedImageFile);
+      } else if (imageSource === "url" && imageUrl.trim() !== "") {
+        form.append("image", imageUrl.trim());
+      }
+
+      // Send registration request with multipart/form-data
+      const { data } = await axios.post("/api/auth/register", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       // Save tokens and user data in localStorage
-      // 1) ... after a successful registration response:
       localStorage.setItem("token", data.bearer.accessToken);
       localStorage.setItem("refreshToken", data.bearer.refreshToken);
       localStorage.setItem("userInfo", JSON.stringify(data.user));
 
-      // Update state with user information
-      // 2) Update local state
       setUserInfo(data.user);
-
-      // Notify success and redirect
-      // 3) Redirect to dashboard
       toast.success(data.message || "Registration successful!");
       navigate("/dashboard");
     } catch (error) {
       console.error("Registration error:", error.response?.data || error);
-
-      // Handle error messages
       toast.error(
         error.response?.data?.message ||
           "An unexpected error occurred during registration."
@@ -148,7 +157,7 @@ function Register() {
 
         {/* Registration Form */}
         <form
-          className="flex flex-col items-center w-full gap-2"
+          className="relative flex flex-col items-center w-full gap-2"
           onSubmit={submitHandler}
         >
           {/* Text Fields */}
@@ -164,7 +173,7 @@ function Register() {
             />
           ))}
 
-          {/* Password / Confirm Password */}
+          {/* Password and Confirm Password */}
           {["password", "confirmPassword"].map((field) => (
             <div className="relative w-3/5 h-9" key={field}>
               <input
@@ -226,7 +235,7 @@ function Register() {
             ))}
           </div>
 
-          {/* Role Code Input (Admin/Staff) */}
+          {/* Role Code Input (for Admin/Staff) */}
           {(formData.role === "admin" || formData.role === "staff") && (
             <div className="relative w-3/5 h-9">
               <input
@@ -247,6 +256,85 @@ function Register() {
             </div>
           )}
 
+          {/* Profile Image Source Selection */}
+          <div className="flex flex-col w-3/5 mt-4">
+            <p className="mb-2 text-xl font-bold">
+              Select Profile Image Source (optional):
+            </p>
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  value="upload"
+                  checked={imageSource === "upload"}
+                  onChange={() => setImageSource("upload")}
+                />
+                <span className="ml-2">Upload File</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="imageSource"
+                  value="url"
+                  checked={imageSource === "url"}
+                  onChange={() => setImageSource("url")}
+                />
+                <span className="ml-2">Image URL</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Conditional Input: File Upload */}
+          {imageSource === "upload" && (
+            <div className="flex flex-col items-center w-3/5 mt-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full"
+              />
+              {selectedImageFile && (
+                <div className="mt-4">
+                  <img
+                    src={URL.createObjectURL(selectedImageFile)}
+                    alt="Preview"
+                    className="object-cover w-40 h-40 rounded-full"
+                    onError={(e) => {
+                      e.currentTarget.src = defaultProfile;
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Conditional Input: Image URL */}
+          {imageSource === "url" && (
+            <div className="flex flex-col items-center w-3/5 mt-4">
+              <input
+                type="text"
+                name="imageUrl"
+                placeholder="Enter image URL"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="w-full text-center border-2 h-9 border-slate-400 rounded-xl"
+              />
+              {imageUrl && (
+                <div className="mt-4">
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="object-cover w-40 h-40 rounded-full"
+                    onError={(e) => {
+                      e.currentTarget.src = defaultProfile;
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Loading Overlay */}
           {isLoading && (
             <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
@@ -254,7 +342,7 @@ function Register() {
             </div>
           )}
 
-          {/* Buttons */}
+          {/* Form Buttons */}
           <button
             type="submit"
             className="w-3/5 mt-4 font-bold text-white bg-red-500 h-9 rounded-xl"
@@ -270,7 +358,7 @@ function Register() {
           </button>
         </form>
 
-        {/* Redirect */}
+        {/* Redirect to Login */}
         <p className="mt-4 text-xl font-bold">
           Already have an account?{" "}
           <Link to="/login" className="text-red-500">

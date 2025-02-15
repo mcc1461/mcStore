@@ -1,78 +1,74 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BsArrowRight } from "react-icons/bs";
 import Logo from "../components/Logo";
 import store from "../assets/Musco_Store.jpg";
 
 function Header() {
   return (
-    <div className="flex flex-col min-h-screen pt-10 text-white bg-violet-400">
-      {/* Top navigation bar */}
-      <nav className="flex items-center justify-between px-12 py-4">
-        {/* Left side: Logo + "MusCo-Store" */}
-        <div className="flex flex-col items-center">
+    <div className="flex flex-col min-h-screen text-white bg-gradient-to-b from-violet-500 to-purple-700">
+      {/* Top navigation */}
+      <nav className="flex items-center justify-between px-8 py-4">
+        {/* Logo and brand name */}
+        <div className="flex items-center space-x-2">
           <Logo />
         </div>
 
-        {/* Right side: Register/Login */}
-        <div className="flex items-center space-x-5 text-xl font-semibold">
+        {/* Register/Login */}
+        <div className="flex items-center space-x-3">
           <Link
             to="/register"
-            className="px-3 py-1 transition ease-in-out delay-150 bg-blue-700 rounded-md hover:-translate-y-1 hover:scale-105 hover:bg-blue-900"
+            className="px-4 py-2 text-lg font-semibold transition-transform bg-blue-700 rounded-lg hover:-translate-y-1 hover:scale-105 hover:bg-blue-900"
           >
             Register
           </Link>
           <Link
             to="/login"
-            className="px-3 py-1 transition ease-in-out delay-150 bg-green-500 rounded-md hover:-translate-y-1 hover:scale-105 hover:bg-green-700"
+            className="px-4 py-2 text-lg font-semibold transition-transform bg-green-500 rounded-lg hover:-translate-y-1 hover:scale-105 hover:bg-green-700"
           >
             Login
           </Link>
         </div>
       </nav>
 
-      {/* Main Hero Section */}
-      <main className="flex flex-col items-center flex-1 px-8 md:px-16">
-        {/* Image */}
-        <div className="w-full max-w-5xl mt-6 mb-10">
+      {/* Main Content */}
+      <main className="flex flex-col items-center flex-1 px-8 md:px-20 lg:px-32">
+        {/* Hero Image */}
+        <div className="w-full max-w-4xl mt-8 mb-12">
           <img
             src={store}
-            alt="Store illustration"
-            className="w-full h-auto shadow-lg rounded-2xl"
+            alt="MusCo-Store"
+            className="w-full h-auto shadow-xl rounded-2xl"
           />
         </div>
 
-        {/* Headline & Benefits */}
-        <section className="w-full max-w-5xl space-y-10 text-center">
-          {/* Bold, attention-grabbing headline */}
-          <h1 className="flex flex-col text-5xl font-black tracking-tight">
-            <span>Unleash Your Sales Potential</span>
-            <span>with MusCo-Store</span>
+        {/* Headline & Key Points */}
+        <section className="w-full max-w-4xl space-y-8 text-center">
+          <h1 className="text-4xl font-black leading-tight md:text-5xl">
+            Take Control of <br /> Your Sales Potential
           </h1>
-
-          {/* Engaging subheading that strikes a confident tone */}
-          <p className="text-2xl italic leading-relaxed">
-            Empower your business with real-time insights, seamless automation,
-            and razor-sharp analytics
+          <p className="text-xl font-light">
+            This powerful <strong>web app</strong> centralizes your entire store
+            management—giving you instant inventory insights, streamlined
+            customer engagement, and data-driven decision-making at your
+            fingertips.
           </p>
-
-          {/* Distinctive bullet points with clearer calls to action */}
-          <ul className="text-xl space-y-7 ">
-            <li className="flex items-start gap-3">
-              <strong>➤ Track & Organize:</strong> Instantly catalog product
-              availability and monitor stock levels—no more costly oversights.
+          {/* Benefits List */}
+          <ul className="space-y-4 text-lg leading-relaxed text-left">
+            <li>
+              <strong>➤ Track &amp; Organize:</strong> Monitor stock levels and
+              avoid costly oversights.
             </li>
-            <li className="flex items-start gap-3">
-              <strong>➤ Automate & Save Time:</strong> Focus on selling, while
-              MusCo-Store handles routine tasks in the background.
+            <li>
+              <strong>➤ Automate &amp; Save Time:</strong> Let MusCo-Store
+              handle routine tasks.
             </li>
-            <li className="flex items-start gap-3">
-              <strong>➤ Engage Customers:</strong> Seamlessly track sales
-              journeys and interactions to nurture loyal relationships.
+            <li>
+              <strong>➤ Engage Customers:</strong> Build loyal relationships
+              with integrated sales tracking.
             </li>
-            <li className="flex items-start gap-3">
-              <strong>➤ Data-Driven Insights:</strong> Harness real-time
-              dashboards for smart, profitable decisions.
+            <li>
+              <strong>➤ Data-Driven Insights:</strong> Make confident decisions
+              with real-time dashboards.
             </li>
           </ul>
         </section>
