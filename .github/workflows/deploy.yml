@@ -1,0 +1,41 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository code
+      - uses: actions/checkout@v2
+
+      # Step 2: Install project dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Step 3: Build your production files (Vite typically outputs to "dist")
+      - name: Build
+        run: npm run build
+
+      # Step 4: Deploy the build folder via FTP
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.2
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_FTP_USER }}
+          password: ${{ secrets.HOSTINGER_FTP_PASS }}
+          port: ${{ secrets.HOSTINGER_FTP_PORT }}
+
+          # local-dir is where your built files are after 'npm run build'
+          local-dir: "./dist"
+
+          # server-dir is the folder on the host where you want them
+          server-dir: "/public_html" # Make sure this matches your Hostinger setup
+
+
+          # If you want to remove extra files on the server that are not in 'dist'
+          # you can set "dangerousCleanSlate: true"
