@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy to VPS
 
 on:
   push:
@@ -6,36 +6,35 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository code
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Step 2: Install project dependencies
-      - name: Install Dependencies
-        run: npm install
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > my_ssh_key || exit 1
+          chmod 600 my_ssh_key
 
-      # Step 3: Build your production files (Vite typically outputs to "dist")
-      - name: Build
-        run: npm run build
+      - name: Sync files to VPS using rsync (incremental sync)
+        run: |
+          set -x
+          rsync -avz --exclude=.git --exclude=node_modules --exclude=build -e 'ssh -i my_ssh_key -o StrictHostKeyChecking=no' ./ deployuser@147.79.118.232:/var/www/mcfolio
 
-      # Step 4: Deploy the build folder via FTP
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@4.3.2
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_HOST }}
-          username: ${{ secrets.HOSTINGER_FTP_USER }}
-          password: ${{ secrets.HOSTINGER_FTP_PASS }}
-          port: ${{ secrets.HOSTINGER_FTP_PORT }}
+      - name: Install dependencies and build frontend
+        run: |
+          ssh -i my_ssh_key -o StrictHostKeyChecking=no deployuser@147.79.118.232 << 'EOF'
+            cd /var/www/mcfolio/client
+            # Use npm ci for faster installation
+            npm ci
+            npm run build
+          EOF
 
-          # local-dir is where your built files are after 'npm run build'
-          local-dir: "./dist"
-
-          # server-dir is the folder on the host where you want them
-          server-dir: "/public_html" # Make sure this matches your Hostinger setup
-
-
-          # If you want to remove extra files on the server that are not in 'dist'
-          # you can set "dangerousCleanSlate: true"
+      - name: Restart Nginx and PM2 with zero-downtime reload
+        run: |
+          ssh -i my_ssh_key -o StrictHostKeyChecking=no deployuser@147.79.118.232 << 'EOF'
+            sudo systemctl restart nginx
+            pm2 reload all --update-env
+          EOF
