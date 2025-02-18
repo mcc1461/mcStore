@@ -15,7 +15,7 @@ jobs:
 
       - name: Create SSH key file
         run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > my_ssh_key || exit 1
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > my_ssh_key
           chmod 600 my_ssh_key
 
       - name: Sync files to VPS using rsync (incremental sync)
