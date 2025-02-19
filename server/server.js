@@ -46,7 +46,15 @@ app.set("views", path.join(__dirname, "views"));
 // CORS Configuration
 app.use(
   cors({
-    origin: "*", //["http://localhost:3061", "http://
+    origin: [
+      "http://localhost:3061",
+      "http://127.0.0.1:3061",
+      "https://tailwindui.com",
+      "https://store.musco.dev",
+      "https://www.store.musco.dev",
+      "https://store.musco.dev:3061",
+      "https://www.store.musco.dev:3061",
+    ], //["http://localhost:3061", "http://
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
