@@ -46,16 +46,24 @@ app.set("views", path.join(__dirname, "views"));
 // CORS Configuration
 app.use(
   cors({
-    origin: [
-      "http://localhost:3061",
-      "http://127.0.0.1:3061",
-      "https://tailwindui.com",
-    ],
+    origin: "*", //["http://localhost:3061", "http://
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
 app.options("*", cors()); // Preflight request handling
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:3061",
+//       "http://127.0.0.1:3061",
+//       "https://tailwindui.com",
+//     ],
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//     credentials: true,
+//   })
+// );
+// app.options("*", cors()); // Preflight request handling
 
 // Serve static files for uploads directory (prioritize this middleware)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
