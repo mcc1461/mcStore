@@ -118,7 +118,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // Frontend Catch-all Route
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next(); // Avoid serving index.html for API routes
-  res.sendFile(path.resolve(__dirname, "public", "index.html"));
+  res.sendFile(path.resolve(__dirname, "..", "build", "public", "index.html"));
 });
 
 /* ------------------------------------------------------- */
