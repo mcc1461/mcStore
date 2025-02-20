@@ -1,5 +1,41 @@
 {
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "author": {
+    "name": "Musco",
+    "email": "mcoskuncelebi@gmail.com",
+    "url": "https://musco.dev"
+  },
+  "license": "ISC",
   "dependencies": {
-    "nodemon": "^3.1.9"
-  }
+    "axios": "1.7.9",
+    "cors": "2.8.5",
+    "dotenv": "10.0.0",
+    "express": "4.17.2",
+    "mongoose": "6.0.13",
+    "nodemon": "3.1.9",
+    "bcrypt": "5.0.1",
+    "jsonwebtoken": "8.5.1",
+    "cookie-parser": "1.4.5",
+    "express-validator": "6.13.1",
+    "multer": "1.4.4",
+    "sharp": "0.29.1",
+    "uuid": "8.3.2",
+    "nodemailer": "6.6.3",
+    "nodemailer-sendgrid-transport": "0.2.0",
+    "argon2": "0.41.1",
+    "body-parser": "1.19.0",
+    "lodash": "4.17.21",
+    "colors": "1.4.0",
+    "morgan": "1.10.0",
+    "mongodb": "4.3.1",
+    "express-async-handler": "1.1.4"
+  },
+  "nodemon": "^3.1.9"
 }

@@ -107,11 +107,6 @@ app.all("/api/documents", (req, res) => {
   });
 });
 
-// Welcome Route
-app.get("/", (req, res) => {
-  res.json({ message: "Welcome to MusCo Dev API!" });
-});
-
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -119,6 +114,11 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next(); // Avoid serving index.html for API routes
   res.sendFile(path.resolve(__dirname, "..", "build", "public", "index.html"));
+});
+
+// Welcome Route
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to MusCo Dev API!" });
 });
 
 /* ------------------------------------------------------- */

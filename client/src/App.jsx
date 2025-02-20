@@ -10,7 +10,6 @@ import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import Products from "./pages/Products";
 import Overview from "./pages/Overview";
-import Settings from "./pages/x_Settings";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -19,8 +18,9 @@ import CategoriesList from "./utils/CategoryList";
 import FirmList from "./utils/FirmList";
 import BrandList from "./utils/BrandList";
 import ProductList from "./utils/ProductList";
-import PrivateRoute from "./components/PrivateRoute";
+
 import AdminRoute from "./components/AdminRoute";
+import PrivateRoute from "./components/PrivateRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFound from "./components/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
