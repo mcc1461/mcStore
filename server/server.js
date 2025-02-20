@@ -117,9 +117,12 @@ app.get("*", (req, res, next) => {
 });
 
 // Welcome Route
-app.get("/", (req, res) => {
-  res.json({ message: "Welcome to MusCo Dev API!" });
+app.use(express.static(path.join(__dirname, "../client/build"))); // Serve React frontend
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/build", "index.html"));
 });
+
 
 /* ------------------------------------------------------- */
 // Error Handlers
