@@ -39,9 +39,6 @@
     "mongodb": "4.3.1",
     "express-async-handler": "1.1.4"
   },
-  "nodemon": "^3.1.9"
     "nodemon": "^3.1.9",
     "pm2": "^5.4.3"
   }
->>>>>>> origin/main
-}

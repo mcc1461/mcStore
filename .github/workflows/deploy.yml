@@ -1,0 +1,23 @@
+{
+  "name": "Deploy",
+  "on": { "push": { "branches": ["master"] } },
+  "jobs":
+    {
+      "deploy":
+        {
+          "runs-on": "ubuntu-latest",
+          "steps":
+            [
+              { "name": "Checkout", "uses": "actions/checkout@v2" },
+              {
+                "name": "Setup SSH",
+                "run": "mkdir -p ~/.ssh\necho \"${{ secrets.SSH_PRIVATE_KEY }}\" | tr -d '\\r' > ~/.ssh/id_rsa\nchmod 600 ~/.ssh/id_rsa\nssh-keyscan -H your-server-ip >> ~/.ssh/known_hosts\nchmod 644 ~/.ssh/known_hosts",
+              },
+              {
+                "name": "Deploy",
+                "run": "ssh deployuser@147.79.118.232 'cd /var/www/mcStore && git pull'",
+              },
+            ],
+        },
+    },
+}
