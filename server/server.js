@@ -10,7 +10,15 @@ const cors = require("cors");
 const app = express();
 
 // Load environment variables
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+// require("dotenv").config({ path: path.join(__dirname, ".env") });
+
+// server.js (or your main file)
+if (process.env.NODE_ENV === "production") {
+  require("dotenv").config({ path: ".env.production" });
+} else {
+  require("dotenv").config(); // defaults to .env
+}
+
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = process.env.PORT || 8061;
 
@@ -122,7 +130,6 @@ app.use(express.static(path.join(__dirname, "../client/build"))); // Serve React
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/build", "index.html"));
 });
-
 
 /* ------------------------------------------------------- */
 // Error Handlers
