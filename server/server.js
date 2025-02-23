@@ -105,6 +105,7 @@ app.all("/api/documents", (req, res) => {
 /* ------------------------------------------------------- */
 // Serve frontend static files from the client's production build ("dist")
 const clientDistPath = path.join(__dirname, "../client/dist");
+console.log("Serving client from:", clientDistPath);
 app.use(express.static(clientDistPath));
 
 // Frontend Catch-all Route for non-API requests
