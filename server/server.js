@@ -10,17 +10,14 @@ const cors = require("cors");
 const app = express();
 
 // Load environment variables
-// require("dotenv").config({ path: path.join(__dirname, ".env") });
-
-// server.js (or your main file)
 if (process.env.NODE_ENV === "production") {
   require("dotenv").config({ path: ".env.production" });
 } else {
   require("dotenv").config(); // defaults to .env
 }
 
-const HOST = process.env.HOST || "127.0.0.1";
-const PORT = process.env.PORT || 8061;
+let HOST = process.env.HOST || "127.0.0.1";
+let PORT = process.env.PORT || 8061;
 PORT = 8061;
 HOST = "127.0.0.1";
 /* ------------------------------------------------------- */
@@ -54,7 +51,6 @@ app.set("views", path.join(__dirname, "views"));
 /* ------------------------------------------------------- */
 // Middlewares
 
-// CORS Configuration
 app.use(
   cors({
     origin: [
@@ -65,29 +61,16 @@ app.use(
       "https://www.store.musco.dev",
       "https://store.musco.dev:3061",
       "https://www.store.musco.dev:3061",
-    ], //["http://localhost:3061", "http://
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
-app.options("*", cors()); // Preflight request handling
-// app.use(
-//   cors({
-//     origin: [
-//       "http://localhost:3061",
-//       "http://127.0.0.1:3061",
-//       "https://tailwindui.com",
-//     ],
-//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//     credentials: true,
-//   })
-// );
-// app.options("*", cors()); // Preflight request handling
+app.options("*", cors());
 
 // Serve static files for uploads directory (prioritize this middleware)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -97,8 +80,7 @@ app.use(findSearchSortPage);
 /* ------------------------------------------------------- */
 // Routes
 
-// Forgotten Password Routes (No authentication required)
-// Since these routes are not protected, they are placed before the authentication middleware ***!SECTION
+// Forgotten Password Routes (no authentication required)
 app.post("/forgotPassword", requestPasswordReset);
 app.post("/reset-password", resetPassword);
 
@@ -118,20 +100,14 @@ app.all("/api/documents", (req, res) => {
   });
 });
 
-// Serve frontend static files
+/* ------------------------------------------------------- */
+// Serve frontend static files from Vite build output ("dist")
 app.use(express.static(path.join(__dirname, "dist")));
 
-// Frontend Catch-all Route
+// Frontend Catch-all Route for non-API requests
 app.get("*", (req, res, next) => {
-  if (req.path.startsWith("/api/")) return next(); // Avoid serving index.html for API routes
-  res.sendFile(path.resolve(__dirname, "..", "build", "public", "index.html"));
-});
-
-// Welcome Route
-app.use(express.static(path.join(__dirname, "../client/build"))); // Serve React frontend
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/build", "index.html"));
+  if (req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
 /* ------------------------------------------------------- */
