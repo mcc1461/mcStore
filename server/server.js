@@ -21,6 +21,9 @@ if (process.env.NODE_ENV === "production") {
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = process.env.PORT || 8061;
+PORT = 8061;
+HOST = "127.0.0.1";
+/* ------------------------------------------------------- */
 
 // Handle async errors
 require("express-async-errors");
@@ -116,7 +119,7 @@ app.all("/api/documents", (req, res) => {
 });
 
 // Serve frontend static files
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "dist")));
 
 // Frontend Catch-all Route
 app.get("*", (req, res, next) => {
