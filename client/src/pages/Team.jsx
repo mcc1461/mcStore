@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import axios from "axios";
 import Loader from "../components/Loader";
 import { toast } from "react-toastify";
@@ -8,6 +9,9 @@ function Team() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Set up navigation
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -124,7 +128,19 @@ function Team() {
 
   return (
     <div className="min-h-screen px-5 py-10 bg-gray-100">
-      <h1 className="mb-10 text-4xl font-bold text-center">Our Team</h1>
+      {/* Button to return to Dashboard */}
+      <div className="flex justify-end w-full mb-5">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="px-4 py-2 font-bold text-white bg-indigo-500 rounded hover:bg-indigo-600"
+        >
+          ➤ Dashboard
+        </button>
+      </div>
+
+      <h1 className="mb-10 text-4xl font-bold text-center text-violet-700">
+        Our Team
+      </h1>
       <div className="flex flex-col items-center">
         {admins.length > 0 && (
           <div className="w-full mb-10">

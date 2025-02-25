@@ -169,9 +169,7 @@ export default function Dashboard() {
                     {userInfo ? capitalize(userInfo.username) : " "}
                   </span>
                 </h3>
-                <span className="hidden text-base italic font-bold text-red-800 lg:block">
-                  {userInfo?.username || "Guest"}
-                </span>
+
                 <img
                   src={imageUrl}
                   alt="Profile"
