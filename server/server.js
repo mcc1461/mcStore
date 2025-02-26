@@ -9,21 +9,50 @@ const path = require("path");
 const cors = require("cors");
 const app = express();
 
-// Load environment variables from the project root
+// IMPORTANT: Ensure your .env file is located at the project root (one level above the server folder)
+// and that it defines MONGODB_URI, JWT_SECRET, etc.
 if (process.env.NODE_ENV === "production") {
   require("dotenv").config({
-    path: path.join(__dirname, "../.env.production"),
+    path: path.join(__dirname, ".env.production"),
   });
 } else {
-  require("dotenv").config({ path: path.join(__dirname, "../.env") });
+  require("dotenv").config({ path: path.join(__dirname, ".env") });
 }
 
 let HOST = process.env.HOST || "127.0.0.1";
 let PORT = process.env.PORT || 8061;
 PORT = 8061;
 HOST = "127.0.0.1";
-/* ------------------------------------------------------- */
 
+/* ------------------------------------------------------- */
+// Global CORS Setup using the cors package
+const allowedOrigins = [
+  "http://localhost:3061",
+  "http://127.0.0.1:3061",
+  "https://tailwindui.com",
+  "https://store.musco.dev",
+  // ... add others as needed
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g., curl or mobile apps)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+/* ------------------------------------------------------- */
 // Handle async errors
 require("express-async-errors");
 
@@ -41,7 +70,7 @@ const {
   requestPasswordReset,
 } = require("./src/controllers/authController");
 
-// Database Connection
+// Database Connection (ensure your .env has MONGODB_URI defined)
 const { dbConnection } = require("./src/configs/dbConnection");
 dbConnection();
 
@@ -51,32 +80,15 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 /* ------------------------------------------------------- */
-// Middlewares
-
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3061",
-      "http://127.0.0.1:3061",
-      "https://tailwindui.com",
-      "https://store.musco.dev",
-      "https://www.store.musco.dev",
-      "https://store.musco.dev:3061",
-      "https://www.store.musco.dev:3061",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    credentials: true,
-  })
-);
-app.options("*", cors());
-
-// Serve static files for uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
+// Standard Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Custom Middleware
+// Serve static files for uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Serve your client build from the "client/dist" folder
+app.use(express.static(path.join(__dirname, "client/dist")));
+
 app.use(findSearchSortPage);
 
 /* ------------------------------------------------------- */
@@ -89,10 +101,8 @@ app.post("/reset-password", resetPassword);
 // Authentication Routes
 app.use("/api/auth", require("./src/routes/authRoutes"));
 
-// User Routes
+// Protected routes: For routes that require authentication, we assume the token is sent
 app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
-
-// Product and Other Entity Routes
 app.use("/api", authenticate, require("./src/routes"));
 
 // API Documentation Route
@@ -102,13 +112,12 @@ app.all("/api/documents", (req, res) => {
   });
 });
 
-/* ------------------------------------------------------- */
-// Serve frontend static files from the client's production build ("client/dist")
-const clientDistPath = path.join(__dirname, "../client/dist");
+// Frontend Catch-all Route for non-API requests.
+// (Ensure that your clientDistPath points to the correct production build.)
+const clientDistPath = path.join(__dirname, "../client");
 console.log("Serving client build from:", clientDistPath);
+console.log("__dirname:", __dirname);
 app.use(express.static(clientDistPath));
-
-// Frontend Catch-all Route for non-API requests
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   res.sendFile(path.join(clientDistPath, "index.html"));
@@ -122,8 +131,15 @@ app.use("/api", (req, res) => {
   res.status(404).json({ msg: "API route not found" });
 });
 
-// Centralized Error Handler
-app.use(errorHandler);
+// Centralized Error Handler (this wrapper ensures CORS headers are preserved on errors)
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Credentials", "true");
+  }
+  errorHandler(err, req, res, next);
+});
 
 /* ------------------------------------------------------- */
 // Start the Server
