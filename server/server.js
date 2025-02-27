@@ -7,25 +7,10 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const crypto = require("crypto");
 const app = express();
 
-// IMPORTANT: Ensure your .env file is located at the project root (one level above the server folder)
-// and that it defines MONGODB_URI, JWT_SECRET, etc.
-if (process.env.NODE_ENV === "production") {
-  require("dotenv").config({
-    path: path.join(__dirname, ".env.production"),
-  });
-} else {
-  require("dotenv").config({ path: path.join(__dirname, ".env") });
-}
-
-let HOST = process.env.HOST || "127.0.0.1";
-let PORT = process.env.PORT || 8061;
-PORT = 8061;
-HOST = "127.0.0.1";
-
-/* ------------------------------------------------------- */
-// Global CORS Setup using the cors package
+// Define allowed origins early
 const allowedOrigins = [
   "http://localhost:3061",
   "http://127.0.0.1:3061",
@@ -34,23 +19,68 @@ const allowedOrigins = [
   // ... add others as needed
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (e.g., curl or mobile apps)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
+/* --- Global CORS Middleware --- */
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (e.g., curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    optionsSuccessStatus: 200,
+  })
+);
+app.options("*", cors());
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+/* --- Deploy Webhook Route --- */
+// This route listens for GitHub webhooks to trigger deployment.
+// It uses express.raw so that we can verify the GitHub signature.
+function verifyGitHubSignature(req, res, buf, encoding) {
+  const signature = req.headers["x-hub-signature-256"];
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!signature || !secret) {
+    throw new Error("Missing signature or secret");
+  }
+  const hmac = crypto.createHmac("sha256", secret);
+  hmac.update(buf);
+  const digest = "sha256=" + hmac.digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
+    throw new Error("Invalid signature");
+  }
+}
+
+app.post(
+  "/deploy",
+  express.raw({ type: "application/json", verify: verifyGitHubSignature }),
+  (req, res) => {
+    // Here, you can trigger your deployment script, for example:
+    // const { exec } = require("child_process");
+    // exec("sh /path/to/deploy.sh", (error, stdout, stderr) => { ... });
+    console.log("Deploy webhook received. Payload:", req.body.toString());
+    res.status(200).send("Deployment triggered.");
+  }
+);
+
+/* ------------------------------------------------------- */
+// Load environment variables from the project root
+if (process.env.NODE_ENV === "production") {
+  require("dotenv").config({
+    path: path.join(__dirname, "../.env.production"),
+  });
+} else {
+  require("dotenv").config({ path: path.join(__dirname, "../.env") });
+}
+
+let HOST = process.env.HOST || "127.0.0.1";
+let PORT = process.env.PORT || 8061;
+PORT = 8061;
+HOST = "127.0.0.1";
 
 /* ------------------------------------------------------- */
 // Handle async errors
@@ -81,6 +111,7 @@ app.set("views", path.join(__dirname, "views"));
 
 /* ------------------------------------------------------- */
 // Standard Middlewares
+// Note: We already handled the raw body for /deploy above, so now we can use the regular JSON parser.
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -101,7 +132,7 @@ app.post("/reset-password", resetPassword);
 // Authentication Routes
 app.use("/api/auth", require("./src/routes/authRoutes"));
 
-// Protected routes: For routes that require authentication, we assume the token is sent
+// Protected routes: For routes that require authentication.
 app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
 app.use("/api", authenticate, require("./src/routes"));
 
@@ -113,7 +144,6 @@ app.all("/api/documents", (req, res) => {
 });
 
 // Frontend Catch-all Route for non-API requests.
-// (Ensure that your clientDistPath points to the correct production build.)
 const clientDistPath = path.join(__dirname, "../client");
 console.log("Serving client build from:", clientDistPath);
 console.log("__dirname:", __dirname);
@@ -131,7 +161,7 @@ app.use("/api", (req, res) => {
   res.status(404).json({ msg: "API route not found" });
 });
 
-// Centralized Error Handler (this wrapper ensures CORS headers are preserved on errors)
+// Centralized Error Handler (ensuring CORS headers are preserved)
 app.use((err, req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
