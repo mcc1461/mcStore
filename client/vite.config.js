@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 3061,
     base: "/", // Frontend running on port 3061
+    allowedHosts: ["softrealizer.com"], // Allow softrealizer.com
     proxy: {
       "/api": {
         target: "http://127.0.0.1:8061", // Proxy API requests to backend
