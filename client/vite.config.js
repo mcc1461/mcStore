@@ -5,29 +5,25 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3061,
-    base: "/", // Frontend running on port 3061
-    allowedHosts: ["softrealizer.com"], // Allow softrealizer.com
+    strictPort: true,
+    host: "0.0.0.0", // Ensure Vite listens on all interfaces
+    base: "/",
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8061", // Proxy API requests to backend
+        target: "http://127.0.0.1:8061",
         changeOrigin: true,
       },
     },
+    allowedHosts: ["softrealizer.com"],
   },
   build: {
-    chunkSizeWarningLimit: 1500, // Increase warning limit (default is 500)
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules")) {
-            return "vendor"; // Splits external libraries
-          }
-          if (id.includes("components")) {
-            return "components"; // Splits custom components
-          }
-          if (id.includes("pages")) {
-            return "pages"; // Splits page components
-          }
+          if (id.includes("node_modules")) return "vendor";
+          if (id.includes("components")) return "components";
+          if (id.includes("pages")) return "pages";
         },
       },
     },

@@ -108,7 +108,8 @@ function Register() {
       form.append("lastName", lastName.trim());
       form.append("username", username.trim());
       form.append("email", email.trim());
-      form.append("password", password);
+      // Trim the password to avoid accidental whitespace issues
+      form.append("password", password.trim());
       form.append("role", role);
       if (roleCode) form.append("roleCode", roleCode.trim());
 

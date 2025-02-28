@@ -4,7 +4,7 @@
     NODEJS EXPRESS SERVER - server.js | MusCo Dev
 ------------------------------------------------------- */
 
-// Load environment variables immediately.
+// Load environment variables immediately
 if (process.env.NODE_ENV === "production") {
   require("dotenv").config({
     path: require("path").join(__dirname, "../.env.production"),
@@ -21,13 +21,15 @@ const cors = require("cors");
 const crypto = require("crypto");
 const app = express();
 
-// Define allowed origins early.
+// Define allowed origins
 const allowedOrigins = [
   "http://localhost:3061",
   "http://127.0.0.1:3061",
   "https://tailwindui.com",
   "https://store.musco.dev",
-  // ... add others as needed.
+  "https://softrealizer.com",
+  "https://www.softrealizer.com",
+  // ... add others as needed
 ];
 
 /* --- Global CORS Middleware --- */
@@ -65,14 +67,11 @@ function verifyGitHubSignature(req, res, buf, encoding) {
     throw new Error("Invalid signature");
   }
 }
-
 app.post(
   "/deploy",
   express.raw({ type: "application/json", verify: verifyGitHubSignature }),
   (req, res) => {
-    // Trigger your deployment script here, e.g.:
-    // const { exec } = require("child_process");
-    // exec("sh /path/to/deploy.sh", (error, stdout, stderr) => { ... });
+    // Here, you can trigger your deployment script (e.g., using child_process.exec)
     console.log("Deploy webhook received. Payload:", req.body.toString());
     res.status(200).send("Deployment triggered.");
   }
@@ -87,7 +86,7 @@ HOST = "127.0.0.1";
 /* --- Handle async errors --- */
 require("express-async-errors");
 
-// Import additional middlewares and utilities.
+// Import additional middlewares and utilities
 const {
   authenticate,
   authorizeRoles,
@@ -95,7 +94,7 @@ const {
 const errorHandler = require("./src/middlewares/errorHandler");
 const { findSearchSortPage } = require("./src/middlewares/findSearchSortPage");
 
-// Import controllers.
+// Import controllers
 const {
   resetPassword,
   requestPasswordReset,
@@ -114,38 +113,32 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 /* --- Standard Middlewares --- */
-// (Note: /deploy already used express.raw; now we use JSON parser.)
+// Note: The /deploy route already uses express.raw; now use JSON parser.
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static files for uploads.
+// Serve static files for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-// Serve your client build from the "client/dist" folder.
+// Serve your client build from the "client/dist" folder
 app.use(express.static(path.join(__dirname, "client/dist")));
 
 app.use(findSearchSortPage);
 
-/* --- Routes --- */
-// Forgotten Password Routes (no authentication required)
-app.post("/forgotPassword", requestPasswordReset);
-app.post("/reset-password", resetPassword);
-
-// Authentication Routes.
-app.use("/api/auth", require("./src/routes/authRoutes"));
-
-// Protected routes: For routes that require authentication.
-app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
-app.use("/api", authenticate, require("./src/routes"));
-
-// API Documentation Route.
+/* --- Public API Routes --- */
+// Public API documentation (accessible without authentication)
 app.all("/api/documents", (req, res) => {
   res.render("documents", {
     title: "Stock Management API Service for MusCo",
   });
 });
 
-// Frontend Catch-all Route for non-API requests.
-// Assume the built client is in "../client/dist".
+/* --- Protected API Routes --- */
+app.use("/api/auth", require("./src/routes/authRoutes"));
+app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
+app.use("/api", authenticate, require("./src/routes"));
+
+/* --- Frontend Catch-all Route --- */
+// Serve static files from the client build (assumed in "../client/dist")
 const clientDistPath = path.join(__dirname, "../client/dist");
 console.log("Serving client build from:", clientDistPath);
 console.log("__dirname:", __dirname);
@@ -161,7 +154,7 @@ app.use("/api", (req, res) => {
   res.status(404).json({ msg: "API route not found" });
 });
 
-// Centralized Error Handler (preserving CORS headers)
+// Centralized Error Handler (ensuring CORS headers are preserved)
 app.use((err, req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
