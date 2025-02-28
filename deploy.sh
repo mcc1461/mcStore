@@ -1,18 +1,28 @@
 #!/bin/bash
+# Navigate to project root
+cd /home/ubuntu/mcStore || { echo "Project directory not found"; exit 1; }
 
-# Navigate to your local repository directory.
-cd /home/ubuntu/mcStore || { echo "Error: Repository directory not found"; exit 1; }
-
-# Pull the latest changes from GitHub.
+# Pull latest changes from GitHub
 git pull origin main
 
-# Install any new dependencies.
+# Install server dependencies and restart backend (if necessary)
 npm install
 
-# OPTIONAL: If you need to build your Vite client for production, uncomment these lines.
+# Build the client for production
 cd client
+npm install
 npm run build
 cd ..
 
-# Restart your server process using PM2, updating the environment variables.
-pm2 restart mcStore --update-env
+# Copy the production build to Nginx's root directory
+sudo cp -R /home/ubuntu/mcStore/client/dist/* /var/www/softrealizer/
+
+# Adjust permissions, if needed
+sudo chown -R www-data:www-data /var/www/softrealizer
+sudo chmod -R 755 /var/www/softrealizer
+
+# Restart the backend process with PM2
+pm2 restart musco-store --update-env
+
+echo "Deployment completed."
+    

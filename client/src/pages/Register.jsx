@@ -19,8 +19,7 @@ function Register() {
     roleCode: "",
   });
 
-  // New state to allow the user to select image source:
-  // "upload" for a file, "url" for an image URL.
+  // Image source selection: "upload" for file, "url" for image URL.
   const [imageSource, setImageSource] = useState("upload");
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -102,27 +101,46 @@ function Register() {
     try {
       setIsLoading(true);
 
-      // Prepare a FormData payload
-      const form = new FormData();
-      form.append("firstName", firstName.trim());
-      form.append("lastName", lastName.trim());
-      form.append("username", username.trim());
-      form.append("email", email.trim());
-      // Trim the password to avoid accidental whitespace issues
-      form.append("password", password.trim());
-      form.append("role", role);
-      if (roleCode) form.append("roleCode", roleCode.trim());
+      let payload;
+      let headers;
 
-      // Append the image based on the user’s selection:
-      if (imageSource === "upload" && selectedImageFile) {
-        form.append("image", selectedImageFile);
-      } else if (imageSource === "url" && imageUrl.trim() !== "") {
-        form.append("image", imageUrl.trim());
+      // Decide whether to send as multipart/form-data or JSON.
+      // For consistency, if an image is provided, use FormData.
+      if (
+        (imageSource === "upload" && selectedImageFile) ||
+        (imageSource === "url" && imageUrl.trim() !== "")
+      ) {
+        payload = new FormData();
+        payload.append("firstName", firstName.trim());
+        payload.append("lastName", lastName.trim());
+        payload.append("username", username.trim());
+        payload.append("email", email.trim());
+        payload.append("password", password.trim());
+        payload.append("role", role);
+        if (roleCode) payload.append("roleCode", roleCode.trim());
+        if (imageSource === "upload" && selectedImageFile) {
+          payload.append("image", selectedImageFile);
+        } else if (imageSource === "url" && imageUrl.trim() !== "") {
+          payload.append("image", imageUrl.trim());
+        }
+        headers = { "Content-Type": "multipart/form-data" };
+      } else {
+        // No image provided; send data as JSON.
+        payload = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          username: username.trim(),
+          email: email.trim(),
+          password: password.trim(),
+          role,
+          roleCode: roleCode.trim(),
+        };
+        headers = { "Content-Type": "application/json" };
       }
 
-      // Send registration request with multipart/form-data
-      const { data } = await axios.post("/api/auth/register", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Send registration request
+      const { data } = await axios.post("/api/auth/register", payload, {
+        headers,
       });
 
       // Save tokens and user data in localStorage
@@ -146,7 +164,7 @@ function Register() {
 
   return (
     <div className="flex items-center justify-center w-screen h-screen">
-      <img src={log} alt="Log" className="w-1/3 h-auto" />
+      <img src={log} alt="Logo" className="w-1/3 h-auto" />
 
       <div className="h-[50%] w-2/3 flex flex-col items-center justify-between">
         {/* Header */}
@@ -197,13 +215,11 @@ function Register() {
               />
               <button
                 type="button"
-                onClick={() => {
-                  if (field === "password") {
-                    setShowPassword(!showPassword);
-                  } else {
-                    setShowConfirmPassword(!showConfirmPassword);
-                  }
-                }}
+                onClick={() =>
+                  field === "password"
+                    ? setShowPassword(!showPassword)
+                    : setShowConfirmPassword(!showConfirmPassword)
+                }
                 className="absolute transform -translate-y-1/2 right-4 top-1/2"
               >
                 {field === "password"
