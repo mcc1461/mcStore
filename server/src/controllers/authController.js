@@ -62,6 +62,16 @@ const register = async (req, res) => {
       role: assignedRole,
     });
 
+    // --- New: Handle image upload ---
+    // If a file is uploaded (via multer), set the image field to its relative path.
+    if (req.file) {
+      newUser.image = "/uploads/" + req.file.filename;
+    } else if (req.body.image) {
+      // Otherwise, if an image URL is provided in the body, use that.
+      newUser.image = req.body.image.trim();
+    }
+    // --- End image upload handling ---
+
     await newUser.save();
 
     // Generate tokens
@@ -81,6 +91,7 @@ const register = async (req, res) => {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         role: newUser.role,
+        image: newUser.image,
       },
     });
   } catch (error) {
@@ -123,6 +134,7 @@ const login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        image: user.image,
       },
     });
   } catch (error) {
@@ -188,7 +200,6 @@ const requestPasswordReset = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
-        // Updated message here
         message: "No account found with this email address.",
       });
     }
@@ -272,6 +283,6 @@ module.exports = {
   login,
   refresh,
   logout,
-  requestPasswordReset, // rename if you want to "forgotPassword"
+  requestPasswordReset,
   resetPassword,
 };

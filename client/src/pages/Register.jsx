@@ -103,9 +103,7 @@ function Register() {
 
       let payload;
       let headers;
-
-      // Decide whether to send as multipart/form-data or JSON.
-      // For consistency, if an image is provided, use FormData.
+      // If an image is provided either via upload or URL, use FormData.
       if (
         (imageSource === "upload" && selectedImageFile) ||
         (imageSource === "url" && imageUrl.trim() !== "")

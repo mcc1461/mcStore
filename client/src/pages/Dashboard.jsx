@@ -21,20 +21,16 @@ import logo from "../assets/logo.png";
 import logo2 from "../assets/logo2.png";
 import defaultUser from "../assets/default-profile.png";
 
+// Utility function to combine class names
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
-/** Full nav items, including "Products", "Firms", etc. */
+// Navigation items (side menu)
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, current: true },
   { name: "Team", href: "/team", icon: UsersIcon, current: false },
-  {
-    name: "Categories",
-    href: "/categories",
-    icon: FolderIcon,
-    current: false,
-  },
+  { name: "Categories", href: "/categories", icon: FolderIcon, current: false },
   { name: "Firms", href: "/firms", icon: FolderIcon, current: false },
   { name: "Brands", href: "/brands", icon: FolderIcon, current: false },
   { name: "Products", href: "/products", icon: FolderIcon, current: false },
@@ -56,12 +52,7 @@ const navigation = [
     icon: CalendarIcon,
     current: false,
   },
-  {
-    name: "Overview",
-    href: "/overview",
-    icon: ChartPieIcon,
-    current: false,
-  },
+  { name: "Overview", href: "/overview", icon: ChartPieIcon, current: false },
 ];
 
 // Function to capitalize the first letter of a string
@@ -74,13 +65,17 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Redux user info
+  // Redux user info from auth slice
   const { userInfo } = useSelector((state) => state.auth);
 
-  // Fetched user profile data
+  // State to hold full profile data fetched from the API
   const [profileData, setProfileData] = useState(null);
 
-  // On mount, fetch full profile if user is logged in
+  // Define API base URL (from Vite env in production; fallback to your public domain)
+  const API_URL =
+    import.meta.env.VITE_APP_API_URL || "https://softrealizer.com";
+
+  // Fetch full profile data when component mounts and userInfo is available
   useEffect(() => {
     if (userInfo) {
       const fetchProfile = async () => {
@@ -88,7 +83,7 @@ export default function Dashboard() {
           const token = localStorage.getItem("token");
           if (!token) throw new Error("Authentication token missing.");
           const { data } = await axios.get(
-            `${import.meta.env.VITE_APP_API_URL}/api/users/${userInfo._id}`,
+            `${API_URL}/api/users/${userInfo._id}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setProfileData(data.data);
@@ -98,9 +93,9 @@ export default function Dashboard() {
       };
       fetchProfile();
     }
-  }, [userInfo]);
+  }, [userInfo, API_URL]);
 
-  // Logout
+  // Logout function
   const logoutHandler = () => {
     dispatch(logout());
     localStorage.removeItem("token");
@@ -109,7 +104,7 @@ export default function Dashboard() {
     navigate("/login");
   };
 
-  // Navigate to profile if logged in
+  // Navigate to the profile page if logged in
   const navigateToProfile = () => {
     if (userInfo) {
       navigate("/dashboard/profile");
@@ -119,17 +114,14 @@ export default function Dashboard() {
     }
   };
 
-  // Final image URL or fallback
+  // Determine final image URL: if profileData.image starts with "/uploads/", prepend API_URL; otherwise, use the image or fallback to defaultUser.
   const imageUrl = profileData?.image?.startsWith("/uploads/")
-    ? `${import.meta.env.VITE_APP_API_URL}${profileData.image}`
+    ? `${API_URL}${profileData.image}`
     : profileData?.image || defaultUser;
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 
-        FIXED TOP BAR 
-        (h-16 => 64px tall, we'll offset layout with pt-16 below)
-      */}
+      {/* FIXED TOP BAR */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center h-16 px-4 bg-white border-b shadow-sm">
         {/* MOBILE HAMBURGER */}
         <button
@@ -149,9 +141,8 @@ export default function Dashboard() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* RIGHT SIDE: Notifications, Profile, etc. */}
+        {/* RIGHT SIDE: Notifications, Profile Dropdown */}
         <div className="flex items-center ml-4 space-x-4">
-          {/* Notification button */}
           <button
             type="button"
             className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -169,7 +160,6 @@ export default function Dashboard() {
                     {userInfo ? capitalize(userInfo.username) : " "}
                   </span>
                 </h3>
-
                 <img
                   src={imageUrl}
                   alt="Profile"
@@ -225,15 +215,10 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* MAIN LAYOUT WRAPPER - offset below the fixed header via pt-16 */}
+      {/* MAIN LAYOUT */}
       <div className="flex pt-16">
-        {/* DESKTOP SIDEBAR (shown at lg+) */}
+        {/* DESKTOP SIDEBAR */}
         <div className="hidden lg:block">
-          {/* 
-            Fixed at top-16 so it starts below the header
-            Height = (100vh - 64px)
-            Overflow auto => scroll if too long
-          */}
           <div className="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-gray-900 overflow-y-auto">
             <nav className="px-4 py-4">
               <ul className="space-y-4">
@@ -258,7 +243,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* MOBILE SIDEBAR (Drawer) */}
+        {/* MOBILE SIDEBAR */}
         <Transition.Root show={mobileMenuOpen} as={Fragment}>
           <Dialog
             as="div"
@@ -274,7 +259,6 @@ export default function Dashboard() {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              {/* Dark overlay */}
               <div className="fixed inset-0 bg-gray-900/80" />
             </Transition.Child>
             <div className="fixed inset-0 flex">
@@ -288,7 +272,6 @@ export default function Dashboard() {
                 leaveTo="-translate-x-full"
               >
                 <Dialog.Panel className="relative flex flex-col flex-1 w-full max-w-xs bg-gray-900">
-                  {/* Close button */}
                   <div className="flex items-center h-16 px-4">
                     <button
                       type="button"
@@ -298,8 +281,6 @@ export default function Dashboard() {
                       <XMarkIcon className="w-6 h-6" />
                     </button>
                   </div>
-
-                  {/* Nav items */}
                   <nav className="flex-1 px-2 pb-4 mt-2 overflow-y-auto">
                     <ul className="space-y-2">
                       {navigation.map((item) => (
@@ -327,11 +308,9 @@ export default function Dashboard() {
           </Dialog>
         </Transition.Root>
 
-        {/* MAIN CONTENT - push right by 64px on large screens */}
+        {/* MAIN CONTENT */}
         <div className="flex-1 ml-0 lg:ml-64">
-          {/* The 'Outlet' area - your pages show here */}
           <main className="min-h-screen p-4 bg-gray-100">
-            {/* Logo/Title */}
             <div className="flex items-center">
               <img
                 src={logo2}
@@ -339,7 +318,6 @@ export default function Dashboard() {
                 className="w-auto m-auto rounded-full h-96"
               />
             </div>
-
             <Outlet />
           </main>
         </div>
