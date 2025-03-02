@@ -38,7 +38,7 @@ function Register() {
   // Redirect if already logged in
   useEffect(() => {
     if (userInfo) {
-      navigate("/dashboard/board");
+      navigate("/dashboard");
     }
   }, [userInfo, navigate]);
 

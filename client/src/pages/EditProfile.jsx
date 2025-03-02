@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import defaultProfile from "../assets/default-profile.png";
+import Loader from "../components/Loader";
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -18,6 +20,16 @@ export default function EditProfile() {
 
   console.log("Profile data received in EditProfile:", profile);
 
+  // Helper to build full image URL if needed
+  const getImageUrl = (url) => {
+    if (url && url.startsWith("/uploads/")) {
+      const baseUrl =
+        import.meta.env.VITE_APP_API_URL || "http://127.0.0.1:8061";
+      return `${baseUrl}${url}`;
+    }
+    return url;
+  };
+
   // Handle input field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,12 +40,27 @@ export default function EditProfile() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
-
     // Clear the URL input field if a file is selected
     setFormData((prev) => ({ ...prev, image: "" }));
   };
 
-  // Handle form submission
+  // Reset all form fields and image states
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "user",
+      roleCode: "",
+      image: "",
+    });
+    setImageFile(null);
+  };
+
+  // Submit registration form
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -41,11 +68,12 @@ export default function EditProfile() {
 
     // Add form fields to payload
     Object.entries(formData).forEach(([key, value]) => {
+      // For the image field, only append if there is a non-empty value and no file was selected
       if (key === "image" && !imageFile && !value.trim()) return;
       formPayload.append(key, value);
     });
 
-    // Add selected file to payload
+    // Add selected file to payload if present
     if (imageFile) {
       formPayload.append("image", imageFile);
     }
@@ -68,7 +96,7 @@ export default function EditProfile() {
       toast.success(response.data.message || "Profile updated successfully.");
       navigate("/dashboard/profile");
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("Error updating profile:", error.response?.data || error);
       toast.error(
         error.response?.data?.message ||
           "An error occurred while updating the profile. Please try again."
@@ -164,6 +192,28 @@ export default function EditProfile() {
               className="w-full px-4 py-2 border rounded-lg"
             />
           </div>
+          {/* Image Preview */}
+          <div className="mt-4">
+            {imageFile ? (
+              <img
+                src={URL.createObjectURL(imageFile)}
+                alt="Preview"
+                className="object-cover w-40 h-40 rounded-full"
+                onError={(e) => {
+                  e.currentTarget.src = defaultProfile;
+                }}
+              />
+            ) : formData.image ? (
+              <img
+                src={getImageUrl(formData.image)}
+                alt="Current Profile"
+                className="object-cover w-40 h-40 rounded-full"
+                onError={(e) => {
+                  e.currentTarget.src = defaultProfile;
+                }}
+              />
+            ) : null}
+          </div>
         </div>
         <button
           type="submit"
@@ -171,7 +221,16 @@ export default function EditProfile() {
         >
           Update Profile
         </button>
+        <button
+          type="button"
+          onClick={resetForm}
+          className="w-full px-4 py-2 mt-2 font-bold text-white bg-gray-500 rounded-lg hover:bg-gray-600"
+        >
+          Reset
+        </button>
       </form>
     </div>
   );
 }
+
+// export default EditProfile;

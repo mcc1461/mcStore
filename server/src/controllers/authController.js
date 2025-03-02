@@ -24,10 +24,6 @@ const generateToken = (user, secret, expiresIn) => {
 // Helper: Validate Password Complexity
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-/* ------------------------------------------------------------------
-   Registration / Login / Logout / Refresh
------------------------------------------------------------------- */
-
 const register = async (req, res) => {
   try {
     const { username, password, email, firstName, lastName, role, roleCode } =
@@ -62,8 +58,8 @@ const register = async (req, res) => {
       role: assignedRole,
     });
 
-    // --- New: Handle image upload ---
-    // If a file is uploaded (via multer), set the image field to its relative path.
+    // --- Handle image upload ---
+    // If a file was uploaded via Multer, set the image field to its relative path.
     if (req.file) {
       newUser.image = "/uploads/" + req.file.filename;
     } else if (req.body.image) {
@@ -188,11 +184,6 @@ const logout = (req, res) => {
   return res.json({ message: "Logged out successfully." });
 };
 
-/* ------------------------------------------------------------------
-   Forgot Password Flow
------------------------------------------------------------------- */
-
-// 1) Request Password Reset (aka forgot password)
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
@@ -207,26 +198,22 @@ const requestPasswordReset = async (req, res) => {
     // Create reset token valid for 1 hour
     const resetToken = generateToken(user, JWT_SECRET, "1h");
 
-    // Store token in user doc to compare on reset
+    // Store token in user document for later verification
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1h from now
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
     await user.save();
 
-    // The link your user will click (FRONTEND_BASE_URL from .env or fallback)
     const resetLink = `${
       process.env.FRONTEND_BASE_URL || "http://localhost:3061"
     }/reset-password?token=${resetToken}`;
 
-    // Send the email (assuming you have a helper function)
     await sendResetEmail(
       user.email,
       "Password Reset Request",
       `Click here to reset your password: ${resetLink}`
     );
 
-    return res.json({
-      message: "Password reset link sent to email.",
-    });
+    return res.json({ message: "Password reset link sent to email." });
   } catch (error) {
     console.error("Error in requestPasswordReset:", error);
     return res.status(500).json({
@@ -236,7 +223,6 @@ const requestPasswordReset = async (req, res) => {
   }
 };
 
-// 2) Reset Password
 const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
@@ -251,15 +237,15 @@ const resetPassword = async (req, res) => {
 
     const decoded = jwt.verify(resetToken, JWT_SECRET);
 
-    // The user _id from token
+    // Find user by ID from token
     const user = await User.findById(decoded._id);
     if (!user || user.resetPasswordToken !== resetToken) {
-      return res.status(403).json({
-        message: "Invalid or expired reset token.",
-      });
+      return res
+        .status(403)
+        .json({ message: "Invalid or expired reset token." });
     }
 
-    // Everything checks out, update password
+    // Update password and clear reset token data
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
