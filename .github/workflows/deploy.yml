@@ -22,6 +22,7 @@ jobs:
 
       # Step 2.3: Install Dependencies and Build (Optional: Local build, may be needed for tests)
       - name: Install Dependencies and Build
+        working-directory: ./mancar/mcStore # Change this to your project's client directory
         run: |
           npm install
           npm run build
