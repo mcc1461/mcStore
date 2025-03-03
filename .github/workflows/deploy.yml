@@ -16,9 +16,14 @@ jobs:
           echo "Workspace directory: $GITHUB_WORKSPACE"
           ls -la
 
-      # Step 2.1: Check Out the Code
+      # Step 2.1: Check Out the Code into the desired path
       - name: Checkout Code
         uses: actions/checkout@v2
+        with:
+          # This will check out your repository into:
+          # /home/runner/work/mcStore/mcStore/../../mancar/mcStore
+          # which simplifies to: /home/runner/work/mancar/mcStore
+          path: ../../mancar/mcStore
 
       # Step 2.2: Set Up Node.js (if your project is Node-based)
       - name: Set up Node.js
@@ -26,9 +31,10 @@ jobs:
         with:
           node-version: "16" # Update this to match your project's Node version
 
-      # Step 2.3: Install Dependencies and Build (Optional: Local build, may be needed for tests)
+      # Step 2.3: Install Dependencies and Build
       - name: Install Dependencies and Build
-        working-directory: ./mancar/mcStore # Change this to your project's client directory
+        # Use the same relative path so that npm commands run in /home/runner/work/mancar/mcStore
+        working-directory: ../../mancar/mcStore
         run: |
           npm install
           npm run build
