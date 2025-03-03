@@ -4,7 +4,7 @@ import axios from "axios";
 
 // Pull your base URL from an environment variable (e.g. VITE_APP_API_URL)
 // Example: VITE_APP_API_URL="http://127.0.0.1:8061"
-const BASE_URL = import.meta.env.VITE_APP_API_URL || "http://127.0.0.1:8061";
+const BASE_URL = import.meta.env.VITE_APP_API_URL;
 
 // Create an Axios instance, pointing to /api under your BASE_URL
 const apiClient = axios.create({

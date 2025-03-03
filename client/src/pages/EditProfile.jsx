@@ -23,8 +23,7 @@ export default function EditProfile() {
   // Helper to build full image URL if needed
   const getImageUrl = (url) => {
     if (url && url.startsWith("/uploads/")) {
-      const baseUrl =
-        import.meta.env.VITE_APP_API_URL || "http://127.0.0.1:8061";
+      const baseUrl = import.meta.env.VITE_APP_API_URL;
       return `${baseUrl}${url}`;
     }
     return url;
