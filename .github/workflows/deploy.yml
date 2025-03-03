@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check current directory
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Workspace directory: $GITHUB_WORKSPACE"
+          ls -la
+
       # Step 2.1: Check Out the Code
       - name: Checkout Code
         uses: actions/checkout@v2
