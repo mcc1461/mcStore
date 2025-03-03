@@ -32,10 +32,22 @@ jobs:
           key: ${{ secrets.AWS_MUSCO_STORE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd /home/ubuntu/mcStore/client
+            # Go to project directory
+            cd /home/ubuntu/mcStore
+
+            # Force sync to GitHub to prevent merge conflicts
+            git reset --hard HEAD
+            git clean -fd
             git pull origin main
+
+            # Install dependencies and build
+            cd client
             npm install --production
             npm run build
-            sudo cp -R /home/ubuntu/mcStore/client/dist/* /var/www/softrealizer/
+
+            # Copy to web server directory
+            sudo cp -R ./dist/* /var/www/softrealizer/
+
+            # Reload Nginx and restart pm2
             sudo systemctl reload nginx
             pm2 restart all
