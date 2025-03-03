@@ -16,24 +16,19 @@ jobs:
           echo "Workspace directory: $GITHUB_WORKSPACE"
           ls -la
 
-      # Step 2.1: Check Out the Code using the default location
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      # Step 2.2: Set Up Node.js (if your project is Node-based)
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: "16" # Update this to match your project's Node version
+          node-version: "16" # Update as needed
 
-      # Step 2.3: Install Dependencies and Build in the correct subdirectory
       - name: Install Dependencies and Build
-        working-directory: mancar/mcStore
         run: |
           npm install
           npm run build
 
-      # Step 2.4: Deploy via SSH
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
@@ -42,21 +37,10 @@ jobs:
           key: ${{ secrets.AWS_MUSCO_STORE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            # Change to the project directory on the server
             cd /home/ubuntu/mcStore/client
-
-            # Pull the latest code from GitHub
             git pull origin main
-
-            # Install production dependencies and build (if needed)
             npm install --production
             npm run build
-
-            # Copy built files to the web server directory
             sudo cp -R /home/ubuntu/mcStore/client/dist/* /var/www/softrealizer/
-
-            # Reload Nginx to pick up changes (ensure passwordless sudo for this command)
             sudo systemctl reload nginx
-
-            # Restart your Node.js service (using PM2 in this example)
             pm2 restart all
