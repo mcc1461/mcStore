@@ -7,11 +7,11 @@
 // Load environment variables immediately
 if (process.env.NODE_ENV === "production") {
   require("dotenv").config({
-    path: require("path").join(__dirname, "../.env.production"),
+    path: require("path").join(__dirname, ".env.production"),
   });
 } else {
   require("dotenv").config({
-    path: require("path").join(__dirname, "../.env"),
+    path: require("path").join(__dirname, ".env"),
   });
 }
 
@@ -78,10 +78,8 @@ app.post(
 );
 
 /* --- Global Configuration --- */
-let HOST = process.env.HOST || "127.0.0.1";
-let PORT = process.env.PORT || 8061;
-PORT = 8061;
-HOST = "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";
+const PORT = process.env.PORT || 8061;
 
 /* --- Handle async errors --- */
 require("express-async-errors");
