@@ -23,8 +23,8 @@ const upload = multer({ storage });
 const auth = require("../controllers/authController");
 console.log("[DEBUG] authController", auth);
 
-const purchaseController = require("../controllers/purchaseController");
-const { authenticate } = require("../middlewares/findSearchSortPage");
+// const purchaseController = require("../controllers/purchaseController");
+// const { authenticate } = require("../middlewares/findSearchSortPage");
 
 console.log("[DEBUG] auth.register", auth.register);
 
