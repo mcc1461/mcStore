@@ -72,8 +72,7 @@ export default function Dashboard() {
   const [profileData, setProfileData] = useState(null);
 
   // Define API base URL (from Vite env in production; fallback to your public domain)
-  const API_URL =
-    import.meta.env.VITE_APP_API_URL || "https://softrealizer.com";
+  const API_URL = import.meta.env.VITE_APP_API_URL;
 
   // Fetch full profile data when component mounts and userInfo is available
   useEffect(() => {
