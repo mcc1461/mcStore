@@ -26,8 +26,9 @@ jobs:
         with:
           node-version: "16" # Update this to match your project's Node version
 
-      # Step 2.3: Install Dependencies and Build
+      # Step 2.3: Install Dependencies and Build in the correct subdirectory
       - name: Install Dependencies and Build
+        working-directory: mancar/mcStore
         run: |
           npm install
           npm run build
