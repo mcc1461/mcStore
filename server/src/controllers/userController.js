@@ -1,7 +1,6 @@
 "use strict";
-
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose");
+const argon2 = require("argon2");
 const User = require("../models/userModel");
 const path = require("path");
 const fs = require("fs");
@@ -21,7 +20,7 @@ const generateToken = (user) => {
   );
 };
 
-// Helper function to delete a file
+// Helper function to delete a file (for local files only)
 const deleteFile = (filePath) => {
   try {
     if (fs.existsSync(filePath)) {
@@ -83,6 +82,14 @@ module.exports = {
           .json({ error: true, message: "Invalid role or role code." });
       }
 
+      // Set image using S3 URL from multer-s3 (req.file.location).
+      const image =
+        req.file && req.file.location
+          ? req.file.location
+          : req.body.image
+          ? req.body.image.trim()
+          : null;
+
       const newUser = new User({
         username,
         password,
@@ -90,7 +97,7 @@ module.exports = {
         firstName,
         lastName,
         role: assignedRole,
-        image: req.file ? `/uploads/${req.file.filename}` : null,
+        image,
       });
 
       await newUser.save();
@@ -153,17 +160,23 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // If a new file is uploaded, delete old file
-      if (req.file) {
-        const oldFilePath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          path.basename(user.image || "")
-        );
-        console.log("Old file path for deletion:", oldFilePath);
-        deleteFile(oldFilePath);
-        req.body.image = `/uploads/${req.file.filename}`;
+      // If a new file is uploaded, update the image field with the S3 URL.
+      if (req.file && req.file.location) {
+        // Optionally, if the old image was stored locally, delete it.
+        // Here, we check if user.image starts with '/uploads/'.
+        if (user.image && user.image.startsWith("/uploads/")) {
+          const oldFilePath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            path.basename(user.image)
+          );
+          console.log("Old file path for deletion:", oldFilePath);
+          deleteFile(oldFilePath);
+        }
+        req.body.image = req.file.location;
+      } else if (req.body.image) {
+        req.body.image = req.body.image.trim();
       }
 
       const updatedUser = await User.findOneAndUpdate(filters, req.body, {
@@ -203,7 +216,8 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      if (deletedUser.image) {
+      // If the image was stored locally (starts with '/uploads/'), delete it.
+      if (deletedUser.image && deletedUser.image.startsWith("/uploads/")) {
         const imagePath = path.join(
           __dirname,
           "..",

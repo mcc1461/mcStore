@@ -1,0 +1,54 @@
+{
+  "Name": "AddCORPHeaderPolicy",
+  "Comment": "Adds Cross-Origin-Resource-Policy and CORS headers",
+  "CorsConfig": {
+    "AccessControlAllowOrigins": {
+      "Quantity": 2,
+      "Items": ["http://localhost:3061", "https://softrealizer.com"]
+    },
+    "AccessControlAllowHeaders": {
+      "Quantity": 1,
+      "Items": ["*"]
+    },
+    "AccessControlAllowMethods": {
+      "Quantity": 2,
+      "Items": ["GET", "HEAD"]
+    },
+    "AccessControlExposeHeaders": {
+      "Quantity": 0,
+      "Items": []
+    },
+    "AccessControlMaxAgeSec": 600,
+    "OriginOverride": true
+  },
+  "SecurityHeadersConfig": {
+    "StrictTransportSecurity": {
+      "Override": false
+    },
+    "XContentTypeOptions": {
+      "Override": false
+    },
+    "XFrameOptions": {
+      "Override": false
+    },
+    "XXSSProtection": {
+      "Override": false
+    },
+    "ReferrerPolicy": {
+      "Override": false
+    },
+    "ContentSecurityPolicy": {
+      "Override": false
+    }
+  },
+  "CustomHeadersConfig": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Header": "Cross-Origin-Resource-Policy",
+        "Value": "cross-origin",
+        "Override": true
+      }
+    ]
+  }
+}

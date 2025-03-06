@@ -38,7 +38,7 @@ const upload = multer({
     bucket: process.env.AWS_S3_BUCKET, // Your S3 bucket name
     acl: "public-read", // Adjust ACL as needed
     key: (req, file, cb) => {
-      // Generate a unique filename
+      // Generate a unique filename using current time and a random number
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       cb(
         null,
@@ -70,8 +70,8 @@ router.post("/", authenticate, authorizeRoles("admin"), create);
 // Fetch, update, and delete user
 router
   .route("/:id")
-  .get(authenticate, read) // any authenticated user can see profile, or admin can see others
-  // Use the S3 upload configuration for profile image updates
+  .get(authenticate, read) // Any authenticated user can view their own profile; admin can view others.
+  // Use the S3 upload configuration for profile image updates.
   .put(authenticate, upload.single("image"), update)
   .patch(authenticate, upload.single("image"), update)
   .delete(authenticate, authorizeRoles("admin"), remove);
