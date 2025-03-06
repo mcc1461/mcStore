@@ -16,7 +16,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <Provider store={store}>
     <PersistGate loading={<Loader />} persistor={persistor}>
       <React.StrictMode>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <ToastContainer />
           <App />
         </BrowserRouter>

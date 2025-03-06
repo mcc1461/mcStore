@@ -59,9 +59,18 @@ const register = async (req, res) => {
     });
 
     // --- Handle image upload ---
-    // If a file was uploaded via Multer, set the image field to its relative path.
+    // If a file was uploaded via Multer:
     if (req.file) {
-      newUser.image = "/uploads/" + req.file.filename;
+      // For multer-s3, req.file.location holds the URL of the file
+      if (req.file.location) {
+        newUser.image = req.file.location;
+      }
+      // For disk storage, req.file.filename is available
+      else if (req.file.filename) {
+        newUser.image = "/uploads/" + req.file.filename;
+      } else {
+        newUser.image = null;
+      }
     } else if (req.body.image) {
       // Otherwise, if an image URL is provided in the body, use that.
       newUser.image = req.body.image.trim();

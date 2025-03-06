@@ -7,7 +7,7 @@ function Header() {
   return (
     <div className="flex flex-col min-h-screen text-white bg-gradient-to-b from-violet-500 to-purple-700">
       {/* Top navigation */}
-      <nav className="flex items-center justify-between px-8 py-4">
+      <nav className="flex items-center justify-between px-8 py-12 md:px-20 lg:px-32">
         {/* Logo and brand name */}
         <div className="flex items-center space-x-2">
           <Logo />
@@ -53,7 +53,7 @@ function Header() {
             fingertips.
           </p>
           {/* Benefits List */}
-          <ul className="space-y-4 text-lg leading-relaxed text-left">
+          <ul className="pb-10 space-y-4 text-lg leading-relaxed text-left">
             <li>
               <strong>➤ Track &amp; Organize:</strong> Monitor stock levels and
               avoid costly oversights.

@@ -1,38 +1,79 @@
 "use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | MusCo Dev | authRoutes.js
-------------------------------------------------------- */
+
 const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
+const AWS = require("aws-sdk");
+const multerS3 = require("multer-s3");
+const {
+  authenticate,
+  authorizeRoles,
+} = require("../middlewares/authMiddleware");
+const {
+  list,
+  create,
+  read,
+  update,
+  remove,
+} = require("../controllers/userController");
 
-// Configure Multer storage using a direct absolute path for the uploads folder.
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = "/home/ubuntu/mcStore/server/uploads";
-    console.log("[DEBUG] uploadPath", uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    // Prepend a timestamp to avoid filename conflicts
-    cb(null, Date.now() + "-" + file.originalname);
+// Configure AWS SDK using environment variables
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Your AWS Access Key ID
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Your AWS Secret Access Key
+  region: process.env.AWS_REGION, // AWS Region (e.g., "us-east-1")
+});
+const s3 = new AWS.S3();
+
+// Ensure AWS_S3_BUCKET is defined
+if (!process.env.AWS_S3_BUCKET) {
+  console.error("Error: AWS_S3_BUCKET is not defined in your environment.");
+  process.exit(1);
+}
+
+// Configure multer to use multer-s3 for storage in the S3 bucket.
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET, // Your S3 bucket name
+    acl: "public-read", // Adjust ACL as needed
+    key: (req, file, cb) => {
+      // Generate a unique filename
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(
+        null,
+        `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`
+      );
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /jpeg|jpg|png/;
+    const extname = fileTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimetype = fileTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error("Only .jpeg, .jpg, and .png files are allowed!"));
   },
 });
-const upload = multer({ storage });
 
-const auth = require("../controllers/authController");
-console.log("[DEBUG] authController", auth);
+// Routes for user management
 
-// const purchaseController = require("../controllers/purchaseController");
-// const { authenticate } = require("../middlewares/findSearchSortPage");
+// List all users (Admin only)
+router.get("/", authenticate, authorizeRoles("admin"), list);
 
-console.log("[DEBUG] auth.register", auth.register);
+// Create a new user (Admin only)
+router.post("/", authenticate, authorizeRoles("admin"), create);
 
-// Use multer's upload.single("image") on the /register route so that multipart/form-data
-// requests are parsed and any uploaded file is saved in the absolute uploads folder.
-router.post("/register", upload.single("image"), auth.register);
-router.post("/login", auth.login);
-router.post("/refresh", auth.refresh);
-router.get("/logout", auth.logout);
+// Fetch, update, and delete user
+router
+  .route("/:id")
+  .get(authenticate, read) // any authenticated user can see profile, or admin can see others
+  // Use the S3 upload configuration for profile image updates
+  .put(authenticate, upload.single("image"), update)
+  .patch(authenticate, upload.single("image"), update)
+  .delete(authenticate, authorizeRoles("admin"), remove);
 
 module.exports = router;

@@ -1,0 +1,48 @@
+# Redirect all HTTP traffic to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name softrealizer.com www.softrealizer.com;
+    return 301 https://$host$request_uri;
+}
+
+# HTTPS server block for softrealizer.com
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name softrealizer.com www.softrealizer.com;
+
+    # SSL configuration from Certbot
+    ssl_certificate /etc/letsencrypt/live/softrealizer.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/softrealizer.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Allow larger request bodies (set to 50MB)
+    client_max_body_size 50M;  
+
+    # Proxy all API requests to the backend on port 8061
+    location /api/ {
+        proxy_pass http://127.0.0.1:8061;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    # Serve uploads directly from the file system
+    location /uploads/ {
+        alias /home/ubuntu/mcStore/server/uploads/;
+        autoindex off;
+        expires max;
+    }   
+
+    # Serve frontend static files from the production build directory
+    location / {
+        root /var/www/softrealizer;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

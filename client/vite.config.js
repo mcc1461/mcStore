@@ -10,7 +10,7 @@ export default defineConfig({
     base: "/",
     proxy: {
       "/api": {
-        target: "https://softrealizer.com/api",
+        target: process.env.VITE_APP_API_URL || "http://localhost:8061",
         changeOrigin: true,
       },
     },

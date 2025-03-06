@@ -19,7 +19,7 @@ function Register() {
     roleCode: "",
   });
 
-  // Image source selection: "upload" for file, "url" for image URL.
+  // Image source selection: "upload" for file, "url" for image URL
   const [imageSource, setImageSource] = useState("upload");
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -161,15 +161,38 @@ function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center w-screen h-screen">
-      <img src={log} alt="Logo" className="w-1/3 h-auto" />
+    <section className="flex flex-col items-center justify-center w-screen h-screen p-0 m-0 overflow-hidden lg:flex-row lg:justify-center lg:items-center">
+      {/* Logo */}
+      <img
+        src={log}
+        alt="Logo"
+        className="
+          object-contain 
+          w-1/2 
+          h-auto 
+          mb-4 
+          lg:mb-0 
+          lg:w-1/3 
+          max-h-[30vh]
+        "
+      />
 
-      <div className="h-[50%] w-2/3 flex flex-col items-center justify-between">
+      {/* Form Container */}
+      <div
+        className="
+          flex 
+          flex-col 
+          items-center
+          justify-center
+          w-full 
+          lg:w-2/3 
+          h-[50%] 
+          p-4
+        "
+      >
         {/* Header */}
-        <div className="w-3/5 mt-10">
-          <div className="flex items-center justify-between w-full">
-            <p className="text-3xl font-bold">Register</p>
-          </div>
+        <div className="w-full mb-4">
+          <p className="mb-2 text-3xl font-bold text-center">Register</p>
         </div>
 
         {/* Registration Form */}
@@ -243,9 +266,7 @@ function Register() {
                   checked={formData.role === roleOption}
                   onChange={handleChange}
                 />
-                <span className="ml-2">
-                  {roleOption.charAt(0).toUpperCase() + roleOption.slice(1)}
-                </span>
+                <span className="ml-2 capitalize">{roleOption}</span>
               </label>
             ))}
           </div>
@@ -352,7 +373,7 @@ function Register() {
 
           {/* Loading Overlay */}
           {isLoading && (
-            <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
+            <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50 ">
               <Loader />
             </div>
           )}
@@ -381,7 +402,7 @@ function Register() {
           </Link>
         </p>
       </div>
-    </div>
+    </section>
   );
 }
 
