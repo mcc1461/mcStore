@@ -65,10 +65,11 @@ const register = async (req, res) => {
       if (req.file.location) {
         newUser.image = req.file.location;
       }
-      // For disk storage, req.file.filename is available
-      else if (req.file.filename) {
-        newUser.image = "/uploads/" + req.file.filename;
-      } else {
+      // // For disk storage, req.file.filename is available
+      // else if (req.file.filename) {
+      //   newUser.image = "/uploads/" + req.file.filename;
+      // }
+      else {
         newUser.image = null;
       }
     } else if (req.body.image) {

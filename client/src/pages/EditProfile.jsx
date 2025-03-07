@@ -20,59 +20,40 @@ export default function EditProfile() {
 
   console.log("Profile data received in EditProfile:", profile);
 
-  // Helper to build full image URL if needed
-  const getImageUrl = (url) => {
-    if (url && url.startsWith("/uploads/")) {
-      const baseUrl = import.meta.env.VITE_APP_API_URL;
-      return `${baseUrl}${url}`;
-    }
-    return url;
-  };
+  // Since the image is stored as a full S3 URL, we simply return it.
+  const getImageUrl = (url) => url || defaultProfile;
 
-  // Handle input field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle file selection for image upload
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
-    // Clear the URL input field if a file is selected
     setFormData((prev) => ({ ...prev, image: "" }));
   };
 
-  // Reset all form fields and image states
   const resetForm = () => {
     setFormData({
       firstName: "",
       lastName: "",
       username: "",
       email: "",
-      password: "",
-      confirmPassword: "",
-      role: "user",
-      roleCode: "",
       image: "",
     });
     setImageFile(null);
   };
 
-  // Submit registration form
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const formPayload = new FormData();
 
-    // Add form fields to payload
     Object.entries(formData).forEach(([key, value]) => {
-      // For the image field, only append if there is a non-empty value and no file was selected
       if (key === "image" && !imageFile && !value.trim()) return;
       formPayload.append(key, value);
     });
 
-    // Add selected file to payload if present
     if (imageFile) {
       formPayload.append("image", imageFile);
     }
@@ -102,6 +83,8 @@ export default function EditProfile() {
       );
     }
   };
+
+  const imageUrl = getImageUrl(formData.image);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -176,7 +159,7 @@ export default function EditProfile() {
               onChange={handleChange}
               placeholder="Image URL"
               className="w-full px-4 py-2 border rounded-lg"
-              disabled={!!imageFile} // Disable if a file is selected
+              disabled={!!imageFile}
             />
           </div>
           <div>
@@ -191,7 +174,6 @@ export default function EditProfile() {
               className="w-full px-4 py-2 border rounded-lg"
             />
           </div>
-          {/* Image Preview */}
           <div className="mt-4">
             {imageFile ? (
               <img
@@ -202,9 +184,9 @@ export default function EditProfile() {
                   e.currentTarget.src = defaultProfile;
                 }}
               />
-            ) : formData.image ? (
+            ) : imageUrl ? (
               <img
-                src={getImageUrl(formData.image)}
+                src={imageUrl}
                 alt="Current Profile"
                 className="object-cover w-40 h-40 rounded-full"
                 onError={(e) => {
@@ -231,5 +213,3 @@ export default function EditProfile() {
     </div>
   );
 }
-
-// export default EditProfile;

@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "mcc1461_default_jwt_secret";
 const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "mcc1461_default_refresh_secret";
 
-// Helper: Generate Token
+// Helper function to generate JWT
 const generateToken = (user, secret, expiresIn) => {
   return jwt.sign(
     {
@@ -21,7 +21,7 @@ const generateToken = (user, secret, expiresIn) => {
   );
 };
 
-// Helper: Validate Password Complexity
+// Helper function to validate password complexity
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
 const register = async (req, res) => {
@@ -37,7 +37,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Assign role based on roleCode
+    // Determine assigned role based on roleCode
     let assignedRole = "user";
     if (role === "admin" && roleCode === process.env.ADMIN_CODE) {
       assignedRole = "admin";
@@ -49,6 +49,14 @@ const register = async (req, res) => {
       });
     }
 
+    // Use the S3 URL if a file was uploaded via multer-s3
+    const image =
+      req.file && req.file.location
+        ? req.file.location
+        : req.body.image
+        ? req.body.image.trim()
+        : null;
+
     const newUser = new User({
       username,
       password,
@@ -56,19 +64,8 @@ const register = async (req, res) => {
       firstName,
       lastName,
       role: assignedRole,
+      image,
     });
-
-    // --- Handle image upload ---
-    // Expect multer-s3 to provide a S3 URL in req.file.location.
-    if (req.file && req.file.location) {
-      newUser.image = req.file.location;
-    } else if (req.body.image) {
-      // If an image URL is provided in the body, use that.
-      newUser.image = req.body.image.trim();
-    } else {
-      newUser.image = null;
-    }
-    // --- End image upload handling ---
 
     await newUser.save();
 
@@ -77,7 +74,7 @@ const register = async (req, res) => {
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
     return res.status(201).json({
-      message: "User registered successfully",
+      message: "User registered successfully.",
       bearer: {
         accessToken,
         refreshToken,
@@ -93,16 +90,16 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({
-      message: error.message || "Failed to register user.",
-    });
+    console.error("Error in registration:", error);
+    return res
+      .status(500)
+      .json({ message: error.message || "Failed to register user." });
   }
 };
 
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
-
     if (!username || !password) {
       return res
         .status(400)
@@ -123,7 +120,7 @@ const login = async (req, res) => {
     const refreshToken = generateToken(user, JWT_REFRESH_SECRET, "30d");
 
     return res.json({
-      message: "Login successful",
+      message: "Login successful.",
       bearer: { accessToken, refreshToken },
       user: {
         id: user._id,
@@ -137,48 +134,41 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).json({
-      message: "Login failed",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ message: "Login failed", error: error.message });
   }
 };
 
 const refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
-
     if (!refreshToken) {
-      return res.status(400).json({
-        message: "Refresh token is required.",
-      });
+      return res.status(400).json({ message: "Refresh token is required." });
     }
 
     jwt.verify(refreshToken, JWT_REFRESH_SECRET, async (err, decoded) => {
       if (err) {
-        return res.status(401).json({
-          message: "Invalid or expired refresh token.",
-        });
+        return res
+          .status(401)
+          .json({ message: "Invalid or expired refresh token." });
       }
 
       const user = await User.findById(decoded._id);
       if (!user) {
-        return res.status(403).json({
-          message: "User not found.",
-        });
+        return res.status(403).json({ message: "User not found." });
       }
 
       const newAccessToken = generateToken(user, JWT_SECRET, "1d");
       return res.json({
-        message: "Token refreshed successfully",
+        message: "Token refreshed successfully.",
         bearer: { accessToken: newAccessToken },
       });
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to refresh token",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ message: "Failed to refresh token", error: error.message });
   }
 };
 
@@ -189,12 +179,11 @@ const logout = (req, res) => {
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        message: "No account found with this email address.",
-      });
+      return res
+        .status(404)
+        .json({ message: "No account found with this email address." });
     }
 
     // Create reset token valid for 1 hour
@@ -202,7 +191,7 @@ const requestPasswordReset = async (req, res) => {
 
     // Store token in user document for later verification
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
+    user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
     const resetLink = `${
@@ -228,8 +217,6 @@ const requestPasswordReset = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
-
-    // Check password complexity
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         message:
@@ -238,8 +225,6 @@ const resetPassword = async (req, res) => {
     }
 
     const decoded = jwt.verify(resetToken, JWT_SECRET);
-
-    // Find user by ID from token
     const user = await User.findById(decoded._id);
     if (!user || user.resetPasswordToken !== resetToken) {
       return res
@@ -247,7 +232,6 @@ const resetPassword = async (req, res) => {
         .json({ message: "Invalid or expired reset token." });
     }
 
-    // Update password and clear reset token data
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
@@ -259,10 +243,9 @@ const resetPassword = async (req, res) => {
     if (error.name === "TokenExpiredError") {
       return res.status(400).json({ message: "Reset token expired." });
     }
-    return res.status(500).json({
-      message: "Failed to reset password",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ message: "Failed to reset password", error: error.message });
   }
 };
 

@@ -74,17 +74,7 @@ function Team() {
 
   // Helper to determine the proper image URL
   const getImageUrl = (member) => {
-    let imageUrl = defaultProfile;
-    if (member.photo) {
-      imageUrl = member.photo.startsWith("/uploads/")
-        ? `${import.meta.env.VITE_APP_API_URL}${member.photo}`
-        : member.photo;
-    } else if (member.image) {
-      imageUrl = member.image.startsWith("/uploads/")
-        ? `${import.meta.env.VITE_APP_API_URL}${member.image}`
-        : member.image;
-    }
-    return imageUrl;
+    return member.photo || member.image || defaultProfile;
   };
 
   // Reusable team member card component

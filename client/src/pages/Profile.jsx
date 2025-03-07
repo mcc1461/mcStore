@@ -79,12 +79,8 @@ export default function Profile() {
   }
 
   // Compute the URL for the profile image:
-  // If the image field starts with "/uploads/", the URL is prefixed with your API URL.
-  // Otherwise, if profile.image exists (and is presumed to be a valid URL) use it.
-  // If profile.image is missing, it will fall back to the onError case.
-  const imageUrl = profile.image?.startsWith("/uploads/")
-    ? `${import.meta.env.VITE_APP_API_URL}${profile.image}`
-    : profile.image;
+
+  const imageUrl = profile.image || defaultUser;
 
   return (
     <div className="flex items-center justify-center min-h-screen px-5 py-10 bg-gray-100">

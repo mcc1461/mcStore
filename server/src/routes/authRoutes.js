@@ -3,42 +3,32 @@
 const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
-const AWS = require("aws-sdk");
-const multerS3 = require("multer-s3");
-const {
-  authenticate,
-  authorizeRoles,
-} = require("../middlewares/authMiddleware");
-const {
-  list,
-  create,
-  read,
-  update,
-  remove,
-} = require("../controllers/userController");
+const { S3Client } = require("@aws-sdk/client-s3");
+const multerS3 = require("multer-s3-v3");
 
-// Configure AWS SDK using environment variables
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Your AWS Access Key ID
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Your AWS Secret Access Key
-  region: process.env.AWS_REGION, // AWS Region (e.g., "us-east-1")
+// Create an S3 client using AWS SDK v3
+const s3 = new S3Client({
+  region: process.env.AWS_REGION, // e.g., "us-east-1"
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
-const s3 = new AWS.S3();
 
-// Ensure AWS_S3_BUCKET is defined
+// Ensure that AWS_S3_BUCKET is defined
 if (!process.env.AWS_S3_BUCKET) {
   console.error("Error: AWS_S3_BUCKET is not defined in your environment.");
   process.exit(1);
 }
 
-// Configure multer to use multer-s3 for storage in the S3 bucket.
+// Configure multer to use multer-s3-v3 for storage in the S3 bucket.
+// Explicitly set acl to an empty string so that no ACL header is sent.
 const upload = multer({
   storage: multerS3({
     s3: s3,
-    bucket: process.env.AWS_S3_BUCKET, // Your S3 bucket name
-    acl: "public-read", // Adjust ACL as needed
+    bucket: process.env.AWS_S3_BUCKET,
+    acl: "", // Explicitly set to an empty string to disable ACL headers
     key: (req, file, cb) => {
-      // Generate a unique filename using current time and a random number
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       cb(
         null,
@@ -59,21 +49,15 @@ const upload = multer({
   },
 });
 
-// Routes for user management
+// Import your auth controller (ensure it uses req.file.location for images)
+const auth = require("../controllers/authController");
+console.log("[DEBUG] authController", auth);
+console.log("[DEBUG] auth.register", auth.register);
 
-// List all users (Admin only)
-router.get("/", authenticate, authorizeRoles("admin"), list);
-
-// Create a new user (Admin only)
-router.post("/", authenticate, authorizeRoles("admin"), create);
-
-// Fetch, update, and delete user
-router
-  .route("/:id")
-  .get(authenticate, read) // Any authenticated user can view their own profile; admin can view others.
-  // Use the S3 upload configuration for profile image updates.
-  .put(authenticate, upload.single("image"), update)
-  .patch(authenticate, upload.single("image"), update)
-  .delete(authenticate, authorizeRoles("admin"), remove);
+// Define auth routes using the upload middleware for file handling.
+router.post("/register", upload.single("image"), auth.register);
+router.post("/login", auth.login);
+router.post("/refresh", auth.refresh);
+router.get("/logout", auth.logout);
 
 module.exports = router;

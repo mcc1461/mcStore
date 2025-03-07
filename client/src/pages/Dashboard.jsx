@@ -113,10 +113,7 @@ export default function Dashboard() {
     }
   };
 
-  // Determine final image URL: if profileData.image starts with "/uploads/", prepend API_URL; otherwise, use the image or fallback to defaultUser.
-  const imageUrl = profileData?.image?.startsWith("/uploads/")
-    ? `${API_URL}${profileData.image}`
-    : profileData?.image || defaultUser;
+  const imageUrl = profileData?.image || defaultUser;
 
   return (
     <div className="min-h-screen bg-gray-100">

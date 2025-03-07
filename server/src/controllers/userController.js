@@ -2,8 +2,8 @@
 const jwt = require("jsonwebtoken");
 const argon2 = require("argon2");
 const User = require("../models/userModel");
-const path = require("path");
 const fs = require("fs");
+const path = require("path");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
 
@@ -18,20 +18,6 @@ const generateToken = (user) => {
     JWT_SECRET,
     { expiresIn: "30d" }
   );
-};
-
-// Helper function to delete a file (for local files only)
-const deleteFile = (filePath) => {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log(`Deleted file: ${filePath}`);
-    } else {
-      console.warn(`File does not exist: ${filePath}`);
-    }
-  } catch (error) {
-    console.error(`Error deleting file: ${filePath}`, error);
-  }
 };
 
 module.exports = {
@@ -54,11 +40,10 @@ module.exports = {
     }
   },
 
-  // Create a new user
+  // Create a new user (Registration)
   create: async (req, res) => {
     const { username, password, email, firstName, lastName, role, roleCode } =
       req.body;
-
     try {
       const existingUser = await User.findOne({ username });
       if (existingUser) {
@@ -82,7 +67,7 @@ module.exports = {
           .json({ error: true, message: "Invalid role or role code." });
       }
 
-      // Set image using S3 URL from multer-s3 (req.file.location).
+      // Use only the S3 URL provided by multer-s3 (req.file.location)
       const image =
         req.file && req.file.location
           ? req.file.location
@@ -130,14 +115,12 @@ module.exports = {
         req.user.role === "admin"
           ? { _id: req.params.id }
           : { _id: req.user._id };
-
       const user = await User.findOne(filters).select("-password");
       if (!user) {
         return res
           .status(404)
           .json({ error: true, message: "User not found." });
       }
-
       return res.status(200).json({ error: false, data: user });
     } catch (error) {
       console.error("Error reading user:", error);
@@ -145,14 +128,13 @@ module.exports = {
     }
   },
 
-  // Update user details
+  // Update user details (Profile update)
   update: async (req, res) => {
     try {
       const filters =
         req.user.role === "admin"
           ? { _id: req.params.id }
           : { _id: req.user._id };
-
       const user = await User.findOne(filters);
       if (!user) {
         return res
@@ -160,20 +142,8 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // If a new file is uploaded, update the image field with the S3 URL.
+      // If a new file is uploaded via multer-s3, use its S3 URL.
       if (req.file && req.file.location) {
-        // Optionally, if the old image was stored locally, delete it.
-        // Here, we check if user.image starts with '/uploads/'.
-        if (user.image && user.image.startsWith("/uploads/")) {
-          const oldFilePath = path.join(
-            __dirname,
-            "..",
-            "uploads",
-            path.basename(user.image)
-          );
-          console.log("Old file path for deletion:", oldFilePath);
-          deleteFile(oldFilePath);
-        }
         req.body.image = req.file.location;
       } else if (req.body.image) {
         req.body.image = req.body.image.trim();
@@ -185,10 +155,9 @@ module.exports = {
       }).select("-password");
 
       if (!updatedUser) {
-        return res.status(404).json({
-          error: true,
-          message: "User not found or no changes made.",
-        });
+        return res
+          .status(404)
+          .json({ error: true, message: "User not found or no changes made." });
       }
 
       return res.status(202).json({
@@ -216,23 +185,88 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // If the image was stored locally (starts with '/uploads/'), delete it.
-      if (deletedUser.image && deletedUser.image.startsWith("/uploads/")) {
-        const imagePath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          path.basename(deletedUser.image)
-        );
-        deleteFile(imagePath);
-      }
-
+      // No local file deletion is needed because images are stored on S3.
       return res
         .status(200)
         .json({ error: false, message: "User deleted successfully." });
     } catch (error) {
       console.error("Error deleting user:", error);
       return res.status(500).json({ error: true, message: "Server error." });
+    }
+  },
+
+  // Request password reset
+  requestPasswordReset: async (req, res) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res
+          .status(404)
+          .json({ message: "No account found with this email address." });
+      }
+
+      const resetToken = generateToken(user, JWT_SECRET, "1h");
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = Date.now() + 3600000;
+      await user.save();
+
+      const resetLink = `${
+        process.env.FRONTEND_BASE_URL || "http://localhost:3061"
+      }/reset-password?token=${resetToken}`;
+      await sendResetEmail(
+        user.email,
+        "Password Reset Request",
+        `Click here to reset your password: ${resetLink}`
+      );
+
+      return res.json({ message: "Password reset link sent to email." });
+    } catch (error) {
+      console.error("Error in requestPasswordReset:", error);
+      return res.status(500).json({
+        message: "Failed to send password reset link",
+        error: error.message,
+      });
+    }
+  },
+
+  // Reset password
+  resetPassword: async (req, res) => {
+    try {
+      const { resetToken, newPassword } = req.body;
+      if (
+        !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(
+          newPassword
+        )
+      ) {
+        return res.status(400).json({
+          message:
+            "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a number, and a special character.",
+        });
+      }
+
+      const decoded = jwt.verify(resetToken, JWT_SECRET);
+      const user = await User.findById(decoded._id);
+      if (!user || user.resetPasswordToken !== resetToken) {
+        return res
+          .status(403)
+          .json({ message: "Invalid or expired reset token." });
+      }
+
+      user.password = newPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      return res.json({ message: "Password reset successfully." });
+    } catch (error) {
+      console.error("Error in resetPassword:", error);
+      if (error.name === "TokenExpiredError") {
+        return res.status(400).json({ message: "Reset token expired." });
+      }
+      return res
+        .status(500)
+        .json({ message: "Failed to reset password", error: error.message });
     }
   },
 };

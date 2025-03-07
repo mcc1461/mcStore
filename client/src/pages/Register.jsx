@@ -103,7 +103,7 @@ function Register() {
 
       let payload;
       let headers;
-      // If an image is provided either via upload or URL, use FormData.
+      // If an image is provided either via file upload or via URL, use FormData.
       if (
         (imageSource === "upload" && selectedImageFile) ||
         (imageSource === "url" && imageUrl.trim() !== "")
@@ -166,30 +166,11 @@ function Register() {
       <img
         src={log}
         alt="Logo"
-        className="
-          object-contain 
-          w-1/2 
-          h-auto 
-          mb-4 
-          lg:mb-0 
-          lg:w-1/3 
-          max-h-[30vh]
-        "
+        className="object-contain w-1/2 h-auto mb-4 lg:mb-0 lg:w-1/3 max-h-[30vh]"
       />
 
       {/* Form Container */}
-      <div
-        className="
-          flex 
-          flex-col 
-          items-center
-          justify-center
-          w-full 
-          lg:w-2/3 
-          h-[50%] 
-          p-4
-        "
-      >
+      <div className="flex flex-col items-center justify-center w-full lg:w-2/3 h-[50%] p-4">
         {/* Header */}
         <div className="w-full mb-4">
           <p className="mb-2 text-3xl font-bold text-center">Register</p>
@@ -373,7 +354,7 @@ function Register() {
 
           {/* Loading Overlay */}
           {isLoading && (
-            <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50 ">
+            <div className="absolute top-0 left-0 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
               <Loader />
             </div>
           )}
