@@ -59,17 +59,11 @@ const register = async (req, res) => {
     });
 
     // --- Handle image upload ---
-    // If a file was uploaded via Multer:
     if (req.file) {
       // For multer-s3, req.file.location holds the URL of the file
       if (req.file.location) {
         newUser.image = req.file.location;
-      }
-      // // For disk storage, req.file.filename is available
-      // else if (req.file.filename) {
-      //   newUser.image = "/uploads/" + req.file.filename;
-      // }
-      else {
+      } else {
         newUser.image = null;
       }
     } else if (req.body.image) {
