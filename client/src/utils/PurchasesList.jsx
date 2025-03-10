@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
+import { all } from "axios";
+import { formatCurrency } from "./formatCurrency";
 
 /************************************************************************************
  * 1) ROLE & NAVIGATION
@@ -65,6 +67,37 @@ export default function PurchasesList() {
   const [selectedFirm, setSelectedFirm] = useState("all");
   const [selectedBuyer, setSelectedBuyer] = useState("all");
   const [selectedUser, setSelectedUser] = useState("all");
+
+  // Compute available categories based on current brand and product filters
+  const availableCategories = categories.filter((cat) =>
+    products.some((p) => {
+      const pCat = p.categoryId?._id || p.categoryId;
+      const pBrand = p.brandId?._id || p.brandId;
+      if (selectedBrand !== "all" && pBrand !== selectedBrand) return false;
+      if (selectedProduct !== "all" && p._id !== selectedProduct) return false;
+      return pCat === cat._id;
+    })
+  );
+
+  // Compute available brands based on current category and product filters
+  const availableBrands = brands.filter((br) =>
+    products.some((p) => {
+      const pCat = p.categoryId?._id || p.categoryId;
+      const pBrand = p.brandId?._id || p.brandId;
+      if (selectedCategory !== "all" && pCat !== selectedCategory) return false;
+      if (selectedProduct !== "all" && p._id !== selectedProduct) return false;
+      return pBrand === br._id;
+    })
+  );
+
+  // Compute available products based on current category and brand filters
+  const availableProducts = products.filter((p) => {
+    const pCat = p.categoryId?._id || p.categoryId;
+    const pBrand = p.brandId?._id || p.brandId;
+    if (selectedCategory !== "all" && pCat !== selectedCategory) return false;
+    if (selectedBrand !== "all" && pBrand !== selectedBrand) return false;
+    return true;
+  });
 
   /************************************************************************************
    * 4) FETCH DATA (Initial load)
@@ -531,11 +564,13 @@ export default function PurchasesList() {
             className="w-48 px-2 py-1 border rounded"
           >
             <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat._id}>
-                {cat.name}
-              </option>
-            ))}
+            {[...availableCategories]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((cat) => (
+                <option key={cat._id} value={cat._id}>
+                  {cat.name}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -550,11 +585,13 @@ export default function PurchasesList() {
             className="w-48 px-2 py-1 border rounded"
           >
             <option value="all">All Brands</option>
-            {brands.map((b) => (
-              <option key={b._id} value={b._id}>
-                {b.name}
-              </option>
-            ))}
+            {[...availableBrands]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((b) => (
+                <option key={b._id} value={b._id}>
+                  {b.name}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -569,11 +606,13 @@ export default function PurchasesList() {
             className="w-48 px-2 py-1 border rounded"
           >
             <option value="all">All Products</option>
-            {products.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.name}
-              </option>
-            ))}
+            {[...availableProducts]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -588,11 +627,13 @@ export default function PurchasesList() {
             className="w-48 px-2 py-1 border rounded"
           >
             <option value="all">All Firms</option>
-            {firms.map((f) => (
-              <option key={f._id} value={f._id}>
-                {f.name}
-              </option>
-            ))}
+            {[...firms]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((f) => (
+                <option key={f._id} value={f._id}>
+                  {f.name}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -607,11 +648,13 @@ export default function PurchasesList() {
             className="w-48 px-2 py-1 border rounded"
           >
             <option value="all">All Buyers</option>
-            {allUsers.map((u) => (
-              <option key={u._id} value={u._id}>
-                {capitalize(u.username)} ({u.role})
-              </option>
-            ))}
+            {[...allUsers]
+              .sort((a, b) => a.username.localeCompare(b.username))
+              .map((u) => (
+                <option key={u._id} value={u._id}>
+                  {capitalize(u.username)} ({u.role})
+                </option>
+              ))}
           </select>
         </div>
 
@@ -625,9 +668,11 @@ export default function PurchasesList() {
               setSelectedCategory("all");
               setSelectedBrand("all");
               setSelectedProduct("all");
-              setSelectedSeller("all");
+              setSelectedFirm("all");
+              // setSelectedSeller("all");
+              setSelectedBuyer("all");
             }}
-            className="px-4 py-2 text-red-900 bg-orange-200 rounded hover:bg-orange-300"
+            className="px-4 py-2 font-medium text-blue-900 bg-orange-300 rounded hover:bg-orange-700 hover:text-white"
           >
             ✖︎ Reset
           </button>
@@ -686,10 +731,9 @@ export default function PurchasesList() {
             Global Totals (Filtered)
           </h2>
           <p className="text-gray-700">
-            <strong>Total Paid:</strong> ${totalPaidAll.toFixed(2)}
+            <strong>Total Paid:</strong> {formatCurrency(totalPaidAll)}
           </p>
         </div>
-
         {/* Average purchase price per product (filtered) */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
@@ -697,22 +741,74 @@ export default function PurchasesList() {
           </h2>
           {productAverages.map(({ productId, avgPrice }) => (
             <p key={productId} className="text-gray-700">
-              <strong>{getProductNameById(productId)}</strong>: $
-              {avgPrice.toFixed(2)}
+              <strong>{getProductNameById(productId)}</strong>: {""}
+              {formatCurrency(avgPrice)}
             </p>
           ))}
         </div>
-
+        {/* Total paid by each buyer (filtered)
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="w-1/5 mb-2 text-lg font-semibold text-gray-800">
+            Total Paid by Buyer (Filtered)
+          </h2>
+          <div className="flex flex-col space-y-2">
+            {buyerTotals.map(({ buyerId, total }) => (
+              <p key={buyerId} className="text-gray-700">
+                <strong>{getBuyerNameById(buyerId)}</strong>: {""}
+                <span className="ml-2 font-semibold">Total Paid:</span>
+                <span className="ml-1 text-right">{formatCurrency(total)}</span>
+              </p>
+            ))}
+          </div>
+        </div> */}
         {/* Total paid by each buyer (filtered) */}
+        {/* <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Total Paid by Buyer (Filtered)
+          </h2>
+          <div className="space-y-2">
+            {buyerTotals.map(({ buyerId, total }) => (
+              <div
+                key={buyerId}
+                className="grid items-center w-max-[30%] grid-cols-2 gap-5"
+              >
+                <div>
+                  <strong className="w-1/3">{getBuyerNameById(buyerId)}</strong>
+                  : <span className="w-1/3 ml-2 ">Total Paid:</span>
+                </div>
+                <div className="w-1/3 text-right">{formatCurrency(total)}</div>
+              </div>
+            ))}
+          </div>
+        </div> */}
+        {/* Total paid by each buyer (filtered) */}
+
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Total Paid by Buyer (Filtered)
           </h2>
-          {buyerTotals.map(({ buyerId, total }) => (
-            <p key={buyerId} className="text-gray-700">
-              <strong>{getBuyerNameById(buyerId)}</strong>: ${total.toFixed(2)}
-            </p>
-          ))}
+          <div className="w-1/3 space-y-2 ">
+            {[...buyerTotals]
+              .sort((a, b) => b.total - a.total)
+              .map(({ buyerId, total }) => (
+                <div
+                  key={buyerId}
+                  className="flex items-center gap-2 justify-left"
+                >
+                  <div className="w-[30%]">
+                    <strong className="w-[30%]">
+                      {getBuyerNameById(buyerId)}:
+                    </strong>
+                  </div>
+                  <div className="w-[30%]text-right">Total Paid:</div>
+                  <div></div>
+                  {/* Fixed width container for right alignment */}
+                  <div className="w-[40%] text-right">
+                    {formatCurrency(total)}
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -763,11 +859,13 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Categories</option>
-                        {categories.map((cat) => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </option>
-                        ))}
+                        {[...availableCategories]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((cat) => (
+                            <option key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -783,11 +881,13 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Brands</option>
-                        {brands.map((b) => (
-                          <option key={b._id} value={b._id}>
-                            {b.name}
-                          </option>
-                        ))}
+                        {[...availableBrands]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((br) => (
+                            <option key={br._id} value={br._id}>
+                              {br.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -803,11 +903,13 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="">-- Select Product --</option>
-                        {modalFilteredProducts.map((p) => (
-                          <option key={p._id} value={p._id}>
-                            {p.name}
-                          </option>
-                        ))}
+                        {[...availableProducts]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 

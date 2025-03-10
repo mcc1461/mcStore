@@ -3,7 +3,7 @@ const router = require("express").Router();
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/authMiddleware");
+} = require("../middlewares/.authMiddleware");
 const sellController = require("../controllers/sellController");
 
 // URL: /sells

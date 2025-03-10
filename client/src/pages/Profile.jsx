@@ -79,27 +79,34 @@ export default function Profile() {
   }
 
   // Compute the URL for the profile image:
-
-  const imageUrl = profile.image || defaultUser;
+  const imageUrl = profile.image || defaultProfile;
 
   return (
     <div className="flex items-center justify-center min-h-screen px-5 py-10 bg-gray-100">
       <div className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-md">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-700">Your Profile</h2>
-          <button
-            onClick={() => {
-              // Navigate to the profile update page
-              navigate("/dashboard/update", { state: { profile } });
-              console.log(
-                "Profile data being sent to edit profile page",
-                profile
-              );
-            }}
-            className="px-4 py-2 font-semibold text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
-          >
-            Edit Profile
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-4 py-2 font-semibold text-white bg-gray-500 rounded-lg shadow hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                // Navigate to the profile update page
+                navigate("/dashboard/update", { state: { profile } });
+                console.log(
+                  "Profile data being sent to edit profile page",
+                  profile
+                );
+              }}
+              className="px-4 py-2 font-semibold text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
+            >
+              Edit Profile
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

@@ -6,7 +6,7 @@ const router = require("express").Router();
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/authMiddleware");
+} = require("../middlewares/.authMiddleware");
 const tokenController = require("../controllers/tokenController");
 
 // URL: /tokens

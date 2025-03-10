@@ -9,7 +9,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import Products from "./pages/Products";
-import Overview from "./pages/Overview";
+import Overview from "./pages/.Overview";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import ForgotPassword from "./pages/ForgotPassword";

@@ -57,7 +57,13 @@ function Updateprofile() {
       // Validate file type and upload if a new file is provided
       if (
         fileName &&
-        ["image/jpeg", "image/jpg", "image/png"].includes(fileName.type)
+        [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/svg",
+          "image/webp",
+        ].includes(fileName.type)
       ) {
         const image = new FormData();
         image.append("file", fileName);
@@ -209,7 +215,7 @@ function Updateprofile() {
           <b>
             {" "}
             Profile Image:{" "}
-            <span className="text-neutral-500">Jpg, Png, Jpeg</span>
+            <span className="text-neutral-500">Jpg, Png, Jpeg, Svg, Webp</span>
           </b>
           <div className="flex flex-col items-center justify-center h-[300px] w-[500px] cursor-pointer rounded-xl bg-white shadow-lg">
             <input

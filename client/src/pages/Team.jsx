@@ -30,15 +30,22 @@ function Team() {
 
         // Assuming the API returns an array in data.data
         const allUsers = data.data;
-        // Filter to include only admins and staffs
         const filteredTeam = allUsers.filter(
-          (user) => user.role === "admin" || user.role === "staff"
+          (user) =>
+            user.role === "admin" ||
+            user.role === "staff" ||
+            user.role === "user"
         );
         setTeamMembers(filteredTeam);
       } catch (err) {
         console.error("Error fetching team members:", err);
-        setError("Error loading team members.");
-        toast.error("Error loading team members.");
+        if (err.response && err.response.status === 403) {
+          setError("Not authorized to access team members.");
+          toast.error("Not authorized");
+        } else {
+          setError("Error loading team members.");
+          toast.error("Error loading team members.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -70,6 +77,10 @@ function Team() {
 
   const staffs = teamMembers
     .filter((member) => member.role === "staff")
+    .sort((a, b) => a.firstName.localeCompare(b.firstName));
+
+  const regulars = teamMembers
+    .filter((member) => member.role === "usersf")
     .sort((a, b) => a.firstName.localeCompare(b.firstName));
 
   // Helper to determine the proper image URL
@@ -107,7 +118,11 @@ function Team() {
         )}
         <p
           className={`mt-2 font-bold ${
-            member.role === "admin" ? "text-red-500" : "text-blue-500"
+            member.role === "admin"
+              ? "text-red-500"
+              : member.role === "staff"
+                ? "text-blue-500"
+                : "text-green-500"
           }`}
         >
           {member.role.toUpperCase()}
@@ -145,13 +160,25 @@ function Team() {
           </div>
         )}
         {staffs.length > 0 && (
-          <div className="w-full">
+          <div className="w-full mb-10">
             <h2 className="mb-5 text-2xl font-bold text-center">
               Staff Members
             </h2>
             <div className="flex flex-wrap justify-center gap-8">
               {staffs.map((staff) => (
                 <TeamCard key={staff._id} member={staff} />
+              ))}
+            </div>
+          </div>
+        )}
+        {regulars.length > 0 && (
+          <div className="w-full">
+            <h2 className="mb-5 text-2xl font-bold text-center">
+              Team Members
+            </h2>
+            <div className="flex flex-wrap justify-center gap-8">
+              {regulars.map((user) => (
+                <TeamCard key={user._id} member={user} />
               ))}
             </div>
           </div>

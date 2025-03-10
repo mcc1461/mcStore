@@ -1,7 +1,4 @@
 "use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | MusCo Dev
-------------------------------------------------------- */
 const jwt = require("jsonwebtoken");
 
 const authenticate = (req, res, next) => {
@@ -50,7 +47,8 @@ const authenticate = (req, res, next) => {
 };
 
 /**
- * Middleware to check for specific roles
+ * Middleware to check for specific roles.
+ * Usage: authorizeRoles("admin", "staff", "user")
  */
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {

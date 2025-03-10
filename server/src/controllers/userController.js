@@ -2,10 +2,20 @@
 const jwt = require("jsonwebtoken");
 const argon2 = require("argon2");
 const User = require("../models/userModel");
-const fs = require("fs");
 const path = require("path");
+const sharp = require("sharp");
+const { S3Client, UploadCommand } = require("@aws-sdk/client-s3");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
+
+// Configure S3 client using AWS SDK v3
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 // Helper function to generate JWT
 const generateToken = (user) => {
@@ -21,18 +31,15 @@ const generateToken = (user) => {
 };
 
 module.exports = {
-  // List all users (Admin) or self only (non-admin)
+  // List all users (everyone sees the full team for read-only purposes)
   list: async (req, res) => {
     try {
-      const filters = req.user.role === "admin" ? {} : { _id: req.user._id };
-      const users = await User.find(filters).select("-password");
-
+      const users = await User.find({}).select("-password");
       if (!users.length) {
         return res
           .status(404)
           .json({ error: true, message: "No users found." });
       }
-
       return res.status(200).json({ error: false, data: users });
     } catch (error) {
       console.error("Error listing users:", error);
@@ -40,7 +47,7 @@ module.exports = {
     }
   },
 
-  // Create a new user (Registration)
+  // Create a new user (Registration) with image processing via Sharp and AWS SDK v3 upload
   create: async (req, res) => {
     const { username, password, email, firstName, lastName, role, roleCode } =
       req.body;
@@ -67,13 +74,26 @@ module.exports = {
           .json({ error: true, message: "Invalid role or role code." });
       }
 
-      // Use only the S3 URL provided by multer-s3 (req.file.location)
-      const image =
-        req.file && req.file.location
-          ? req.file.location
-          : req.body.image
-          ? req.body.image.trim()
-          : null;
+      let imageUrl = null;
+      // Process image using Sharp if file is available in memory (req.file.buffer)
+      if (req.file && req.file.buffer) {
+        const resizedBuffer = await sharp(req.file.buffer)
+          .resize({ width: 300, height: 300, fit: "inside" })
+          .toBuffer();
+
+        const uploadParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: `images/${Date.now()}-${req.file.originalname}`,
+          Body: resizedBuffer,
+          ContentType: req.file.mimetype,
+        };
+
+        const command = new UploadCommand(uploadParams);
+        const uploadResult = await s3.send(command);
+        imageUrl = uploadResult.Location;
+      } else if (req.body.image) {
+        imageUrl = req.body.image.trim();
+      }
 
       const newUser = new User({
         username,
@@ -82,7 +102,7 @@ module.exports = {
         firstName,
         lastName,
         role: assignedRole,
-        image,
+        image: imageUrl,
       });
 
       await newUser.save();
@@ -128,7 +148,7 @@ module.exports = {
     }
   },
 
-  // Update user details (Profile update)
+  // Update user details (Profile update) with optional image processing if file is provided
   update: async (req, res) => {
     try {
       const filters =
@@ -142,9 +162,22 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // If a new file is uploaded via multer-s3, use its S3 URL.
-      if (req.file && req.file.location) {
-        req.body.image = req.file.location;
+      // If a new file is uploaded via memory storage, process and upload it
+      if (req.file && req.file.buffer) {
+        const resizedBuffer = await sharp(req.file.buffer)
+          .resize({ width: 300, height: 300, fit: "inside" })
+          .toBuffer();
+
+        const uploadParams = {
+          Bucket: process.env.AWS_S3_BUCKET,
+          Key: `images/${Date.now()}-${req.file.originalname}`,
+          Body: resizedBuffer,
+          ContentType: req.file.mimetype,
+        };
+
+        const command = new UploadCommand(uploadParams);
+        const uploadResult = await s3.send(command);
+        req.body.image = uploadResult.Location;
       } else if (req.body.image) {
         req.body.image = req.body.image.trim();
       }
@@ -155,9 +188,10 @@ module.exports = {
       }).select("-password");
 
       if (!updatedUser) {
-        return res
-          .status(404)
-          .json({ error: true, message: "User not found or no changes made." });
+        return res.status(404).json({
+          error: true,
+          message: "User not found or no changes made.",
+        });
       }
 
       return res.status(202).json({
@@ -201,9 +235,9 @@ module.exports = {
       const { email } = req.body;
       const user = await User.findOne({ email });
       if (!user) {
-        return res
-          .status(404)
-          .json({ message: "No account found with this email address." });
+        return res.status(404).json({
+          message: "No account found with this email address.",
+        });
       }
 
       const resetToken = generateToken(user, JWT_SECRET, "1h");
@@ -214,6 +248,7 @@ module.exports = {
       const resetLink = `${
         process.env.FRONTEND_BASE_URL || "http://localhost:3061"
       }/reset-password?token=${resetToken}`;
+      // Assume sendResetEmail is defined and imported elsewhere
       await sendResetEmail(
         user.email,
         "Password Reset Request",

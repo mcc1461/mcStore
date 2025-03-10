@@ -177,7 +177,9 @@ export default function Dashboard() {
               leaveTo="transform opacity-0 scale-95"
             >
               <Menu.Items className="absolute right-0 z-10 w-32 py-2 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black/5 focus:outline-none">
-                {(userInfo?.role === "admin" || userInfo?.role === "staff") && (
+                {(userInfo?.role === "admin" ||
+                  userInfo?.role === "staff" ||
+                  userInfo?.role === "user") && (
                   <Menu.Item>
                     {({ active }) => (
                       <button

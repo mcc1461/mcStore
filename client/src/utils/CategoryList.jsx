@@ -1,20 +1,64 @@
+/********************************************************************************************
+ * FILE: src/pages/CategoryList.jsx
+ * This component displays allowed categories as clickable cards. When a card is clicked,
+ * it computes a detailed summary (using data from products, purchases, sells, and users)
+ * and shows that summary in a modal using the CategorySummaryList component.
+ ********************************************************************************************/
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
+import CategorySummaryList from "./CategorySummaryList";
+import {
+  getProductCategoryName,
+  getProductName,
+  getUserName,
+  computeCategorySummary,
+} from "./CategoryUtils.js";
 
-export default function CategoryList() {
+// Define background colors for category cards.
+const categoryCardColors = [
+  "bg-red-700",
+  "bg-green-700",
+  "bg-blue-700",
+  "bg-yellow-700",
+  "bg-purple-700",
+  "bg-pink-700",
+  "bg-teal-700",
+];
+
+function CategoryList() {
   const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [sells, setSells] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // For the summary modal.
+  const [selectedCategoryName, setSelectedCategoryName] = useState("");
+  const [categorySummary, setCategorySummary] = useState(null);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+
   const navigate = useNavigate();
 
+  // Fetch all required data.
   useEffect(() => {
-    const fetchCategories = async () => {
+    async function fetchData() {
       try {
-        const response = await apiClient.get("/categories");
-        console.log("Fetched categories from API:", response.data.data);
+        setLoading(true);
+        const [catResp, prodResp, purchResp, sellResp, userResp] =
+          await Promise.all([
+            apiClient.get("/categories?limit=0"),
+            apiClient.get("/products?limit=0"),
+            apiClient.get("/purchases?limit=0"),
+            apiClient.get("/sells?limit=0"),
+            apiClient.get("/users?limit=0"),
+          ]);
 
-        // Filter and sort only the specified categories alphabetically
+        // Allowed categories.
         const allowedCategories = [
           "Accessories",
           "Beauty",
@@ -24,52 +68,50 @@ export default function CategoryList() {
           "Shoes",
           "Tools",
         ];
-        const filteredCategories = response.data.data
-          .filter((category) => allowedCategories.includes(category.name))
+        const fetchedCategories = (catResp.data.data || [])
+          .filter((cat) => allowedCategories.includes(cat.name))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        setCategories(filteredCategories);
+        setCategories(fetchedCategories);
+        setProducts(prodResp.data.data || []);
+        setPurchases(purchResp.data.data || []);
+        setSells(sellResp.data.data || []);
+        setUsers(userResp.data.data || []);
+
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching categories:", err.message);
-        setError("Error fetching categories");
+        console.error("Error fetching data:", err);
+        setError("Failed to load data");
         setLoading(false);
       }
-    };
-
-    fetchCategories();
+    }
+    fetchData();
   }, []);
 
-  if (loading)
-    return (
-      <div className="mt-10 text-xl text-center">Loading categories...</div>
+  // Handler: when a category card is clicked, compute its summary.
+  const handleCategoryClick = (category) => {
+    const summary = computeCategorySummary(
+      category.name,
+      products,
+      purchases,
+      sells,
+      users
     );
+    setCategorySummary(summary);
+    setSelectedCategoryName(category.name);
+    setSummaryModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedCategoryName("");
+    setCategorySummary(null);
+    setSummaryModalOpen(false);
+  };
+
+  if (loading)
+    return <div className="mt-10 text-xl text-center">Loading data...</div>;
   if (error)
     return <div className="mt-10 text-center text-red-500">{error}</div>;
-
-  // Darker background colors for better readability
-  const categoryColors = [
-    "bg-red-700",
-    "bg-green-700",
-    "bg-blue-700",
-    "bg-yellow-700",
-    "bg-purple-700",
-    "bg-pink-700",
-    "bg-teal-700",
-  ];
-
-  // Descriptions for specified categories
-  const categoryDescriptions = {
-    Accessories: "Complete your look with stylish and functional accessories.",
-    Beauty: "Enhance your natural beauty with premium skincare and cosmetics.",
-    Clothes: "Stay fashionable with a curated collection of stylish clothing.",
-    Electronics:
-      "Discover cutting-edge technology and devices to elevate your daily life.",
-    Home_Appliances:
-      "Upgrade your home with modern and efficient appliances for every task.",
-    Shoes: "Find the perfect pair of shoes for every occasion and style.",
-    Tools: "Equip yourself with reliable tools for every project and need.",
-  };
 
   return (
     <div className="max-w-6xl p-4 mx-auto mt-20">
@@ -77,25 +119,36 @@ export default function CategoryList() {
         <h1 className="text-4xl font-bold">Categories</h1>
         <button
           onClick={() => navigate("/dashboard")}
-          className="px-4 py-2 text-white transition bg-blue-500 rounded-lg shadow hover:bg-blue-600"
+          className="px-4 py-2 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
         >
           ➤ Dashboard
         </button>
       </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((category, index) => (
+        {categories.map((cat, index) => (
           <div
-            key={category._id}
-            className={`p-6 ${categoryColors[index % categoryColors.length]} text-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300`}
+            key={cat._id}
+            onClick={() => handleCategoryClick(cat)}
+            className={`p-6 cursor-pointer ${categoryCardColors[index % categoryCardColors.length]} text-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300`}
           >
-            <h2 className="mb-2 text-2xl font-semibold">{category.name}</h2>
+            <h2 className="mb-2 text-2xl font-semibold">{cat.name}</h2>
             <p>
-              {categoryDescriptions[category.name] ||
-                "Explore this exciting category and all it has to offer!"}
+              {cat.description ||
+                "Explore this category and all it has to offer."}
             </p>
           </div>
         ))}
       </div>
+
+      {/* Render the summary modal using CategorySummaryList */}
+      <CategorySummaryList
+        isOpen={summaryModalOpen}
+        onClose={closeModal}
+        summary={categorySummary}
+        categoryName={selectedCategoryName}
+      />
     </div>
   );
 }
+
+export default CategoryList;

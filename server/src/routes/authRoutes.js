@@ -37,7 +37,7 @@ const upload = multer({
     },
   }),
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png/;
+    const fileTypes = /jpeg|jpg|png|svg|webp/;
     const extname = fileTypes.test(
       path.extname(file.originalname).toLowerCase()
     );
@@ -45,7 +45,7 @@ const upload = multer({
     if (extname && mimetype) {
       return cb(null, true);
     }
-    cb(new Error("Only .jpeg, .jpg, and .png files are allowed!"));
+    cb(new Error("Only .jpeg, .jpg, .svg, .webp and .png files are allowed!"));
   },
 });
 
