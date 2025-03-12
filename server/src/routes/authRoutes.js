@@ -55,7 +55,11 @@ console.log("[DEBUG] authController", auth);
 console.log("[DEBUG] auth.register", auth.register);
 
 // Define auth routes using the upload middleware for file handling.
-router.post("/register", upload.single("image"), auth.register);
+router.post(
+  "/register",
+  upload.fields([{ name: "image", maxCount: 1 }]),
+  auth.register
+);
 router.post("/login", auth.login);
 router.post("/refresh", auth.refresh);
 router.get("/logout", auth.logout);

@@ -342,16 +342,14 @@ function NewMemberModal({ isOpen, onClose, onMemberAdded }) {
   );
 }
 
-// ------------------ MemberModal (Editing) ------------------
+// ------------------ MemberModal ------------------
 const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
   const currentUser = useSelector((state) => state.auth.userInfo);
-  // Initialize editedMember with all properties including an imageUrl field
+  const [isEditing, setIsEditing] = useState(false);
   const [editedMember, setEditedMember] = useState({
     ...member,
     role2: member.role2 || "",
-    imageUrl: member.image || "",
   });
-  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
@@ -377,8 +375,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
       const payload = new FormData();
       payload.append("firstName", dataWithoutId.firstName);
       payload.append("lastName", dataWithoutId.lastName);
-      payload.append("email", dataWithoutId.email);
-      payload.append("username", dataWithoutId.username);
       payload.append("phone", dataWithoutId.phone);
       payload.append("city", dataWithoutId.city);
       payload.append("country", dataWithoutId.country);
@@ -387,10 +383,8 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
       payload.append("role2", dataWithoutId.role2 || "");
       if (dataWithoutId.uploadImage) {
         payload.append("image", dataWithoutId.uploadImage);
-      } else if (dataWithoutId.imageUrl) {
-        payload.append("image", dataWithoutId.imageUrl);
       } else {
-        payload.append("image", "");
+        payload.append("image", dataWithoutId.image || "");
       }
       const response = await axios.put(
         `${import.meta.env.VITE_APP_API_URL}/api/users/${member._id}`,
@@ -442,13 +436,13 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
               toast.dismiss();
               deleteMember();
             }}
-            className="px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Yes, Delete
           </button>
           <button
             onClick={() => toast.dismiss()}
-            className="px-4 py-2 text-gray-800 bg-gray-300 rounded hover:bg-gray-400"
+            className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
           >
             Cancel
           </button>
@@ -506,33 +500,18 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                   />
                   {isEditing ? (
                     <div className="space-y-3">
-                      {/* First Name */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          First Name
+                          Username
                         </label>
                         <input
                           type="text"
-                          name="firstName"
-                          value={editedMember.firstName || ""}
+                          name="username"
+                          value={editedMember.username || ""}
                           onChange={handleInputChange}
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* Last Name */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          value={editedMember.lastName || ""}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        />
-                      </div>
-                      {/* Email */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           Email
@@ -545,22 +524,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* Username (if admin can edit) */}
-                      {currentUser && currentUser.role === "admin" && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">
-                            Username
-                          </label>
-                          <input
-                            type="text"
-                            name="username"
-                            value={editedMember.username || ""}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                          />
-                        </div>
-                      )}
-                      {/* Role Dropdown (if admin) */}
                       {currentUser && currentUser.role === "admin" && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700">
@@ -580,7 +543,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           </select>
                         </div>
                       )}
-                      {/* Role2 */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           Role2
@@ -593,7 +555,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* Phone */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           Phone
@@ -606,7 +567,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* City */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           City
@@ -619,7 +579,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* Country */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           Country
@@ -632,7 +591,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-                      {/* Bio */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
                           Bio
@@ -640,33 +598,6 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                         <textarea
                           name="bio"
                           value={editedMember.bio || ""}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        />
-                      </div>
-                      {/* Image URL */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Image URL (optional)
-                        </label>
-                        <input
-                          type="text"
-                          name="imageUrl"
-                          value={editedMember.imageUrl || ""}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          disabled={!!editedMember.uploadImage}
-                        />
-                      </div>
-                      {/* Upload Image */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Upload Image (optional)
-                        </label>
-                        <input
-                          type="file"
-                          name="uploadImage"
-                          accept="image/*"
                           onChange={handleInputChange}
                           className="w-full p-2 border rounded"
                         />
@@ -720,10 +651,7 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
                         onClick={() => {
                           setIsEditing(false);
-                          setEditedMember({
-                            ...member,
-                            imageUrl: member.image || "",
-                          });
+                          setEditedMember({ ...member });
                         }}
                         disabled={isSubmitting}
                       >
@@ -793,12 +721,12 @@ function Team() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const allUsers = data.data;
-        // You can adjust this filter if you need to include other roles
         const filteredTeam = allUsers.filter(
           (user) =>
             user.role === "admin" ||
             user.role === "staff" ||
-            user.role === "coordinator"
+            user.role === "coordinator" ||
+            user.role === "user"
         );
         setTeamMembers(filteredTeam);
       } catch (err) {
@@ -818,13 +746,7 @@ function Team() {
     fetchTeamMembers();
   }, []);
 
-  // Group team members into categories
-  const admins = teamMembers.filter((member) => member.role === "admin");
-  const staff = teamMembers.filter((member) => member.role === "staff");
-  const coordinators = teamMembers.filter(
-    (member) => member.role === "coordinator"
-  );
-
+  // Quick deletion function for admin users from the TeamCard.
   const handleDeleteMember = async (member) => {
     if (
       !window.confirm(
@@ -862,9 +784,9 @@ function Team() {
         <h2 className="text-xl font-semibold">
           {member.firstName} {member.lastName}
         </h2>
+        <p className="text-indigo-500">{formattedUsername}</p>
         <p className="text-gray-600">{member.email}</p>
         {member.phone && <p className="text-gray-600">{member.phone}</p>}
-        <p className=" text-violet-700">{`${member.city} / ${member.country}`}</p>
         <p
           className={`mt-2 font-bold ${
             member.role === "admin"
@@ -876,10 +798,8 @@ function Team() {
                   : "text-green-500"
           }`}
         >
-          {" "}
-          {member.role2.split(" ")[0].toUpperCase()}
+          {member.role.toUpperCase()}
         </p>
-
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => setSelectedMember(member)}
@@ -953,47 +873,11 @@ function Team() {
       <h1 className="mb-10 text-4xl font-bold text-center text-violet-700">
         Our Team
       </h1>
-
-      {/* Admins Section */}
-      <div className="mb-10">
-        <h2 className="mb-5 text-3xl font-bold text-center">Admins</h2>
-        <div className="flex flex-wrap justify-center gap-8">
-          {admins.length > 0 ? (
-            admins.map((member) => (
-              <TeamCard key={member._id} member={member} />
-            ))
-          ) : (
-            <p className="text-center">No Admins found.</p>
-          )}
-        </div>
+      <div className="flex flex-wrap justify-center gap-8">
+        {teamMembers.map((member) => (
+          <TeamCard key={member._id} member={member} />
+        ))}
       </div>
-
-      {/* Staff Section */}
-      <div className="mb-10">
-        <h2 className="mb-5 text-3xl font-bold text-center">Staff</h2>
-        <div className="flex flex-wrap justify-center gap-8">
-          {staff.length > 0 ? (
-            staff.map((member) => <TeamCard key={member._id} member={member} />)
-          ) : (
-            <p className="text-center">No Staff found.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Coordinators Section */}
-      <div className="mb-10">
-        <h2 className="mb-5 text-3xl font-bold text-center">Coordinators</h2>
-        <div className="flex flex-wrap justify-center gap-8">
-          {coordinators.length > 0 ? (
-            coordinators.map((member) => (
-              <TeamCard key={member._id} member={member} />
-            ))
-          ) : (
-            <p className="text-center">No Coordinators found.</p>
-          )}
-        </div>
-      </div>
-
       {selectedMember && (
         <MemberModal
           member={selectedMember}

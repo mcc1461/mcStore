@@ -2,8 +2,6 @@
 const jwt = require("jsonwebtoken");
 const argon2 = require("argon2");
 const User = require("../models/userModel");
-const path = require("path");
-const sharp = require("sharp");
 const { S3Client, UploadCommand } = require("@aws-sdk/client-s3");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
@@ -31,7 +29,7 @@ const generateToken = (user) => {
 };
 
 module.exports = {
-  // List all users (everyone sees the full team for read-only purposes)
+  // List all users (read-only team listing)
   list: async (req, res) => {
     try {
       const users = await User.find({}).select("-password");
@@ -47,50 +45,76 @@ module.exports = {
     }
   },
 
-  // Create a new user (Registration) with image processing via Sharp and AWS SDK v3 upload
+  // Create a new user (Registration)
   create: async (req, res) => {
-    const { username, password, email, firstName, lastName, role, roleCode } =
-      req.body;
+    const {
+      username,
+      password,
+      email,
+      firstName,
+      lastName,
+      role,
+      role2,
+      roleCode,
+      phone,
+      city,
+      country,
+      bio,
+    } = req.body;
     try {
       const existingUser = await User.findOne({ username });
       if (existingUser) {
-        return res
-          .status(400)
-          .json({ error: true, message: "Username already exists." });
+        return res.status(400).json({
+          error: true,
+          message: "Username already exists.",
+        });
       }
 
-      const assignedRole =
-        role === "admin" && roleCode === process.env.ADMIN_CODE
-          ? "admin"
-          : role === "staff" && roleCode === process.env.STAFF_CODE
-          ? "staff"
-          : role === "user"
-          ? "user"
-          : null;
+      const allowedRoles = ["admin", "staff", "coordinator", "user"];
+      let assignedRole = null;
+      const roleLower = role ? role.toLowerCase() : "";
+
+      if (req.user && req.user.role === "admin") {
+        if (!allowedRoles.includes(roleLower)) {
+          return res.status(400).json({
+            error: true,
+            message: "Invalid role.",
+          });
+        }
+        assignedRole = roleLower;
+      } else {
+        assignedRole =
+          roleLower === "admin" && roleCode === process.env.ADMIN_CODE
+            ? "admin"
+            : roleLower === "staff" && roleCode === process.env.STAFF_CODE
+            ? "staff"
+            : roleLower === "coordinator" && roleCode === process.env.RC_CODE
+            ? "coordinator"
+            : roleLower === "user"
+            ? "user"
+            : null;
+      }
 
       if (!assignedRole) {
-        return res
-          .status(400)
-          .json({ error: true, message: "Invalid role or role code." });
+        return res.status(400).json({
+          error: true,
+          message: "Invalid role or role code.",
+        });
       }
 
       let imageUrl = null;
-      // Process image using Sharp if file is available in memory (req.file.buffer)
-      if (req.file && req.file.buffer) {
-        const resizedBuffer = await sharp(req.file.buffer)
-          .resize({ width: 300, height: 300, fit: "inside" })
-          .toBuffer();
-
-        const uploadParams = {
-          Bucket: process.env.AWS_S3_BUCKET,
-          Key: `images/${Date.now()}-${req.file.originalname}`,
-          Body: resizedBuffer,
-          ContentType: req.file.mimetype,
-        };
-
-        const command = new UploadCommand(uploadParams);
-        const uploadResult = await s3.send(command);
-        imageUrl = uploadResult.Location;
+      console.log("Uploaded files:", req.files);
+      if (req.files && req.files.length > 0) {
+        // Use first file or file with fieldname "image"
+        const file =
+          req.files.find((f) => f.fieldname === "image") || req.files[0];
+        if (file) {
+          imageUrl =
+            file.location ||
+            (file.key
+              ? `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.key}`
+              : null);
+        }
       } else if (req.body.image) {
         imageUrl = req.body.image.trim();
       }
@@ -102,7 +126,12 @@ module.exports = {
         firstName,
         lastName,
         role: assignedRole,
+        role2: role2 || null,
         image: imageUrl,
+        phone: phone || null,
+        city: city || null,
+        country: country || null,
+        bio: bio || null,
       });
 
       await newUser.save();
@@ -119,7 +148,12 @@ module.exports = {
           firstName,
           lastName,
           role: assignedRole,
+          role2: newUser.role2,
           image: newUser.image,
+          phone: newUser.phone,
+          city: newUser.city,
+          country: newUser.country,
+          bio: newUser.bio,
         },
       });
     } catch (error) {
@@ -148,13 +182,17 @@ module.exports = {
     }
   },
 
-  // Update user details (Profile update) with optional image processing if file is provided
+  // Update user details (Profile update)
   update: async (req, res) => {
     try {
       const filters =
         req.user.role === "admin"
           ? { _id: req.params.id }
           : { _id: req.user._id };
+
+      console.log("Update req.body:", req.body);
+      console.log("Update req.files:", req.files);
+
       const user = await User.findOne(filters);
       if (!user) {
         return res
@@ -162,25 +200,17 @@ module.exports = {
           .json({ error: true, message: "User not found." });
       }
 
-      // If a new file is uploaded via memory storage, process and upload it
-      if (req.file && req.file.buffer) {
-        const resizedBuffer = await sharp(req.file.buffer)
-          .resize({ width: 300, height: 300, fit: "inside" })
-          .toBuffer();
-
-        const uploadParams = {
-          Bucket: process.env.AWS_S3_BUCKET,
-          Key: `images/${Date.now()}-${req.file.originalname}`,
-          Body: resizedBuffer,
-          ContentType: req.file.mimetype,
-        };
-
-        const command = new UploadCommand(uploadParams);
-        const uploadResult = await s3.send(command);
-        req.body.image = uploadResult.Location;
+      // Handle file upload: with multer-s3 the file will have a location property.
+      if (req.files && req.files.length > 0) {
+        const imageFile = req.files.find((f) => f.fieldname === "image");
+        if (imageFile && imageFile.location) {
+          req.body.image = imageFile.location;
+        }
       } else if (req.body.image) {
         req.body.image = req.body.image.trim();
       }
+
+      console.log("Final update payload:", req.body);
 
       const updatedUser = await User.findOneAndUpdate(filters, req.body, {
         new: true,
@@ -188,12 +218,12 @@ module.exports = {
       }).select("-password");
 
       if (!updatedUser) {
-        return res.status(404).json({
-          error: true,
-          message: "User not found or no changes made.",
-        });
+        return res
+          .status(404)
+          .json({ error: true, message: "User not found or no changes made." });
       }
 
+      console.log("Updated user:", updatedUser);
       return res.status(202).json({
         error: false,
         message: "Profile updated successfully.",
@@ -211,15 +241,12 @@ module.exports = {
       if (req.user.role !== "admin") {
         return res.status(403).json({ error: true, message: "Access denied." });
       }
-
       const deletedUser = await User.findOneAndDelete({ _id: req.params.id });
       if (!deletedUser) {
         return res
           .status(404)
           .json({ error: true, message: "User not found." });
       }
-
-      // No local file deletion is needed because images are stored on S3.
       return res
         .status(200)
         .json({ error: false, message: "User deleted successfully." });

@@ -9,7 +9,7 @@ import { useSelector } from "react-redux";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
 import { all } from "axios";
-import { formatCurrency } from "./formatCurrency";
+import { formatCurrency } from "../utils/helpers";
 
 /************************************************************************************
  * 1) ROLE & NAVIGATION

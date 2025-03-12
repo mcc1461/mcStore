@@ -1,5 +1,3 @@
-// Profile.jsx
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -10,14 +8,12 @@ import defaultProfile from "../assets/default-profile.png";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { userInfo } = useSelector((state) => state.auth); // Get user credentials from Redux
+  const { userInfo } = useSelector((state) => state.auth);
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  // Fetch detailed profile data once the component mounts
   useEffect(() => {
-    if (!userInfo) {
+    if (!userInfo || !(userInfo._id || userInfo.id)) {
       toast.error("User not authenticated. Redirecting to login...");
       navigate("/login");
       return;
@@ -26,23 +22,16 @@ export default function Profile() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error("Authentication token missing. Please login again.");
-        }
-
-        const { data } = await axios.get(
-          `${import.meta.env.VITE_APP_API_URL}/api/users/${userInfo._id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+        if (!token) throw new Error("Authentication token missing.");
+        const response = await axios.get(
+          `${import.meta.env.VITE_APP_API_URL}/api/users/${userInfo._id || userInfo.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        console.log("Fetched profile data:", data.data);
-        setProfile(data.data);
+        const userData = response.data.data || response.data;
+        setProfile(userData);
       } catch (err) {
         const message = err.response?.data?.message || "Error loading profile.";
-        console.error("Error fetching profile:", message);
-        setError(message);
+        console.error("Profile.jsx error:", message);
         toast.error(message);
       } finally {
         setIsLoading(false);
@@ -52,7 +41,6 @@ export default function Profile() {
     fetchProfile();
   }, [userInfo, navigate]);
 
-  // While loading, display the Loader component
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -60,25 +48,14 @@ export default function Profile() {
       </div>
     );
   }
-
-  // If an error occurred, display the error message with a button to navigate to login
-  if (error) {
+  if (!profile) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-500">{error}</p>
-          <button
-            onClick={() => navigate("/login")}
-            className="px-4 py-2 mt-4 text-white bg-blue-500 rounded hover:bg-blue-600"
-          >
-            Go to Login
-          </button>
-        </div>
+        <p className="text-red-500">No profile data available.</p>
       </div>
     );
   }
 
-  // Compute the URL for the profile image:
   const imageUrl = profile.image || defaultProfile;
 
   return (
@@ -95,12 +72,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => {
-                // Navigate to the profile update page
                 navigate("/dashboard/update", { state: { profile } });
-                console.log(
-                  "Profile data being sent to edit profile page",
-                  profile
-                );
               }}
               className="px-4 py-2 font-semibold text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
             >
@@ -110,7 +82,7 @@ export default function Profile() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Left side: Profile details */}
+          {/* Left: Profile details */}
           <div className="space-y-4">
             <div>
               <p className="text-sm font-semibold text-gray-500">Name:</p>
@@ -130,21 +102,42 @@ export default function Profile() {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-500">Role:</p>
-              <p
-                className={`text-lg font-bold ${
-                  profile.role === "admin"
-                    ? "text-red-500"
-                    : profile.role === "staff"
-                      ? "text-blue-500"
-                      : "text-green-500"
-                }`}
-              >
-                {profile.role}
+              <p className="text-lg font-bold text-gray-700">{profile.role}</p>
+            </div>
+            {profile.role2 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-500">Role2:</p>
+                <p className="text-lg font-bold text-gray-700">
+                  {profile.role2}
+                </p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-semibold text-gray-500">Phone:</p>
+              <p className="text-lg font-bold text-gray-700">
+                {profile.phone || "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-500">City:</p>
+              <p className="text-lg font-bold text-gray-700">
+                {profile.city || "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-500">Country:</p>
+              <p className="text-lg font-bold text-gray-700">
+                {profile.country || "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-500">Bio:</p>
+              <p className="text-lg font-bold text-gray-700">
+                {profile.bio || "N/A"}
               </p>
             </div>
           </div>
-
-          {/* Right side: Profile image and membership info */}
+          {/* Right: Profile image & membership info */}
           <div className="flex flex-col items-center">
             <img
               src={imageUrl}
@@ -152,7 +145,6 @@ export default function Profile() {
               crossOrigin="anonymous"
               className="object-cover w-40 h-40 rounded-full shadow-lg"
               onError={(e) => {
-                // When the image fails to load, set the src to the default image
                 e.currentTarget.src = defaultProfile;
               }}
             />

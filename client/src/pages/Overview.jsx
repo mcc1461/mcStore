@@ -1,8 +1,6 @@
 /********************************************************************************************
  * FILE: src/pages/Overview.jsx
- * This file displays an outstanding dashboard overview with charts and aggregated summaries.
  ********************************************************************************************/
-
 import React, { useEffect, useState } from "react";
 import { Pie, Bar } from "react-chartjs-2";
 import {
@@ -16,9 +14,10 @@ import {
   Title,
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import { useNavigate } from "react-router-dom";
 import apiClient from "../services/apiClient";
 
-// Register the necessary Chart.js components and plugins.
+// Register Chart.js components and plugins.
 ChartJS.register(
   ArcElement,
   CategoryScale,
@@ -30,54 +29,44 @@ ChartJS.register(
   ChartDataLabels
 );
 
-// Define a mapping of category names to distinct, contrasting colors.
+// Define category colors.
 const categoryColors = {
-  Electronics: "#FF5733", // Vibrant Orange-Red
-  "Home Appliances": "#33aF99", // Bright Green
-  Clothes: "#3357FF", // Bold Blue
-  Accessories: "#FF33A8", // Hot Pink
-  Shoes: "#FF9900", // Vivid Yellow
-  Beauty: "#8E44AD", // Deep Purple
-  Tools: "#2ECC71", // Bright Green (or change if desired)
-  "Unknown Category": "#95A5A6", // Gray for unknown
+  Electronics: "#FF5733",
+  "Home Appliances": "#33aF99",
+  Clothes: "#3357FF",
+  Accessories: "#FF33A8",
+  Shoes: "#FF9900",
+  Beauty: "#8E44AD",
+  Tools: "#2ECC71",
+  "Unknown Category": "#95A5A6",
 };
 
-// Format Number
+// Format number helper.
 function formatNumber(num) {
   const absVal = Math.abs(num);
-  // Check if there's any decimal remainder
   const decimalRemainder = num % 1 !== 0;
-
-  // 1) Less than 1000
   if (absVal < 1000) {
     const integerPart = Math.floor(num);
     return decimalRemainder ? integerPart + "+" : String(integerPart);
   }
-
-  // 2) 1000 <= value < 1,000,000
   if (absVal < 1_000_000) {
-    // e.g., 23000 => 23k
     const thousands = Math.floor(num / 1000);
     return thousands + "k" + (decimalRemainder ? "+" : "");
   }
-
-  // 3) 1,000,000 or more => X M
   const millions = Math.floor(num / 1_000_000);
   return millions + "M" + (decimalRemainder ? "+" : "");
 }
 
-// Title Case
+// Convert string to Title Case.
 function toTitleCase(str) {
   if (!str) return "";
   return str
-    .split(" ") // Split into words by space
-    .map((word) => {
-      return word[0]?.toUpperCase() + word.slice(1).toLowerCase();
-    })
+    .split(" ")
+    .map((word) => word[0]?.toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 }
 
-// Helper function to build data for a Pie chart.
+// Chart data helpers.
 function getChartData(labels, values) {
   return {
     labels,
@@ -95,7 +84,6 @@ function getChartData(labels, values) {
   };
 }
 
-// Helper function to build data for a Bar chart.
 function getBarChartData(labels, values) {
   return {
     labels,
@@ -114,18 +102,18 @@ function getBarChartData(labels, values) {
 }
 
 function Overview() {
-  // States for raw data
+  const navigate = useNavigate();
+
+  // State declarations.
   const [products, setProducts] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [sells, setSells] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Chart selection state
-  const [selectedChartView, setSelectedChartView] = useState("Products"); // "Products", "Purchases", or "Sells"
+  const [selectedChartView, setSelectedChartView] = useState("Products"); // "Products", "Purchases", "Sells"
   const [selectedChartType, setSelectedChartType] = useState("Pie"); // "Pie" or "Bar"
 
-  // States for aggregated chart data
   const [productChartData, setProductChartData] = useState({
     labels: [],
     values: [],
@@ -139,48 +127,62 @@ function Overview() {
     values: [],
   });
 
-  // ---- Existing "top" states ----
-  const [topProducts, setTopProducts] = useState([]); // Top 3 products by purchase spending
-  const [topBuyers, setTopBuyers] = useState([]); // Top 3 buyers (from purchases)
-  const [topSellers, setTopSellers] = useState([]); // Top 3 sellers (from sells)
-  const [topProfitableProducts, setTopProfitableProducts] = useState([]); // Top 3 most profitable products
+  // Top aggregations.
+  const [topProducts, setTopProducts] = useState([]);
+  const [topBuyers, setTopBuyers] = useState([]);
+  const [topSellers, setTopSellers] = useState([]);
+  const [topProfitableProducts, setTopProfitableProducts] = useState([]);
+  const [topProfitByPersons, setTopProfitByPersons] = useState([]);
 
-  // ---- New state for top persons' profit ----
-  const [topProfitByPersons, setTopProfitByPersons] = useState([]); // Top 3 persons with highest total profit
-
-  // State for the "See All" modal (assumed to be defined elsewhere)
+  // Modal state if needed.
   const [allProductsModalOpen, setAllProductsModalOpen] = useState(false);
 
-  // A small helper to retrieve any available name fields
+  // Helper: get full name from a user object.
   function getFullName(userObj, defaultLabel = "Unknown") {
     if (!userObj || typeof userObj !== "object") return defaultLabel;
-
-    // 1. Attempt "firstName lastName"
     const fn = userObj.firstName?.trim() || "";
     const ln = userObj.lastName?.trim() || "";
     let combined = (fn + " " + ln).trim();
-
-    // 2. If that fails, fallback to userObj.name or userObj.username
     if (!combined) {
       combined = userObj.name?.trim() || userObj.username?.trim() || "";
     }
-
     return combined || defaultLabel;
   }
 
-  // Fetch and aggregate data
   useEffect(() => {
     async function fetchAggregates() {
       try {
         setLoading(true);
+        // Fetch products, purchases, and sells.
         const [prodResp, purchResp, sellResp] = await Promise.all([
           apiClient.get("/products?limit=0"),
           apiClient.get("/purchases?limit=0"),
           apiClient.get("/sells?limit=0"),
         ]);
         const productsData = prodResp.data.data || [];
-        const purchasesData = purchResp.data.data || [];
-        const sellsData = sellResp.data.data || [];
+
+        // Use the real purchase objects from the /purchases endpoint if any.
+        const rawPurchases = purchResp.data.data || [];
+        // If empty, fallback to deriving from product's embedded arrays:
+        const purchasesData =
+          rawPurchases.length > 0
+            ? rawPurchases
+            : productsData.flatMap((prod) =>
+                (prod.purchases || []).map((p) => ({
+                  ...p,
+                  productId: prod._id,
+                }))
+              );
+
+        // Use the real sell objects from the /sells endpoint if any.
+        const rawSells = sellResp.data.data || [];
+        // If empty, fallback to deriving from product's embedded arrays:
+        const sellsData =
+          rawSells.length > 0
+            ? rawSells
+            : productsData.flatMap((prod) =>
+                (prod.sells || []).map((s) => ({ ...s, productId: prod._id }))
+              );
 
         setProducts(productsData);
         setPurchases(purchasesData);
@@ -203,7 +205,7 @@ function Overview() {
         const prodValues = Object.values(prodCounts);
         setProductChartData({ labels: prodLabels, values: prodValues });
 
-        // --- Build a mapping: productId => category name ---
+        // Build productCategoryMap for grouping
         const productCategoryMap = {};
         productsData.forEach((prod) => {
           let categoryName = "Unknown Category";
@@ -214,13 +216,15 @@ function Overview() {
               categoryName = prod.category || "Unknown Category";
             }
           }
-          productCategoryMap[prod._id] = categoryName;
+          productCategoryMap[String(prod._id)] = categoryName;
         });
 
         // --- Aggregate Purchases by Category ---
         const purchTotals = {};
         purchasesData.forEach((p) => {
-          const catName = productCategoryMap[p.productId] || "Unknown Category";
+          const catName =
+            productCategoryMap[String(p.productId)] || "Unknown Category";
+          // Use p.purchasePrice (not p.price!)
           const totalVal = (p.purchasePrice || 0) * (p.quantity || 0);
           purchTotals[catName] = (purchTotals[catName] || 0) + totalVal;
         });
@@ -231,7 +235,9 @@ function Overview() {
         // --- Aggregate Sells by Category ---
         const sellTotals = {};
         sellsData.forEach((s) => {
-          const catName = productCategoryMap[s.productId] || "Unknown Category";
+          const catName =
+            productCategoryMap[String(s.productId)] || "Unknown Category";
+          // Use s.sellPrice (not s.price!)
           const totalVal = (s.sellPrice || 0) * (s.quantity || 0);
           sellTotals[catName] = (sellTotals[catName] || 0) + totalVal;
         });
@@ -239,13 +245,13 @@ function Overview() {
         const sellValues = Object.values(sellTotals);
         setSellChartData({ labels: sellLabels, values: sellValues });
 
-        // --- Additional Aggregations ---
-
-        // Top 3 Products by Purchase Spending
+        // --- Top 3 Products by Purchase Spending ---
         const productPurchaseMap = {};
         purchasesData.forEach((p) => {
-          productPurchaseMap[p.productId] =
-            (productPurchaseMap[p.productId] || 0) +
+          const key = String(p.productId);
+          // Again, use p.purchasePrice
+          productPurchaseMap[key] =
+            (productPurchaseMap[key] || 0) +
             (p.purchasePrice || 0) * (p.quantity || 0);
         });
         const topProd = Object.entries(productPurchaseMap)
@@ -253,55 +259,37 @@ function Overview() {
           .slice(0, 3)
           .map(([prodId, total]) => ({
             productName:
-              productsData.find((pr) => pr._id === prodId)?.name ||
+              productsData.find((pr) => String(pr._id) === prodId)?.name ||
               "Unknown Product",
             totalSpent: total,
           }));
         setTopProducts(topProd);
 
-        /* -----------------------------------------------------------------------------------
-         * BUYERS AGGREGATION
-         * If buyerId is an object, we use that. Otherwise, if buyerName is present, use that
-         * as a unique key so multiple buyers appear (Melih, Mustafa, Dilecus, etc.)
-         ----------------------------------------------------------------------------------- */
+        // --- Buyers Aggregation ---
         const buyerMap = {};
         purchasesData.forEach((p) => {
-          // If p.buyerId is an object, get an ID string from it
           const buyerObject =
             p.buyerId && typeof p.buyerId === "object" ? p.buyerId : null;
-
           let buyerKey =
             buyerObject?._id ||
             (p.buyerId && typeof p.buyerId === "string"
               ? p.buyerId.toString()
               : null);
-
-          // Fallback: if there's a p.buyerName or similar field, use that as the key
-          if (!buyerKey && p.buyerName) {
-            buyerKey = p.buyerName.trim();
-          }
-          if (!buyerKey) {
-            buyerKey = "unknown";
-          }
-
-          // Generate a display name (from object or fallback)
+          if (!buyerKey && p.buyerName) buyerKey = p.buyerName.trim();
+          if (!buyerKey) buyerKey = "unknown";
           let displayName =
             buyerKey === "unknown"
               ? "Unknown Buyer"
               : toTitleCase(getFullName(buyerObject, "Unknown Buyer"));
-
-          // If we used p.buyerName as the key, let's also use that as the display name
-          if (buyerKey === p.buyerName) {
-            displayName = p.buyerName;
-          }
+          if (buyerKey === p.buyerName) displayName = p.buyerName;
 
           if (!buyerMap[buyerKey]) {
             buyerMap[buyerKey] = { totalPaid: 0, name: displayName };
           }
+          // Multiply p.purchasePrice * p.quantity
           buyerMap[buyerKey].totalPaid +=
             (p.purchasePrice || 0) * (p.quantity || 0);
         });
-
         const sortedBuyers = Object.entries(buyerMap).sort(
           (a, b) => b[1].totalPaid - a[1].totalPaid
         );
@@ -312,47 +300,32 @@ function Overview() {
         }));
         setTopBuyers(topBuyer);
 
-        /* -----------------------------------------------------------------------------------
-         * SELLERS AGGREGATION
-         * Similarly, if sellerId is an object, we use that. Otherwise, if sellerName is present,
-         * use that as a unique key to differentiate multiple sellers
-         ----------------------------------------------------------------------------------- */
+        // --- Sellers Aggregation ---
         const sellerMap = {};
         sellsData.forEach((s) => {
           const sellerObject =
             s.sellerId && typeof s.sellerId === "object" ? s.sellerId : null;
-
           let sellerKey =
             sellerObject?._id ||
             (s.sellerId && typeof s.sellerId === "string"
               ? s.sellerId.toString()
               : null);
+          if (!sellerKey && s.sellerName) sellerKey = s.sellerName.trim();
+          if (!sellerKey) sellerKey = "unknown";
 
-          // Fallback to s.sellerName if present
-          if (!sellerKey && s.sellerName) {
-            sellerKey = s.sellerName.trim();
-          }
-          if (!sellerKey) {
-            sellerKey = "unknown";
-          }
-
-          // Generate a display name
           let displayName =
             sellerKey === "unknown"
               ? "Unknown Seller"
               : getFullName(sellerObject, "Unknown Seller");
-
-          if (sellerKey === s.sellerName) {
-            displayName = s.sellerName;
-          }
+          if (sellerKey === s.sellerName) displayName = s.sellerName;
 
           if (!sellerMap[sellerKey]) {
             sellerMap[sellerKey] = { totalSold: 0, name: displayName };
           }
+          // Multiply s.sellPrice * s.quantity
           sellerMap[sellerKey].totalSold +=
             (s.sellPrice || 0) * (s.quantity || 0);
         });
-
         const sortedSellers = Object.entries(sellerMap).sort(
           (a, b) => b[1].totalSold - a[1].totalSold
         );
@@ -363,65 +336,54 @@ function Overview() {
         }));
         setTopSellers(topSeller);
 
-        // Top 3 Most Profitable Products
-        const purchasePriceMap = {};
+        // --- Top 3 Most Profitable Products ---
+        // 1) average purchase price
+        const purchasePriceMap2 = {};
         purchasesData.forEach((p) => {
-          if (!purchasePriceMap[p.productId]) {
-            purchasePriceMap[p.productId] = { total: 0, qty: 0 };
+          const key = String(p.productId);
+          if (!purchasePriceMap2[key]) {
+            purchasePriceMap2[key] = { total: 0, qty: 0 };
           }
-          purchasePriceMap[p.productId].total +=
+          purchasePriceMap2[key].total +=
             (p.purchasePrice || 0) * (p.quantity || 0);
-          purchasePriceMap[p.productId].qty += p.quantity || 0;
+          purchasePriceMap2[key].qty += p.quantity || 0;
         });
         const avgPurchasePrices = {};
-        Object.keys(purchasePriceMap).forEach((pid) => {
-          const data = purchasePriceMap[pid];
-          avgPurchasePrices[pid] = data.qty > 0 ? data.total / data.qty : 0;
+        Object.keys(purchasePriceMap2).forEach((key) => {
+          const data = purchasePriceMap2[key];
+          avgPurchasePrices[key] = data.qty > 0 ? data.total / data.qty : 0;
         });
+
+        // 2) for sells
         const productProfitMap = {};
         sellsData.forEach((s) => {
-          const pid = s.productId;
-          const profitPerUnit =
-            (s.sellPrice || 0) - (avgPurchasePrices[pid] || 0);
-          const profit = profitPerUnit * (s.quantity || 0);
-          productProfitMap[pid] = (productProfitMap[pid] || 0) + profit;
+          const key = String(s.productId);
+          const avgCost = avgPurchasePrices[key] || 0;
+          const revenue = (s.sellPrice || 0) * (s.quantity || 0);
+          const cost = avgCost * (s.quantity || 0);
+          const profit = revenue - cost;
+          productProfitMap[key] = (productProfitMap[key] || 0) + profit;
         });
         const topProfitable = Object.entries(productProfitMap)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
-          .map(([pid, profit]) => ({
+          .map(([prodId, profit]) => ({
             productName:
-              productsData.find((pr) => pr._id === pid)?.name ||
+              productsData.find((pr) => String(pr._id) === prodId)?.name ||
               "Unknown Product",
             profit,
           }));
         setTopProfitableProducts(topProfitable);
 
-        /* -----------------------------------------------------------------------------------
-         * TOP 3 PERSONS BY PROFIT
-         * We'll compute each seller's total profit by subtracting the average purchase cost
-         * for the product from the sell price, times quantity sold, aggregated by seller.
-         ----------------------------------------------------------------------------------- */
-        // 1) Build an average purchase price for each product
-        const purchasePriceMap2 = {};
-        purchasesData.forEach((p) => {
-          if (!purchasePriceMap2[p.productId]) {
-            purchasePriceMap2[p.productId] = { total: 0, qty: 0 };
-          }
-          purchasePriceMap2[p.productId].total +=
-            (p.purchasePrice || 0) * (p.quantity || 0);
-          purchasePriceMap2[p.productId].qty += p.quantity || 0;
-        });
-        const avgPricesByPid = {};
-        Object.keys(purchasePriceMap2).forEach((pid) => {
-          const data = purchasePriceMap2[pid];
-          avgPricesByPid[pid] = data.qty > 0 ? data.total / data.qty : 0;
-        });
-
-        // 2) For each sell, figure out the profit
-        //    Then accumulate by "sellerKey"
+        // --- Top 3 Persons by Profit ---
         const sellerProfitMap = {};
         sellsData.forEach((s) => {
+          const key = String(s.productId);
+          const avgCost = avgPurchasePrices[key] || 0;
+          const revenue = (s.sellPrice || 0) * (s.quantity || 0);
+          const cost = avgCost * (s.quantity || 0);
+          const netProfit = revenue - cost;
+
           const sellerObject =
             s.sellerId && typeof s.sellerId === "object" ? s.sellerId : null;
           let sellerKey =
@@ -429,45 +391,23 @@ function Overview() {
             (s.sellerId && typeof s.sellerId === "string"
               ? s.sellerId.toString()
               : null);
-
-          // fallback if there's s.sellerName
-          if (!sellerKey && s.sellerName) {
-            sellerKey = s.sellerName.trim();
-          }
+          if (!sellerKey && s.sellerName) sellerKey = s.sellerName.trim();
           if (!sellerKey) sellerKey = "unknown";
 
-          // Construct a display name
           let displayName =
             sellerKey === "unknown"
               ? "Unknown Seller"
               : getFullName(sellerObject, "Unknown Seller");
+          if (sellerKey === s.sellerName) displayName = s.sellerName;
 
-          if (sellerKey === s.sellerName) {
-            displayName = s.sellerName;
-          }
-
-          // Compute profit
-          const avgCost = avgPricesByPid[s.productId] || 0;
-          const revenue = (s.sellPrice || 0) * (s.quantity || 0);
-          const cost = avgCost * (s.quantity || 0);
-          const netProfit = revenue - cost;
-
-          // Accumulate in sellerProfitMap
           if (!sellerProfitMap[sellerKey]) {
-            sellerProfitMap[sellerKey] = {
-              name: displayName,
-              totalProfit: 0,
-            };
+            sellerProfitMap[sellerKey] = { name: displayName, totalProfit: 0 };
           }
           sellerProfitMap[sellerKey].totalProfit += netProfit;
         });
-
-        // Sort the sellers by totalProfit descending
         const sortedProfitSellers = Object.entries(sellerProfitMap).sort(
           (a, b) => b[1].totalProfit - a[1].totalProfit
         );
-
-        // Take top 3
         const topProfit = sortedProfitSellers
           .slice(0, 3)
           .map(([key, data]) => ({
@@ -487,11 +427,10 @@ function Overview() {
     fetchAggregates();
   }, []);
 
-  // Determine which chart data to display based on the selected chart view.
+  // Determine chart data.
   let chartData = {};
   let chartTitle = "";
   let isMoneyChart = false;
-
   if (selectedChartView === "Products") {
     chartData = getChartData(productChartData.labels, productChartData.values);
     chartTitle = "Products by Category";
@@ -509,13 +448,11 @@ function Overview() {
     isMoneyChart = true;
   }
 
-  // Options for the PIE chart: show percentage in dataLabels, show values in legend
   const pieOptions = {
     plugins: {
       datalabels: {
         color: "#fff",
         formatter: (value, context) => {
-          // Calculate percentage
           const dataset = context.dataset.data;
           const total = dataset.reduce((acc, val) => acc + val, 0);
           const percentage =
@@ -534,10 +471,8 @@ function Overview() {
               const rawValue = dataset.data[i];
               let formatted = rawValue;
               if (isMoneyChart) {
-                // Money: 2 decimals + $
                 formatted = "$" + formatNumber(Number(rawValue).toFixed(2));
               }
-              // Otherwise just the raw integer for product counts
               return {
                 text: `${label} (${formatted})`,
                 fillStyle: dataset.backgroundColor[i],
@@ -551,7 +486,6 @@ function Overview() {
     },
   };
 
-  // Options for the BAR chart: dataLabels show numeric or money accordingly
   const barOptions = {
     responsive: true,
     plugins: {
@@ -563,7 +497,6 @@ function Overview() {
         align: "top",
         formatter: (value) => {
           if (isMoneyChart) {
-            // 2 decimals + $
             return (
               "$" +
               Number(value)
@@ -571,15 +504,33 @@ function Overview() {
                 .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
             );
           }
-          // just raw integer for product chart
           return value;
         },
       },
     },
   };
 
+  if (loading) {
+    return (
+      <div className="mt-8 text-xl text-center">Loading dashboard data...</div>
+    );
+  }
+  if (error) {
+    return <div className="mt-8 text-xl text-center text-red-600">{error}</div>;
+  }
+
   return (
     <div className="p-4 mx-auto max-w-7xl">
+      {/* Return to Dashboard Button */}
+      <div className="mb-4">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="px-4 py-2 text-white bg-blue-600 rounded shadow hover:bg-blue-700"
+        >
+          ← Dashboard
+        </button>
+      </div>
+
       <h1 className="mb-8 text-4xl font-bold text-center">
         Dashboard Overview
       </h1>
@@ -742,7 +693,6 @@ function Overview() {
                 <div className="basis-[100%] shrink-0">{item.productName}</div>
                 <div className="flex items-center">
                   <span className="inline-block text-left w-28">
-                    {" "}
                     ▶︎ Total Spent:
                   </span>
                   <span className="w-20 basis-[20%] font-bold text-right text-red-500">
@@ -768,7 +718,6 @@ function Overview() {
                 <div className="basis-[100%] shrink-0">{item.productName}</div>
                 <div className="flex items-center">
                   <span className="inline-block text-left w-28">
-                    {" "}
                     ▶︎ Total Profit:
                   </span>
                   <span className="w-20 basis-[20%] font-bold text-right text-green-700">
@@ -783,7 +732,7 @@ function Overview() {
           </ul>
         </div>
 
-        {/* Top 3 Buyers (by name) */}
+        {/* Top 3 Buyers */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-2xl font-semibold">Top 3 Buyers</h2>
           <ul className="ml-4 text-gray-700 list-disc">
@@ -805,7 +754,7 @@ function Overview() {
           </ul>
         </div>
 
-        {/* Top 3 Sellers (by name) */}
+        {/* Top 3 Sellers */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-2xl font-semibold">Top 3 Sellers</h2>
           <ul className="ml-4 text-gray-700 list-disc">
@@ -827,7 +776,7 @@ function Overview() {
           </ul>
         </div>
 
-        {/* NEW: Top 3 Persons with Highest Profit */}
+        {/* Top 3 Persons with Highest Profit */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-2xl font-semibold">
             Top 3 Persons with Highest Profit
@@ -835,15 +784,10 @@ function Overview() {
           <ul className="ml-4 text-gray-700 list-disc">
             {topProfitByPersons.map((person, idx) => (
               <li key={idx} className="flex items-center">
-                {/* Left side: a fixed width for the name */}
                 <span className="inline-block font-bold w-28 text-violet-700">
                   {toTitleCase(person.name)}
                 </span>
-
-                {/* The arrow: aligned after name */}
                 <span className="inline-block w-6 text-center">▶︎</span>
-
-                {/* The profit: right-aligned to the remainder */}
                 <span className="inline-block text-left w-25">
                   Total Profit:
                 </span>

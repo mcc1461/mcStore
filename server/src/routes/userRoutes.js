@@ -1,5 +1,4 @@
 "use strict";
-
 const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
@@ -55,23 +54,25 @@ const upload = multer({
   },
 });
 
-router.get("/", authenticate, authorizeRoles("admin", "staff", "user"), list);
-router.post("/", authenticate, authorizeRoles("admin", "staff"), create);
+// Use upload.any() for routes that accept multipart/form-data.
+router.get(
+  "/",
+  authenticate,
+  authorizeRoles("admin", "staff", "coordinator", "user"),
+  list
+);
+router.post(
+  "/",
+  authenticate,
+  authorizeRoles("admin", "staff"),
+  upload.any(),
+  create
+);
 router
   .route("/:id")
   .get(authenticate, read)
-  .put(
-    authenticate,
-    authorizeRoles("admin", "staff"),
-    upload.single("image"),
-    update
-  )
-  .patch(
-    authenticate,
-    authorizeRoles("admin", "staff"),
-    upload.single("image"),
-    update
-  )
+  .put(authenticate, authorizeRoles("admin", "staff"), upload.any(), update)
+  .patch(authenticate, authorizeRoles("admin", "staff"), upload.any(), update)
   .delete(authenticate, authorizeRoles("admin"), remove);
 
 module.exports = router;

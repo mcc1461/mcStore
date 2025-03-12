@@ -9,9 +9,9 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Board from "./pages/Board";
 import Products from "./pages/Products";
-import Overview from "./pages/.Overview";
+import Overview from "./pages/Overview";
 import Profile from "./pages/Profile";
-import EditProfile from "./pages/EditProfile";
+import EditProfileModal from "./pages/EditProfileModal";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import CategoriesList from "./utils/CategoryList";
@@ -73,7 +73,7 @@ function App() {
 
           {/* Nested routes inside /dashboard */}
           <Route path="profile" element={<Profile />} />
-          <Route path="update" element={<EditProfile />} />
+          <Route path="update" element={<EditProfileModal />} />
           <Route path="board" element={<Board />} />
           <Route path="overview" element={<Overview />} />
 

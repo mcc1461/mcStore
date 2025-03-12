@@ -42,20 +42,45 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "staff", "user"],
+      enum: ["admin", "staff", "coordinator", "user"],
       default: "user",
+    },
+    role2: {
+      type: String,
+      trim: true,
+      default: null,
     },
     image: {
       type: String,
       default: null,
       validate: {
         validator: function (v) {
-          // Accept only valid URLs (S3 returns a full URL)
           const urlRegex = /^(https?:\/\/.*\.(?:png|jpg|jpeg|svg|webp))$/i;
           return v === null || urlRegex.test(v);
         },
         message: (props) => `${props.value} is not a valid URL for an image.`,
       },
+    },
+    // Additional fields for extended user information
+    phone: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    country: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: null,
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -63,7 +88,7 @@ const UserSchema = new mongoose.Schema(
   { collection: "users", timestamps: true }
 );
 
-// Pre-save hook to hash the password with argon2
+// Pre-save hook to hash the password when modified
 UserSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
     try {
@@ -75,7 +100,7 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Method to verify password using argon2
+// Instance method to verify password
 UserSchema.methods.verifyPassword = async function (password) {
   try {
     return await argon2.verify(this.password, password);

@@ -16,7 +16,7 @@ const AddTeamMemberModal = ({ onClose, onCreated }) => {
     phoneNumber: "",
   });
 
-  const roles = ["admin", "staff", "manager", "regional coordinator", "user"];
+  const roles = ["admin", "staff", "manager", "coordinator", "user"];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
