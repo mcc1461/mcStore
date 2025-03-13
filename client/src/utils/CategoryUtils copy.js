@@ -1,12 +1,16 @@
 // src/utils/categoryUtils.js
 
-// A helper function to safely parse numbers from values.
+// A helper to safely parse numbers from a value.
+// This function removes any non-numeric characters, then checks if the value uses a thousand separator dot.
 export function parseNumber(value) {
   if (typeof value === "string") {
+    // Remove any non-numeric characters except digits, dot, comma, and minus.
     let cleaned = value.replace(/[^0-9,.\-]/g, "");
+    // If the format appears to use thousand separators (e.g. "100.000")
     if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
       cleaned = cleaned.replace(/\./g, "");
     } else if (cleaned.includes(",") && cleaned.includes(".")) {
+      // If both comma and dot exist, assume comma is decimal separator.
       cleaned = cleaned.replace(/\./g, "").replace(/,/g, ".");
     } else if (cleaned.includes(",")) {
       cleaned = cleaned.replace(/,/g, ".");
@@ -16,8 +20,7 @@ export function parseNumber(value) {
   }
   return Number(value) || 0;
 }
-
-// Helper function to get a product's category name.
+// Helper to get a product's category name.
 export function getProductCategoryName(prod) {
   if (
     prod.categoryId &&
@@ -31,13 +34,13 @@ export function getProductCategoryName(prod) {
   return "Unknown Category";
 }
 
-// Helper function to get a product's name from an array by its _id.
+// Helper to get a product's name from an array by its _id.
 export function getProductName(products, productId) {
   const found = products.find((p) => p._id === productId);
   return found ? found.name : "Unknown Product";
 }
 
-// Helper function to get a user's display name from an array by its _id.
+// Helper to get a user's display name from an array by its _id.
 export function getUserName(users, userId) {
   if (!userId) return "Unknown Person";
   const found = users.find((u) => u._id === userId);
@@ -74,7 +77,7 @@ export function computeCategorySummary(
     filteredProductIds.includes(s.productId)
   );
 
-  // 3) Calculate totals for reference.
+  // 3) Calculate totals.
   const totalMoneySpent = categoryPurchases.reduce(
     (sum, p) => sum + parseNumber(p.purchasePrice) * parseNumber(p.quantity),
     0
@@ -83,6 +86,7 @@ export function computeCategorySummary(
     (sum, s) => sum + parseNumber(s.sellPrice) * parseNumber(s.quantity),
     0
   );
+  const profit = totalMoneyGained - totalMoneySpent;
 
   // 4) Top sold product.
   const productSoldMap = {};
@@ -123,31 +127,21 @@ export function computeCategorySummary(
       }
     : null;
 
-  // 6) Top 3 most profitable products (by individual product profit)
+  // 6) Top 3 most profitable products.
   const profitableProducts = filteredProducts.map((prod) => {
-    const sellingPrice = parseNumber(prod.price);
-    // Get all purchase records for the product
-    const prodPurchases = categoryPurchases.filter(
-      (p) => p.productId === prod._id
+    const price = parseNumber(prod.price);
+    const cost = parseNumber(prod.cost);
+    const totalSold = categorySells
+      .filter((s) => s.productId === prod._id)
+      .reduce((acc, s) => acc + parseNumber(s.quantity), 0);
+    // Log for debugging:
+    console.log(
+      `Product: ${prod.name} | Price: ${price} | Cost: ${cost} | Total Sold: ${totalSold}`
     );
-    const totalPurchaseQuantity = prodPurchases.reduce(
-      (sum, p) => sum + parseNumber(p.quantity),
-      0
-    );
-    const totalPurchaseCost = prodPurchases.reduce(
-      (sum, p) => sum + parseNumber(p.purchasePrice) * parseNumber(p.quantity),
-      0
-    );
-    const averageCost =
-      totalPurchaseQuantity > 0 ? totalPurchaseCost / totalPurchaseQuantity : 0;
-    // Get total quantity sold for the product
-    const prodSells = categorySells.filter((s) => s.productId === prod._id);
-    const totalSold = prodSells.reduce(
-      (sum, s) => sum + parseNumber(s.quantity),
-      0
-    );
-    // Product profit as (sellingPrice - averageCost) * totalSold
-    const productProfit = (sellingPrice - averageCost) * totalSold;
+    // Ensure defaults if NaN.
+    const validPrice = isNaN(price) ? 0 : price;
+    const validCost = isNaN(cost) ? 0 : cost;
+    const productProfit = (validPrice - validCost) * totalSold;
     return { name: prod.name, profit: productProfit };
   });
   profitableProducts.sort((a, b) => b.profit - a.profit);
@@ -195,41 +189,40 @@ export function computeCategorySummary(
     ? { name: getUserName(users, bigSellerId), totalSold: bigSellerAmount }
     : null;
 
-  // 9) Revised profit calculation: Total profit as sum of individual product profits.
-  let totalProfit = 0;
-  filteredProducts.forEach((prod) => {
-    const sellingPrice = parseNumber(prod.price);
-    const prodPurchases = categoryPurchases.filter(
-      (p) => p.productId === prod._id
-    );
-    const totalPurchaseQuantity = prodPurchases.reduce(
-      (sum, p) => sum + parseNumber(p.quantity),
-      0
-    );
-    const totalPurchaseCost = prodPurchases.reduce(
-      (sum, p) => sum + parseNumber(p.purchasePrice) * parseNumber(p.quantity),
-      0
-    );
-    const averageCost =
-      totalPurchaseQuantity > 0 ? totalPurchaseCost / totalPurchaseQuantity : 0;
-    const prodSells = categorySells.filter((s) => s.productId === prod._id);
-    const totalSold = prodSells.reduce(
-      (sum, s) => sum + parseNumber(s.quantity),
-      0
-    );
-    const productProfit = (sellingPrice - averageCost) * totalSold;
-    totalProfit += productProfit;
+  // 9) Best Profit Person.
+  const profitMap = {};
+  categorySells.forEach((s) => {
+    const sellerId = s.sellerId && (s.sellerId._id || s.sellerId);
+    if (!sellerId) return;
+    const prod = products.find((p) => p._id === s.productId);
+    if (!prod) return;
+    const cost = parseNumber(prod.cost);
+    const netProfit =
+      (parseNumber(s.sellPrice) - cost) * parseNumber(s.quantity);
+    profitMap[sellerId] = (profitMap[sellerId] || 0) + netProfit;
   });
+  let bestProfitSellerId = null;
+  let bestProfitAmount = 0;
+  Object.entries(profitMap).forEach(([sid, prof]) => {
+    if (prof > bestProfitAmount) {
+      bestProfitAmount = prof;
+      bestProfitSellerId = sid;
+    }
+  });
+  const bestProfitPerson = bestProfitSellerId
+    ? { name: getUserName(users, bestProfitSellerId), profit: bestProfitAmount }
+    : null;
 
   return {
     productCount,
     totalMoneySpent,
     totalMoneyGained,
-    profit: totalProfit, // Total profit across all products in the category.
+    profit,
     topSoldProduct,
     topPurchasedProduct,
     profitableProducts: top3Profitable,
     bigBuyer,
     bigSeller,
+    bestProfitPerson,
   };
 }

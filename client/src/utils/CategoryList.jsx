@@ -1,21 +1,9 @@
-/********************************************************************************************
- * FILE: src/pages/CategoryList.jsx
- * This component displays allowed categories as clickable cards. When a card is clicked,
- * it computes a detailed summary (using data from products, purchases, sells, and users)
- * and shows that summary in a modal using the CategorySummaryList component.
- ********************************************************************************************/
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
-import CategorySummaryList from "./CategorySummaryList";
-import {
-  getProductCategoryName,
-  getProductName,
-  getUserName,
-  computeCategorySummary,
-} from "./CategoryUtils.js";
+import { computeCategorySummary, parseNumber } from "../utils/categoryUtils";
+import { formatCurrency } from "./..formatCurrency";
 
 // Define background colors for category cards.
 const categoryCardColors = [
@@ -44,7 +32,6 @@ function CategoryList() {
 
   const navigate = useNavigate();
 
-  // Fetch all required data.
   useEffect(() => {
     async function fetchData() {
       try {
@@ -68,6 +55,7 @@ function CategoryList() {
           "Shoes",
           "Tools",
         ];
+
         const fetchedCategories = (catResp.data.data || [])
           .filter((cat) => allowedCategories.includes(cat.name))
           .sort((a, b) => a.name.localeCompare(b.name));
@@ -77,7 +65,6 @@ function CategoryList() {
         setPurchases(purchResp.data.data || []);
         setSells(sellResp.data.data || []);
         setUsers(userResp.data.data || []);
-
         setLoading(false);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -88,7 +75,6 @@ function CategoryList() {
     fetchData();
   }, []);
 
-  // Handler: when a category card is clicked, compute its summary.
   const handleCategoryClick = (category) => {
     const summary = computeCategorySummary(
       category.name,
@@ -140,13 +126,76 @@ function CategoryList() {
         ))}
       </div>
 
-      {/* Render the summary modal using CategorySummaryList */}
-      <CategorySummaryList
-        isOpen={summaryModalOpen}
-        onClose={closeModal}
-        summary={categorySummary}
-        categoryName={selectedCategoryName}
-      />
+      {/* Summary Modal */}
+      <Transition appear show={summaryModalOpen} as="div">
+        <Dialog
+          as="div"
+          className="fixed inset-0 z-50 overflow-y-auto"
+          onClose={closeModal}
+        >
+          <div className="min-h-screen px-4 text-center">
+            <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+            <span
+              className="inline-block h-screen align-middle"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+            <div className="inline-block w-full max-w-md p-6 my-8 text-left transition-all transform bg-white rounded-lg shadow-xl">
+              <Dialog.Title className="text-xl font-bold">
+                {selectedCategoryName} Summary
+              </Dialog.Title>
+              {categorySummary ? (
+                <div className="mt-4 space-y-2">
+                  <p>
+                    <strong>Number of Products:</strong>{" "}
+                    {categorySummary.productCount}
+                  </p>
+                  <p>
+                    <strong>Total Money Spent:</strong>
+                    {formatCurrency(
+                      parseNumber(categorySummary.totalMoneySpent)
+                    )}
+                  </p>
+                  <p>
+                    <strong>Total Money Gained:</strong>
+                    {formatCurrency(
+                      parseNumber(categorySummary.totalMoneyGained)
+                    )}
+                  </p>
+                  <p>
+                    <strong>Profit:</strong> $
+                    {formatCurrency(parseNumber(categorySummary.profit))}
+                  </p>
+                  <p>
+                    <strong>Most Profitable Products:</strong>
+                  </p>
+                  <ul className="ml-4 list-disc">
+                    {categorySummary.profitableProducts.map((prod, idx) => (
+                      <li key={idx}>
+                        <div>{prod.name}</div>
+                        <div>(Profit: {formatCurrency(prod.profit)})</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <p>No summary available.</p>
+                </div>
+              )}
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

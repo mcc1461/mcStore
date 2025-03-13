@@ -62,8 +62,8 @@ export default function ProductsList() {
     useState(null);
 
   // Pagination
-  // const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // ----------------------------------------------------------------
   // HELPER: getProductId
@@ -141,13 +141,18 @@ export default function ProductsList() {
   }
 
   // ----------------------------------------------------------------
-  // FETCH PRODUCTS
+  // FETCH PRODUCTS (with negative quantity protection)
   // ----------------------------------------------------------------
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const response = await apiClient.get("/products?limit=100&page=1");
-        setProducts(response.data.data);
+        // Ensure quantity is never negative
+        const safeProducts = response.data.data.map((p) => ({
+          ...p,
+          quantity: Math.max(0, p.quantity || 0),
+        }));
+        setProducts(safeProducts);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -191,22 +196,11 @@ export default function ProductsList() {
   }, []);
 
   // ----------------------------------------------------------------
-  // [CHANGE] DYNAMIC DROPDOWN OPTIONS
+  // DYNAMIC DROPDOWN OPTIONS
   // ----------------------------------------------------------------
-  /**
-   * We only display the relevant brand options if a Category is chosen.
-   * We only display the relevant category options if a Brand is chosen.
-   * Both always include "all" so the user can reset.
-   */
-
-  // All brand names:
   const allBrandNames = brands.map((b) => b.name);
-
-  // All category names:
   const allCategoryNames = categories.map((c) => c.name);
 
-  // brandOptions => If selectedCategory === "all", show all brands.
-  //                 Otherwise show only the brands used by that category.
   let brandOptions = [];
   if (selectedCategory === "all") {
     brandOptions = ["all", ...allBrandNames.sort()];
@@ -219,8 +213,6 @@ export default function ProductsList() {
     brandOptions = ["all", ...Array.from(brandSet).sort()];
   }
 
-  // categoryOptions => If selectedBrand === "all", show all categories.
-  //                    Otherwise show only categories for that brand.
   let categoryOptions = [];
   if (selectedBrand === "all") {
     categoryOptions = ["all", ...allCategoryNames.sort()];
@@ -233,14 +225,9 @@ export default function ProductsList() {
     categoryOptions = ["all", ...Array.from(catSet).sort()];
   }
 
-  // ----------------------------------------------------------------
-  // [CHANGE] HANDLERS THAT RESET THE OTHER DROPDOWN WHEN "all" IS CHOSEN
-  // ----------------------------------------------------------------
   function handleCategoryChange(e) {
     const newCategory = e.target.value;
     setSelectedCategory(newCategory);
-
-    // If user picked "all" for category, reset brand to "all"
     if (newCategory === "all") {
       setSelectedBrand("all");
     }
@@ -249,30 +236,36 @@ export default function ProductsList() {
   function handleBrandChange(e) {
     const newBrand = e.target.value;
     setSelectedBrand(newBrand);
-
-    // If user picked "all" for brand, reset category to "all"
     if (newBrand === "all") {
       setSelectedCategory("all");
     }
   }
 
   // ----------------------------------------------------------------
+  // RESET FILTERS HANDLER
+  // ----------------------------------------------------------------
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSelectedBrand("all");
+    setSelectedPriceRanges([]);
+    setFilterStockStatus("all");
+  };
+
+  // ----------------------------------------------------------------
   // FILTERED PRODUCTS
   // ----------------------------------------------------------------
   const filteredProducts = products
-    // Filter by Brand
     .filter((product) =>
       selectedBrand === "all"
         ? true
         : resolveBrandName(product.brandId) === selectedBrand
     )
-    // Filter by Category
     .filter((product) =>
       selectedCategory === "all"
         ? true
         : resolveCategoryName(product.categoryId) === selectedCategory
     )
-    // Filter by Stock
     .filter((product) => {
       if (filterStockStatus === "all") return true;
       if (filterStockStatus === "low") {
@@ -286,12 +279,9 @@ export default function ProductsList() {
       }
       return true;
     })
-    // Filter by Price
     .filter((product) =>
       isPriceInAnySelectedRange(product.price, selectedPriceRanges)
     )
-
-    // Filter by Search
     .filter((product) =>
       product.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -311,7 +301,6 @@ export default function ProductsList() {
   // ----------------------------------------------------------------
   // PAGINATION
   // ----------------------------------------------------------------
-  const [currentPage, setCurrentPage] = useState(1);
   const indexOfLastProduct = currentPage * itemsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - itemsPerPage;
   const currentProducts = filteredProducts.slice(
@@ -320,7 +309,6 @@ export default function ProductsList() {
   );
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
-  // Reset to page 1 whenever filters/search change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedBrand, selectedCategory, filterStockStatus, searchTerm]);
@@ -351,8 +339,6 @@ export default function ProductsList() {
 
   const openEditModal = (product) => {
     const prod = { ...product };
-
-    // unify brandId
     if (prod.brandId) {
       if (typeof prod.brandId === "object" && prod.brandId._id) {
         prod.brandId = prod.brandId._id;
@@ -364,7 +350,6 @@ export default function ProductsList() {
         if (foundBrand) prod.brandId = foundBrand._id;
       }
     }
-    // unify categoryId
     if (prod.categoryId) {
       if (typeof prod.categoryId === "object" && prod.categoryId._id) {
         prod.categoryId = prod.categoryId._id;
@@ -376,7 +361,6 @@ export default function ProductsList() {
         if (foundCat) prod.categoryId = foundCat._id;
       }
     }
-
     setEditingProduct(prod);
     setIsAddingNewProduct(false);
     setModalOpen(true);
@@ -408,6 +392,7 @@ export default function ProductsList() {
   const saveProductDetails = async () => {
     try {
       const payload = { ...editingProduct };
+      // Ensure quantity and price are not negative
       payload.quantity = Math.max(0, Number(payload.quantity) || 0);
       payload.price = Math.max(0, Number(payload.price) || 0);
 
@@ -511,7 +496,6 @@ export default function ProductsList() {
           {/* Category Filter */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">Category</label>
-            {/* [CHANGE] call handleCategoryChange */}
             <select
               value={selectedCategory}
               onChange={handleCategoryChange}
@@ -528,7 +512,6 @@ export default function ProductsList() {
           {/* Brand Filter */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">Brand</label>
-            {/* [CHANGE] call handleBrandChange */}
             <select
               value={selectedBrand}
               onChange={handleBrandChange}
@@ -541,6 +524,7 @@ export default function ProductsList() {
               ))}
             </select>
           </div>
+
           {/* Price Filter */}
           <div className="mb-4">
             <label className="block text-sm font-semibold">
@@ -562,7 +546,6 @@ export default function ProductsList() {
                   checked={selectedPriceRanges.includes(option.value)}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Toggle the selected value in the array:
                     if (selectedPriceRanges.includes(value)) {
                       setSelectedPriceRanges(
                         selectedPriceRanges.filter((v) => v !== value)
@@ -613,6 +596,16 @@ export default function ProductsList() {
                   : `There are ${totalFiltered} products.`}
             </p>
           </div>
+
+          {/* RESET FILTERS BUTTON */}
+          <div className="mt-6">
+            <button
+              onClick={handleResetFilters}
+              className="w-full px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
+            >
+              Reset Filters
+            </button>
+          </div>
         </aside>
 
         {/* Main Section */}
@@ -635,7 +628,6 @@ export default function ProductsList() {
                   className="block w-full px-4 py-2 text-black border rounded-lg sm:hidden focus:ring focus:ring-indigo-200"
                 />
               )}
-              {/* Desktop search always visible */}
               <input
                 type="text"
                 placeholder="Search products..."
@@ -720,7 +712,6 @@ export default function ProductsList() {
 
                     {/* Actions */}
                     <div className="flex justify-between mt-2">
-                      {/* Details (any user) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -732,7 +723,6 @@ export default function ProductsList() {
                       </button>
 
                       <div className="flex space-x-2">
-                        {/* Edit (staff/admin) */}
                         {(userRole === "staff" || userRole === "admin") && (
                           <button
                             onClick={(e) => {
@@ -744,7 +734,6 @@ export default function ProductsList() {
                             <FaEdit className="w-5 h-5" />
                           </button>
                         )}
-                        {/* Delete (admin) */}
                         {userRole === "admin" && (
                           <button
                             onClick={(e) => {
@@ -908,6 +897,15 @@ export default function ProductsList() {
                             quantity: e.target.value,
                           }))
                         }
+                        onBlur={(e) => {
+                          const qty = Number(e.target.value);
+                          if (qty < 0) {
+                            setEditingProduct((prev) => ({
+                              ...prev,
+                              quantity: 0,
+                            }));
+                          }
+                        }}
                         className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-indigo-200"
                       />
                     </div>

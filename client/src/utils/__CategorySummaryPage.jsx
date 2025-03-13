@@ -110,7 +110,11 @@ function computeCategorySummary(
     (sum, s) => sum + (s.sellPrice || 0) * (s.quantity || 0),
     0
   );
-  const profit = totalMoneyGained - totalMoneySpent;
+  // const profit = totalMoneyGained - totalMoneySpent;
+  const profit = profitableProducts.reduce(
+    (sum, prod) => sum + parseNumber(prod.profit),
+    0
+  );
 
   // 5) Top sold product (by total quantity sold).
   const productSoldMap = {};
@@ -417,7 +421,7 @@ function CategorySummaryPage() {
                         : "N/A"}
                     </p>
                     <p>
-                      <strong>Most Profitable Products:</strong>
+                      <strong>Most Profitable Products *****:</strong>
                     </p>
                     <ul className="ml-4 list-disc">
                       {categorySummary.profitableProducts.map((p, idx) => (
