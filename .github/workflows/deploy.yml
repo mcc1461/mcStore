@@ -39,16 +39,18 @@ jobs:
             git clean -fd
             git pull origin main
 
-            # Install all dependencies and build
+            # Install dependencies and build on the server (if needed)
             npm install
             npm run build
 
+            # Remove old build files from /var/www/softrealizer (be cautious with hidden files)
             sudo rm -rf /var/www/softrealizer/*
-            sudo rm -rf /var/www/softrealizer/.*
+            # Optionally remove hidden files if you're sure (uncomment if necessary)
+            # sudo rm -rf /var/www/softrealizer/.*
 
-            # Deploy new build
-            sudo cp -R dist/* /var/www/softrealizer/
+            # Deploy new build using rsync (replace "dist/" with the correct build folder if different)
+            sudo rsync -av --delete dist/ /var/www/softrealizer/
 
-            # Reload nginx and restart node app
+            # Reload nginx and restart the node app
             sudo systemctl reload nginx
             pm2 restart all
