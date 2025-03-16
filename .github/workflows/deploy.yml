@@ -43,6 +43,9 @@ jobs:
             npm install
             npm run build
 
+            sudo rm -rf /var/www/softrealizer/*
+            sudo rm -rf /var/www/softrealizer/.*
+
             # Deploy new build
             sudo cp -R dist/* /var/www/softrealizer/
 
