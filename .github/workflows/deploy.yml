@@ -21,8 +21,12 @@ jobs:
       - name: Install Dependencies and Build
         working-directory: ./client
         run: |
+          rm -rf dist
+          npm cache clean --force
           npm install
           npm run build
+          echo "Local dist folder contents:"
+          ls -la dist
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
@@ -34,31 +38,28 @@ jobs:
           script: |
             cd ~/mcStore/client
 
-            # Reset repository and pull the latest changes
+            # Reset repository and pull latest changes
             git reset --hard HEAD
             git clean -fd
             git pull origin main
 
             # Install dependencies and build on the server
+            rm -rf dist
+            npm cache clean --force
             npm install
             npm run build
-
-            # Debug: list the updated build folder
-            echo "New build (dist/) contents:"
+            echo "Server dist folder contents:"
             ls -la dist
 
             # Remove old files from the document root
             sudo rm -rf /var/www/softrealizer/*
-            # Optionally remove hidden files if you intend to clear them (be cautious)
-            # sudo rm -rf /var/www/softrealizer/.*
 
-            # Deploy new build using rsync (ensure source is 'dist/' with trailing slash)
+            # Deploy new build using rsync (ensure trailing slash on source)
             sudo rsync -av --delete dist/ /var/www/softrealizer/
 
-            # Set proper ownership so that nginx can serve the files
+            # Set proper ownership so nginx can serve the files
             sudo chown -R www-data:www-data /var/www/softrealizer
 
-            # Debug: list the updated deployment folder
             echo "Updated /var/www/softrealizer contents:"
             ls -la /var/www/softrealizer
 
