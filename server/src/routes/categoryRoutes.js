@@ -3,7 +3,7 @@ const router = require("express").Router();
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/.authMiddleware");
+} = require("../middlewares/authMiddleware");
 const categoryController = require("../controllers/categoryController");
 
 // URL: /categories
@@ -14,7 +14,11 @@ router
     authorizeRoles("admin", "staff", "user"),
     categoryController.list
   )
-  .post(authenticate, authorizeRoles("admin"), categoryController.create);
+  .post(
+    authenticate,
+    authorizeRoles("admin", "staff", "user"),
+    categoryController.create
+  );
 
 router
   .route("/:id")
@@ -23,9 +27,17 @@ router
     authorizeRoles("admin", "staff", "user"),
     categoryController.read
   )
-  .put(authenticate, authorizeRoles("admin"), categoryController.update)
-  .patch(authenticate, authorizeRoles("admin"), categoryController.update)
-  .delete(authenticate, authorizeRoles("admin"), categoryController.delete);
+  .put(authenticate, authorizeRoles("admin", "user"), categoryController.update)
+  .patch(
+    authenticate,
+    authorizeRoles("admin", "user"),
+    categoryController.update
+  )
+  .delete(
+    authenticate,
+    authorizeRoles("admin", "user"),
+    categoryController.delete
+  );
 
 // New route for category summary using actual product data
 router.get(

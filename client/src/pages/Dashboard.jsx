@@ -139,12 +139,12 @@ export default function Dashboard() {
 
         {/* RIGHT SIDE: Notifications, Profile Dropdown */}
         <div className="flex items-center ml-4 space-x-4">
-          <button
+          {/* <button
             type="button"
             className="text-gray-400 hover:text-gray-500 focus:outline-none"
           >
             <BellIcon className="w-6 h-6" />
-          </button>
+          </button> */}
 
           {/* USER DROPDOWN */}
           <Menu as="div" className="relative">
@@ -179,6 +179,7 @@ export default function Dashboard() {
               <Menu.Items className="absolute right-0 z-10 w-32 py-2 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black/5 focus:outline-none">
                 {(userInfo?.role === "admin" ||
                   userInfo?.role === "staff" ||
+                  userInfo?.role === "coordinator" ||
                   userInfo?.role === "user") && (
                   <Menu.Item>
                     {({ active }) => (

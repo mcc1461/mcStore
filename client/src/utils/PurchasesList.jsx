@@ -21,7 +21,8 @@ export default function PurchasesList() {
   const navigate = useNavigate();
 
   // Determine if user can add/edit/delete (admin/staff)
-  const canAddPurchase = userRole === "admin" || userRole === "staff";
+  const canAddPurchase =
+    userRole === "admin" || userRole === "staff" || userRole === "user";
 
   /************************************************************************************
    * 2) STATES
@@ -123,7 +124,7 @@ export default function PurchasesList() {
         const respUsers = await apiClient.get("/users?limit=0");
         const allFetchedUsers = respUsers.data.data || [];
         const staffAdmins = allFetchedUsers.filter(
-          (u) => u.role === "staff" || u.role === "admin"
+          (u) => u.role === "staff" || u.role === "admin" || u.role === "user"
         );
         setUsers(staffAdmins); // for Buyer dropdown
         setAllUsers(allFetchedUsers); // entire list for name lookups
@@ -183,6 +184,8 @@ export default function PurchasesList() {
   });
 
   // Save purchase => increments product quantity on server side
+  // ... (imports and other code remain unchanged)
+
   async function savePurchase() {
     try {
       const quantity = Number(newPurchase.quantity) || 1;
@@ -217,6 +220,7 @@ export default function PurchasesList() {
         return;
       }
 
+      // Build the payload. For regular users, mark the purchase as temporary.
       const payload = {
         productId: newPurchase.productId,
         brandId,
@@ -227,18 +231,32 @@ export default function PurchasesList() {
         purchasePrice,
       };
 
-      // POST /purchases => increments product quantity
+      if (userRole === "user") {
+        // Mark as temporary so that a TTL index (if set on your Purchase model)
+        // can remove it after 10 minutes. Alternatively, you can simulate
+        // the temporary mode by setting a timer to reload the page.
+        payload.tester = true;
+        payload.testerCreatedAt = new Date().toISOString();
+      }
+
+      // POST /purchases => increments product quantity on the server side
       const resp = await apiClient.post("/purchases", payload);
 
-      // Re-fetch products to see updated quantity
-      const respProd = await apiClient.get("/products?limit=0");
-      setProducts(respProd.data.data || []);
-
-      // Add new purchase to local state
+      // Optimistic update: Append the new purchase to local state
       const created = resp.data.data;
       if (created) {
         setPurchases((prev) => [...prev, created]);
+        // Re-fetch products to see updated quantity
+        const respProd = await apiClient.get("/products?limit=0");
+        setProducts(respProd.data.data || []);
         closeModal();
+
+        // If the user is regular, simulate the temporary mode by reloading after 10 minutes.
+        if (userRole === "user") {
+          setTimeout(() => {
+            window.location.reload();
+          }, 600000); // 600,000 ms = 10 minutes
+        }
       }
     } catch (err) {
       console.error("Error saving purchase:", err);

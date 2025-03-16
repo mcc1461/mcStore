@@ -84,28 +84,9 @@ const UserSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
-    // -----------------------------
-    // New fields for temporary ("tester") data
-    tester: {
-      type: Boolean,
-      default: false,
-    },
-    testerCreatedAt: {
-      type: Date,
-      default: null,
-    },
-    // -----------------------------
   },
   { collection: "users", timestamps: true }
 );
-
-// If you want to automatically remove tester data after 3 minutes using TTL,
-// you can uncomment the following index creation. This index will remove documents
-// 600 seconds (10 minutes) after the testerCreatedAt timestamp.
-// Note: TTL indexes apply to all documents with a valid testerCreatedAt, so you might want
-// to set testerCreatedAt only on tester documents.
-//
-UserSchema.index({ testerCreatedAt: 1 }, { expireAfterSeconds: 600 });
 
 // Pre-save hook to hash the password when modified
 UserSchema.pre("save", async function (next) {

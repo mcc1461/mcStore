@@ -249,7 +249,6 @@ function Overview() {
         const productPurchaseMap = {};
         purchasesData.forEach((p) => {
           const key = String(p.productId);
-          // Again, use p.purchasePrice
           productPurchaseMap[key] =
             (productPurchaseMap[key] || 0) +
             (p.purchasePrice || 0) * (p.quantity || 0);
@@ -286,7 +285,6 @@ function Overview() {
           if (!buyerMap[buyerKey]) {
             buyerMap[buyerKey] = { totalPaid: 0, name: displayName };
           }
-          // Multiply p.purchasePrice * p.quantity
           buyerMap[buyerKey].totalPaid +=
             (p.purchasePrice || 0) * (p.quantity || 0);
         });
@@ -322,7 +320,6 @@ function Overview() {
           if (!sellerMap[sellerKey]) {
             sellerMap[sellerKey] = { totalSold: 0, name: displayName };
           }
-          // Multiply s.sellPrice * s.quantity
           sellerMap[sellerKey].totalSold +=
             (s.sellPrice || 0) * (s.quantity || 0);
         });
@@ -337,7 +334,7 @@ function Overview() {
         setTopSellers(topSeller);
 
         // --- Top 3 Most Profitable Products ---
-        // 1) average purchase price
+        // 1) Build average purchase prices map.
         const purchasePriceMap2 = {};
         purchasesData.forEach((p) => {
           const key = String(p.productId);
@@ -354,13 +351,17 @@ function Overview() {
           avgPurchasePrices[key] = data.qty > 0 ? data.total / data.qty : 0;
         });
 
-        // 2) for sells
+        // 2) For sells: compute profit using effective cost.
         const productProfitMap = {};
         sellsData.forEach((s) => {
           const key = String(s.productId);
-          const avgCost = avgPurchasePrices[key] || 0;
+          const avgCostRaw = avgPurchasePrices[key] || 0;
+          // Fallback: if no avg purchase cost, use 75% of product's market price.
+          const product = productsData.find((pr) => String(pr._id) === key);
+          const fallbackCost = product ? product.price * 0.75 : 0;
+          const effectiveCost = avgCostRaw > 0 ? avgCostRaw : fallbackCost;
           const revenue = (s.sellPrice || 0) * (s.quantity || 0);
-          const cost = avgCost * (s.quantity || 0);
+          const cost = effectiveCost * (s.quantity || 0);
           const profit = revenue - cost;
           productProfitMap[key] = (productProfitMap[key] || 0) + profit;
         });
@@ -379,26 +380,29 @@ function Overview() {
         const sellerProfitMap = {};
         sellsData.forEach((s) => {
           const key = String(s.productId);
-          const avgCost = avgPurchasePrices[key] || 0;
+          const avgCostRaw = avgPurchasePrices[key] || 0;
+          const product = productsData.find((pr) => String(pr._id) === key);
+          const fallbackCost = product ? product.price * 0.75 : 0;
+          const effectiveCost = avgCostRaw > 0 ? avgCostRaw : fallbackCost;
           const revenue = (s.sellPrice || 0) * (s.quantity || 0);
-          const cost = avgCost * (s.quantity || 0);
+          const cost = effectiveCost * (s.quantity || 0);
           const netProfit = revenue - cost;
 
+          let sellerKey;
           const sellerObject =
             s.sellerId && typeof s.sellerId === "object" ? s.sellerId : null;
-          let sellerKey =
-            sellerObject?._id ||
-            (s.sellerId && typeof s.sellerId === "string"
+          sellerKey = sellerObject
+            ? sellerObject._id
+            : s.sellerId
               ? s.sellerId.toString()
-              : null);
-          if (!sellerKey && s.sellerName) sellerKey = s.sellerName.trim();
-          if (!sellerKey) sellerKey = "unknown";
+              : "unknown";
 
           let displayName =
             sellerKey === "unknown"
               ? "Unknown Seller"
               : getFullName(sellerObject, "Unknown Seller");
-          if (sellerKey === s.sellerName) displayName = s.sellerName;
+          if (s.sellerName && s.sellerName === sellerKey)
+            displayName = s.sellerName;
 
           if (!sellerProfitMap[sellerKey]) {
             sellerProfitMap[sellerKey] = { name: displayName, totalProfit: 0 };

@@ -126,7 +126,7 @@ export function computeCategorySummary(
   // 6) Top 3 most profitable products (by individual product profit)
   const profitableProducts = filteredProducts.map((prod) => {
     const sellingPrice = parseNumber(prod.price);
-    // Get all purchase records for the product
+    // Get all purchase records for the product.
     const prodPurchases = categoryPurchases.filter(
       (p) => p.productId === prod._id
     );
@@ -138,16 +138,21 @@ export function computeCategorySummary(
       (sum, p) => sum + parseNumber(p.purchasePrice) * parseNumber(p.quantity),
       0
     );
-    const averageCost =
-      totalPurchaseQuantity > 0 ? totalPurchaseCost / totalPurchaseQuantity : 0;
-    // Get total quantity sold for the product
+    // Calculate effective cost:
+    // If purchase records exist, use the average purchase cost;
+    // otherwise, fallback to 75% of the product's selling (market) price.
+    const effectiveCost =
+      totalPurchaseQuantity > 0
+        ? totalPurchaseCost / totalPurchaseQuantity
+        : sellingPrice * 0.75;
+    // Get total quantity sold for the product.
     const prodSells = categorySells.filter((s) => s.productId === prod._id);
     const totalSold = prodSells.reduce(
       (sum, s) => sum + parseNumber(s.quantity),
       0
     );
-    // Product profit as (sellingPrice - averageCost) * totalSold
-    const productProfit = (sellingPrice - averageCost) * totalSold;
+    // Product profit as (sellingPrice - effectiveCost) * totalSold.
+    const productProfit = (sellingPrice - effectiveCost) * totalSold;
     return { name: prod.name, profit: productProfit };
   });
   profitableProducts.sort((a, b) => b.profit - a.profit);
@@ -210,14 +215,17 @@ export function computeCategorySummary(
       (sum, p) => sum + parseNumber(p.purchasePrice) * parseNumber(p.quantity),
       0
     );
-    const averageCost =
-      totalPurchaseQuantity > 0 ? totalPurchaseCost / totalPurchaseQuantity : 0;
+    // Calculate effective cost using the fallback if no purchase records exist.
+    const effectiveCost =
+      totalPurchaseQuantity > 0
+        ? totalPurchaseCost / totalPurchaseQuantity
+        : sellingPrice * 0.75;
     const prodSells = categorySells.filter((s) => s.productId === prod._id);
     const totalSold = prodSells.reduce(
       (sum, s) => sum + parseNumber(s.quantity),
       0
     );
-    const productProfit = (sellingPrice - averageCost) * totalSold;
+    const productProfit = (sellingPrice - effectiveCost) * totalSold;
     totalProfit += productProfit;
   });
 

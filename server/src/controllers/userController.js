@@ -75,6 +75,7 @@ module.exports = {
       const roleLower = role ? role.toLowerCase() : "";
 
       if (req.user && req.user.role === "admin") {
+        // Admin can assign any valid role.
         if (!allowedRoles.includes(roleLower)) {
           return res.status(400).json({
             error: true,
@@ -83,6 +84,7 @@ module.exports = {
         }
         assignedRole = roleLower;
       } else {
+        // For non-admin creators, enforce role code for higher roles.
         assignedRole =
           roleLower === "admin" && roleCode === process.env.ADMIN_CODE
             ? "admin"
@@ -104,10 +106,9 @@ module.exports = {
 
       let imageUrl = null;
       console.log("Uploaded files:", req.files);
-      if (req.files && req.files.length > 0) {
-        // Use first file or file with fieldname "image"
-        const file =
-          req.files.find((f) => f.fieldname === "image") || req.files[0];
+      if (req.files && req.files.image && req.files.image.length > 0) {
+        // Get the first file in the "image" array
+        const file = req.files.image[0];
         if (file) {
           imageUrl =
             file.location ||
@@ -133,6 +134,13 @@ module.exports = {
         country: country || null,
         bio: bio || null,
       });
+
+      // --- Temporary Data Tagging ---
+      // If the creator is a regular user (not an admin), tag the new user as tester.
+      if (req.user && req.user.role === "user") {
+        newUser.tester = true;
+        newUser.testerCreatedAt = new Date();
+      }
 
       await newUser.save();
       const token = generateToken(newUser);
@@ -210,6 +218,13 @@ module.exports = {
         req.body.image = req.body.image.trim();
       }
 
+      // --- Temporary Data Tagging on Update ---
+      // If the updater is a regular user, mark the update as temporary.
+      if (req.user && req.user.role === "user") {
+        req.body.tester = true;
+        req.body.testerCreatedAt = new Date();
+      }
+
       console.log("Final update payload:", req.body);
 
       const updatedUser = await User.findOneAndUpdate(filters, req.body, {
@@ -235,21 +250,45 @@ module.exports = {
     }
   },
 
-  // Delete a user (Admin only)
+  // Delete a user (temporary deletion allowed for regular users)
+  // In your userController.js (or similar file)
   remove: async (req, res) => {
     try {
-      if (req.user.role !== "admin") {
+      // Allow deletion if the requester is admin OR user.
+      // (Adjust the condition as needed if you want staff also to delete permanently.)
+      if (req.user.role !== "admin" && req.user.role !== "user") {
         return res.status(403).json({ error: true, message: "Access denied." });
       }
-      const deletedUser = await User.findOneAndDelete({ _id: req.params.id });
-      if (!deletedUser) {
-        return res
-          .status(404)
-          .json({ error: true, message: "User not found." });
+
+      // If the requester is a regular user, mark the user as temporarily deleted.
+      if (req.user.role === "user") {
+        const updatedUser = await User.findOneAndUpdate(
+          { _id: req.params.id },
+          { testerDeleted: true, testerDeletedAt: new Date() },
+          { new: true }
+        );
+        if (!updatedUser) {
+          return res
+            .status(404)
+            .json({ error: true, message: "User not found." });
+        }
+        return res.status(200).json({
+          error: false,
+          message: "User marked as deleted temporarily.",
+        });
+      } else {
+        // For admins, perform a permanent deletion.
+        const deletedUser = await User.findOneAndDelete({ _id: req.params.id });
+        if (!deletedUser) {
+          return res
+            .status(404)
+            .json({ error: true, message: "User not found." });
+        }
+        return res.status(200).json({
+          error: false,
+          message: "User deleted successfully.",
+        });
       }
-      return res
-        .status(200)
-        .json({ error: false, message: "User deleted successfully." });
     } catch (error) {
       console.error("Error deleting user:", error);
       return res.status(500).json({ error: true, message: "Server error." });

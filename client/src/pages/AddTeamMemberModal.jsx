@@ -134,7 +134,7 @@ const AddTeamMemberModal = ({ onClose, onCreated }) => {
               ))}
             </select>
           </div>
-          {["admin", "staff"].includes(newUser.role) && (
+          {["admin", "staff", "coordinator", "user"].includes(newUser.role) && (
             <div>
               <label className="block mb-1 text-sm font-medium text-gray-700">
                 Role Code

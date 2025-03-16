@@ -22,7 +22,7 @@ require("express-async-errors"); // catch async errors automatically
 const {
   authenticate,
   authorizeRoles,
-} = require("./src/middlewares/.authMiddleware");
+} = require("./src/middlewares/authMiddleware");
 const errorHandler = require("./src/middlewares/errorHandler");
 const { findSearchSortPage } = require("./src/middlewares/findSearchSortPage");
 

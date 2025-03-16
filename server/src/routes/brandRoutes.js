@@ -6,7 +6,7 @@ const router = require("express").Router();
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/.authMiddleware");
+} = require("../middlewares/authMiddleware");
 const brand = require("../controllers/brandController");
 
 // URL: /brands
@@ -14,18 +14,18 @@ const brand = require("../controllers/brandController");
 router
   .route("/")
   .get(brand.list)
-  .post(authenticate, authorizeRoles("admin", "staff"), brand.create);
+  .post(authenticate, authorizeRoles("admin", "staff", "user"), brand.create);
 // Admin and staff can create brands
 
 router
   .route("/:id")
   .get(brand.read)
-  .put(authenticate, authorizeRoles("admin", "staff"), brand.update)
+  .put(authenticate, authorizeRoles("admin", "staff", "user"), brand.update)
   // Only admin can update a brand?
   // Actually, the comment says "Only admin can update," but your code says "admin, staff."
   // Possibly a mismatch in the comment vs. the code.
-  .patch(authenticate, authorizeRoles("admin"), brand.update)
-  .delete(authenticate, authorizeRoles("admin"), brand.delete);
+  .patch(authenticate, authorizeRoles("admin", "staff", "user"), brand.update)
+  .delete(authenticate, authorizeRoles("admin", "user"), brand.delete);
 // Only admin can delete a brand
 
 module.exports = router;

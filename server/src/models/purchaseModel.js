@@ -53,8 +53,21 @@ const PurchaseSchema = new mongoose.Schema(
         return this.purchasePrice * this.quantity;
       },
     },
+    // New fields for temporary ("tester") data
+    tester: {
+      type: Boolean,
+      default: false,
+    },
+    testerCreatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { collection: "purchases", timestamps: true }
 );
+
+// TTL index: Automatically delete tester documents 600 seconds (10 minutes)
+// after their testerCreatedAt timestamp.
+PurchaseSchema.index({ testerCreatedAt: 1 }, { expireAfterSeconds: 600 });
 
 module.exports = mongoose.model("Purchase", PurchaseSchema);

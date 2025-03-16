@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import defaultProfile from "../assets/default-profile.png";
 import { Dialog, Transition } from "@headlessui/react";
 import { useSelector } from "react-redux";
+import Swal from "sweetalert2"; // Import SweetAlert2
 
 // Helper: Append a timestamp to force image refresh
 const getImageUrl = (member) => {
@@ -23,7 +24,7 @@ function NewMemberModal({ isOpen, onClose, onMemberAdded }) {
     lastName: "",
     email: "",
     username: "",
-    password: "", // New password field
+    password: "",
     role: "",
     role2: "",
     roleCode: "",
@@ -61,7 +62,7 @@ function NewMemberModal({ isOpen, onClose, onMemberAdded }) {
     console.log("currentUser.role", currentUser.role);
     console.log("selected role", formData.role);
 
-    if (currentUser.role !== "admin") {
+    if (currentUser.role !== "admin" && currentUser.role !== "user") {
       payload.append("roleCode", formData.roleCode);
     }
 
@@ -205,30 +206,37 @@ function NewMemberModal({ isOpen, onClose, onMemberAdded }) {
                     onChange={handleChange}
                     className="w-full p-2 border rounded"
                   >
-                    <option value="">Select a role</option>
-                    {currentUser.role === "admin" && (
-                      <option value="admin">admin</option>
+                    {currentUser.role !== "user" ? (
+                      <>
+                        <option value="">Select a role</option>
+                        {currentUser.role === "admin" && (
+                          <option value="admin">admin</option>
+                        )}
+                        <option value="staff">staff</option>
+                        <option value="coordinator">coordinator</option>
+                        <option value="user">user</option>
+                      </>
+                    ) : (
+                      <option value="user">user</option>
                     )}
-                    <option value="staff">staff</option>
-                    <option value="coordinator">coordinator</option>
-                    <option value="user">user</option>
                   </select>
                 </div>
                 {/* Render Role Code only if current user is NOT admin */}
-                {currentUser.role !== "admin" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Role Code
-                    </label>
-                    <input
-                      type="text"
-                      name="roleCode"
-                      value={formData.roleCode}
-                      onChange={handleChange}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-                )}
+                {currentUser.role !== "admin" &&
+                  currentUser.role !== "user" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Role Code
+                      </label>
+                      <input
+                        type="text"
+                        name="roleCode"
+                        value={formData.roleCode}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                      />
+                    </div>
+                  )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Role2 (optional)
@@ -345,7 +353,6 @@ function NewMemberModal({ isOpen, onClose, onMemberAdded }) {
 // ------------------ MemberModal (Editing) ------------------
 const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
   const currentUser = useSelector((state) => state.auth.userInfo);
-  // Initialize editedMember with all properties including an imageUrl field
   const [editedMember, setEditedMember] = useState({
     ...member,
     role2: member.role2 || "",
@@ -432,34 +439,34 @@ const MemberModal = ({ member, onClose, onUpdated, onDeleted }) => {
   };
 
   const confirmDeletion = () => {
-    toast.info(
-      <div className="flex flex-col items-center">
-        <p className="mb-4 text-lg font-semibold">Delete User</p>
-        <p className="mb-4">Are you sure you want to delete this user?</p>
-        <div className="flex gap-4">
-          <button
-            onClick={() => {
-              toast.dismiss();
-              deleteMember();
-            }}
-            className="px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
-          >
-            Yes, Delete
-          </button>
-          <button
-            onClick={() => toast.dismiss()}
-            className="px-4 py-2 text-gray-800 bg-gray-300 rounded hover:bg-gray-400"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>,
-      {
-        autoClose: false,
-        closeOnClick: false,
-        position: toast.POSITION.TOP_CENTER,
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this user?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // If current user is regular, do temporary deletion.
+        if (currentUser.role === "user") {
+          Swal.fire({
+            title: "Temporary deletion",
+            text: "As a regular user, your deletion is temporary and will revert after 10 minutes.",
+            icon: "info",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          setTeamMembers((prev) => prev.filter((m) => m._id !== member._id));
+          setTimeout(() => {
+            window.location.reload();
+          }, 600000);
+        } else {
+          // Otherwise, perform permanent deletion.
+          deleteMember();
+        }
       }
-    );
+    });
   };
 
   return (
@@ -793,12 +800,13 @@ function Team() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const allUsers = data.data;
-        // You can adjust this filter if you need to include other roles
+        // Include all roles (admin, staff, coordinator, user)
         const filteredTeam = allUsers.filter(
           (user) =>
             user.role === "admin" ||
             user.role === "staff" ||
-            user.role === "coordinator"
+            user.role === "coordinator" ||
+            user.role === "user"
         );
         setTeamMembers(filteredTeam);
       } catch (err) {
@@ -824,15 +832,38 @@ function Team() {
   const coordinators = teamMembers.filter(
     (member) => member.role === "coordinator"
   );
+  // Define "users" for regular users.
+  const users = teamMembers.filter((member) => member.role === "user");
 
+  // Updated deletion function using SweetAlert2 and temporary mode for regular users.
   const handleDeleteMember = async (member) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this user? This action cannot be undone."
-      )
-    ) {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this user? This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    if (currentUser.role === "user") {
+      // Temporary deletion: Remove from local state and reload after 10 minutes.
+      await Swal.fire({
+        title: "Temporary deletion",
+        text: "As a regular user, your deletion is temporary and will revert after 10 minutes.",
+        icon: "info",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setTeamMembers((prev) => prev.filter((m) => m._id !== member._id));
+      setTimeout(() => {
+        window.location.reload();
+      }, 600000); // 10 minutes in milliseconds
       return;
     }
+
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token missing.");
@@ -840,11 +871,21 @@ function Team() {
         `${import.meta.env.VITE_APP_API_URL}/api/users/${member._id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success("User deleted successfully.");
+      await Swal.fire({
+        title: "Deleted!",
+        text: "User deleted successfully.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      });
       setTeamMembers((prev) => prev.filter((m) => m._id !== member._id));
     } catch (error) {
       console.error("Error deleting user:", error.response?.data || error);
-      toast.error(error.response?.data?.message || "Error deleting user");
+      Swal.fire({
+        title: "Error",
+        text: error.response?.data?.message || "Error deleting user",
+        icon: "error",
+      });
     }
   };
 
@@ -876,8 +917,7 @@ function Team() {
                   : "text-green-500"
           }`}
         >
-          {" "}
-          {member.role2.split(" ")[0].toUpperCase()}
+          {(member.role2 || "").split(" ")[0].toUpperCase()}
         </p>
 
         <div className="flex gap-2 mt-4">
@@ -887,7 +927,7 @@ function Team() {
           >
             View Details
           </button>
-          {currentUser.role === "admin" && (
+          {(currentUser.role === "admin" || currentUser.role === "user") && (
             <button
               onClick={() => handleDeleteMember(member)}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
@@ -993,6 +1033,22 @@ function Team() {
           )}
         </div>
       </div>
+
+      {/* Users Section */}
+      {currentUser.role === "user" ? (
+        <div className="mb-10">
+          <h2 className="mb-5 text-3xl font-bold text-center">Users</h2>
+          <div className="flex flex-wrap justify-center gap-8">
+            {users.length > 0 ? (
+              users.map((member) => (
+                <TeamCard key={member._id} member={member} />
+              ))
+            ) : (
+              <p className="text-center">No Regular Users found.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {selectedMember && (
         <MemberModal

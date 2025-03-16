@@ -20,7 +20,8 @@ export default function SellsList() {
   const navigate = useNavigate();
 
   // Only admin/staff can add/edit/delete sells
-  const canAddSell = userRole === "admin" || userRole === "staff";
+  const canAddSell =
+    userRole === "admin" || userRole === "staff" || userRole === "user";
 
   /************************************************************************************
    * 2) STATES
@@ -120,7 +121,7 @@ export default function SellsList() {
         const allFetchedUsers = respUsers.data.data || [];
         // staff+admin as "sellers"
         const staffAdmins = allFetchedUsers.filter(
-          (u) => u.role === "staff" || u.role === "admin"
+          (u) => u.role === "staff" || u.role === "admin" || u.role === "user"
         );
         setUsers(staffAdmins);
         setAllUsers(allFetchedUsers);
@@ -350,10 +351,8 @@ export default function SellsList() {
   }
   function getSellerNameById(sellerId) {
     if (!sellerId) return "Unknown Seller";
-
-    // If we got a populated object like { _id, username }, we use ._id
+    // If sellerId is an object with ._id, extract that.
     const strId = sellerId._id ? sellerId._id.toString() : sellerId.toString();
-
     const found = allUsers.find((u) => u._id === strId);
     return found ? capitalize(found.username) : "Unknown Seller";
   }
@@ -368,9 +367,16 @@ export default function SellsList() {
       (p.quantity || 0) * (p.purchasePrice || 0);
     purchaseMap[p.productId].totalQty += p.quantity || 0;
   });
+
+  // Modified getAveragePurchasePrice:
+  // If no purchase data exists, we use 75% of the product’s market price.
   function getAveragePurchasePrice(productId) {
     const data = purchaseMap[productId];
-    if (!data || data.totalQty === 0) return 0;
+    if (!data || data.totalQty === 0) {
+      const product = getProductById(productId);
+      if (product) return Number(product.price) * 0.75;
+      return 0;
+    }
     return data.totalSpent / data.totalQty;
   }
 
@@ -403,7 +409,6 @@ export default function SellsList() {
         if (typeof sell.sellerId === "object" && sell.sellerId._id) {
           sellerIdValue = sell.sellerId._id.toString();
         } else if (typeof sell.sellerId === "object") {
-          // If sellerId is an object but doesn't have an _id, default to empty string.
           sellerIdValue = "";
         } else {
           sellerIdValue = sell.sellerId.toString();
@@ -411,7 +416,6 @@ export default function SellsList() {
       }
       if (sellerIdValue !== selectedSeller.toString()) return false;
     }
-
     return true;
   }
 
@@ -542,21 +546,17 @@ export default function SellsList() {
   const sellerTotalsMap = {};
   filteredSells.forEach((s) => {
     let sid;
-    // If sellerId is an object with ._id, extract that. Otherwise treat it as a string
     if (s.sellerId && typeof s.sellerId === "object" && s.sellerId._id) {
       sid = s.sellerId._id.toString();
     } else {
       sid = s.sellerId?.toString() || "unknown";
     }
-
     if (!sellerTotalsMap[sid]) {
       sellerTotalsMap[sid] = { totalSold: 0, totalProfit: 0 };
     }
-
     const qty = s.quantity || 0;
     const sp = s.sellPrice || 0;
     const avgPP = getAveragePurchasePrice(s.productId);
-
     sellerTotalsMap[sid].totalSold += sp * qty;
     sellerTotalsMap[sid].totalProfit += (sp - avgPP) * qty;
   });
@@ -686,7 +686,6 @@ export default function SellsList() {
         </div>
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
-            {/* Empty space for alignment */}
             {"Reset Filters"}
           </label>
           <button
@@ -758,19 +757,10 @@ export default function SellsList() {
             Global Totals (Filtered)
           </h2>
           <p className="text-gray-700">
-            {/* <strong>Total Revenue:</strong> ${totalRevenue.toFixed(2)} */}
-            <strong>Total Revenue:</strong>
-            {/* {totalRevenue.toLocaleString("en-US", {
-              style: "currency",
-              currency: "USD",
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })} */}
-            {formatCurrency(totalRevenue)}
+            <strong>Total Revenue:</strong> {formatCurrency(totalRevenue)}
           </p>
           <p className="text-gray-700">
-            <strong>Total Profit:</strong>
-            {formatCurrency(totalProfit)}
+            <strong>Total Profit:</strong> {formatCurrency(totalProfit)}
           </p>
         </div>
 
@@ -790,19 +780,6 @@ export default function SellsList() {
           ))}
         </div>
 
-        {/* Total sold & profit by seller (filtered)
-        <div className="p-4 bg-white rounded shadow">
-          <h2 className="mb-2 text-lg font-semibold text-gray-800">
-            Total Sold by Seller (Filtered)
-          </h2>
-          {sellerTotals.map(({ sellerId, totalSold, totalProfit }) => (
-            <p key={sellerId} className="text-gray-700">
-              <strong>{getSellerNameById(sellerId)}</strong>: Sold ☞ {""}
-              {formatCurrency(totalSold)}, Profit ➤ {""}
-              {formatCurrency(totalProfit)}
-            </p>
-          ))}
-        </div> */}
         {/* Total sold & profit by seller (filtered) */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
@@ -813,23 +790,12 @@ export default function SellsList() {
               <thead>
                 <tr className="flex border-b">
                   <th className="w-1/6 py-2 text-left">Seller</th>
-                  <th className="w-1/6 py-2 pr-10 text-right ">Sold</th>
+                  <th className="w-1/6 py-2 pr-10 text-right">Sold</th>
                   <th className="w-1/6 py-2 pr-10 text-right">Profit</th>
-                  <th className="w-3/6 px-2 py-2 text-center">{""}</th>
+                  <th className="w-3/6 px-2 py-2 text-center"></th>
                 </tr>
               </thead>
               <tbody>
-                {/* {sellerTotals.map(({ sellerId, totalSold, totalProfit }) => (
-                  <tr key={sellerId} className="border-b">
-                    <td className="px-2 py-2">{getSellerNameById(sellerId)}</td>
-                    <td className="px-10 py-2 pr-10 text-left">
-                      {formatCurrency(totalSold)}
-                    </td>
-                    <td className="px-10 py-2 text-right">
-                      {formatCurrency(totalProfit)}
-                    </td>
-                  </tr>
-                ))} */}
                 {[...sellerTotals]
                   .sort((a, b) => b.totalSold - a.totalSold)
                   .map(({ sellerId, totalSold, totalProfit }) => (
@@ -843,7 +809,7 @@ export default function SellsList() {
                       <td className="w-1/6 px-2 py-2 text-right">
                         {formatCurrency(totalProfit)}
                       </td>
-                      <td className="w-3/6 px-2 py-2 text-center">{""}</td>
+                      <td className="w-3/6 px-2 py-2 text-center"></td>
                     </tr>
                   ))}
               </tbody>
@@ -897,11 +863,13 @@ export default function SellsList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Categories</option>
-                        {categories.map((cat) => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </option>
-                        ))}
+                        {[...categories]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((cat) => (
+                            <option key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -917,11 +885,13 @@ export default function SellsList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Brands</option>
-                        {brands.map((b) => (
-                          <option key={b._id} value={b._id}>
-                            {b.name}
-                          </option>
-                        ))}
+                        {[...brands]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((b) => (
+                            <option key={b._id} value={b._id}>
+                              {b.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -937,11 +907,13 @@ export default function SellsList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="">-- Select Product --</option>
-                        {modalFilteredProducts.map((p) => (
-                          <option key={p._id} value={p._id}>
-                            {p.name}
-                          </option>
-                        ))}
+                        {[...modalFilteredProducts]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -1136,7 +1108,6 @@ export default function SellsList() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            {/* Dark overlay */}
             <div className="fixed inset-0 bg-black/30" />
           </Transition.Child>
 

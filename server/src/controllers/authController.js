@@ -29,7 +29,7 @@ const register = async (req, res) => {
     const { username, password, email, firstName, lastName, role, roleCode } =
       req.body;
 
-    // Check password complexity
+    // Check password complexity, etc.
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
         message:
@@ -43,16 +43,18 @@ const register = async (req, res) => {
       assignedRole = "admin";
     } else if (role === "staff" && roleCode === process.env.STAFF_CODE) {
       assignedRole = "staff";
+    } else if (role === "coordinator" && roleCode === process.env.RC_CODE) {
+      assignedRole = "coordinator";
     } else if (role !== "user") {
       return res.status(403).json({
         message: "Invalid role or role code provided.",
       });
     }
 
-    // Use the S3 URL if a file was uploaded via multer-s3
+    // Update: check for file in req.files.image instead of req.file
     const image =
-      req.file && req.file.location
-        ? req.file.location
+      req.files && req.files.image && req.files.image.length > 0
+        ? req.files.image[0].location || req.files.image[0].path
         : req.body.image
         ? req.body.image.trim()
         : null;
@@ -64,12 +66,12 @@ const register = async (req, res) => {
       firstName,
       lastName,
       role: assignedRole,
-      image,
+      image, // Use the image URL or path we extracted
     });
 
     await newUser.save();
 
-    // Generate tokens
+    // Generate tokens and return response...
     const accessToken = generateToken(newUser, JWT_SECRET, "1d");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
@@ -86,7 +88,7 @@ const register = async (req, res) => {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         role: newUser.role,
-        image: newUser.image,
+        image: newUser.image, // Should now contain the correct URL/path
       },
     });
   } catch (error) {

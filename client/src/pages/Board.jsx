@@ -67,30 +67,15 @@ function getAverageMarketPrice(product) {
 function getDisplayProductName(item, products, viewMode) {
   if (viewMode === "stock") return item.name;
   const prod = products.find((p) => String(p._id) === String(item.productId));
-  return prod ? getCategoryName(prod) || prod.name : "Unknown Product";
+  return prod ? prod.name : "Unknown Product";
 }
 
-// NEW: Define a wrapper function so that breakdown calculations can call it.
-// This simply wraps getDisplayProductName with the current products and viewMode.
-function getDisplayProductNameWrapper(item, products, viewMode) {
-  return getDisplayProductName(item, products, viewMode);
-}
-
-// --------------------------------------------------------------------
-// Revised getDisplayCategory Helper
-// This helper returns the category for an item by checking in order:
-// 1. If the item already has a non‑empty category (or categoryName), use it.
-// 2. If the item has a populated product field, use that product’s category.
-// 3. Otherwise, if the item has a productId, look up the matching product in the local products array.
-// 4. If none of these steps yield a valid value, return "Unknown Category".
 function getDisplayCategory(item, products, viewMode) {
   if (viewMode === "stock") return getCategoryName(item);
   if (item.category && item.category.trim() !== "") return item.category;
   if (item.categoryName && item.categoryName.trim() !== "")
     return item.categoryName;
-  if (item.product) {
-    return getCategoryName(item.product);
-  }
+  if (item.product) return getCategoryName(item.product);
   if (item.productId) {
     const prod = products.find((p) => String(p._id) === String(item.productId));
     if (prod) return getCategoryName(prod);
@@ -99,9 +84,24 @@ function getDisplayCategory(item, products, viewMode) {
 }
 
 // --------------------------------------------------------------------
+// Custom Hook to detect window width
+// --------------------------------------------------------------------
+function useWindowWidth() {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return width;
+}
+
+// --------------------------------------------------------------------
 // ExpandedDetails Component
-// Displays detailed information (including product name and category)
-// for the expanded breakdown row.
+// --------------------------------------------------------------------
+// This component renders the details for a given category.
+// On mobile (width < 640px), it displays each record in a vertical grid of label–value pairs,
+// while on larger screens it renders a table.
 function ExpandedDetails({
   category,
   items = [],
@@ -117,92 +117,177 @@ function ExpandedDetails({
     const qty = Number(it.quantity) || 0;
     return acc + price * qty;
   }, 0);
-  return (
-    <div className="p-3 mt-2 bg-white border rounded shadow-lg">
-      <h3 className="mb-2 text-lg font-bold text-gray-800">
-        {category} Details
-      </h3>
-      <div className="w-full overflow-x-auto">
-        <table className="min-w-full text-xs text-left table-auto">
-          <thead>
-            <tr className="bg-gray-100">
-              <TableHeader className="px-2 py-1 text-sm text-gray-800 border">
-                S/N
-              </TableHeader>
-              <TableHeader className="px-2 py-1 text-sm text-gray-800 border">
-                Name
-              </TableHeader>
-              <TableHeader className="px-2 py-1 text-sm text-gray-800 border">
-                Category
-              </TableHeader>
-              <TableHeader className="px-2 py-1 text-sm text-right text-gray-800 border">
-                {useAveragePrice ? "Avg. Market Price" : "Price"}
-              </TableHeader>
-              <TableHeader className="px-2 py-1 text-sm text-right text-gray-800 border">
-                Qty
-              </TableHeader>
-              <TableHeader className="px-2 py-1 text-sm text-right text-gray-800 border">
-                Value
-              </TableHeader>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it, idx) => {
-              const price = useAveragePrice
-                ? getAverageMarketPrice(it)
-                : Number(it.price || it.purchasePrice || it.sellPrice) || 0;
-              const qty = Number(it.quantity) || 0;
-              return (
-                <TableRow
-                  key={it._id}
-                  className="transition bg-white border-b hover:bg-gray-50"
-                >
-                  <TableCell className="px-2 py-1 text-sm text-gray-800 border">
-                    {idx + 1}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-sm font-semibold text-gray-900 border">
+
+  // Fallback if no items
+  if (!items.length) {
+    return (
+      <div className="p-3 mt-2 bg-white border rounded shadow">
+        <h3 className="mb-2 text-lg font-bold text-gray-900">
+          {category.trim()} Details
+        </h3>
+        <p className="text-gray-700">No data available.</p>
+      </div>
+    );
+  }
+
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 640; // "sm" breakpoint
+
+  if (isMobile) {
+    // Mobile: Render a vertical list of cards
+    return (
+      <div className="p-3 mt-2 bg-white border rounded shadow">
+        <h3 className="mb-3 text-lg font-bold text-gray-900">
+          {category.trim()} Details
+        </h3>
+        <div className="flex flex-col gap-4">
+          {items.map((it, idx) => {
+            const price = useAveragePrice
+              ? getAverageMarketPrice(it)
+              : Number(it.price || it.purchasePrice || it.sellPrice) || 0;
+            const qty = Number(it.quantity) || 0;
+            const value = price * qty;
+            // For mobile, show a simple grid of label/value pairs
+            return (
+              <div
+                key={it._id}
+                className="p-3 text-gray-900 border rounded bg-gray-50"
+              >
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="font-semibold">S/N:</span>
+                  <span>{idx + 1}</span>
+
+                  <span className="font-semibold">Name:</span>
+                  <span className="truncate">
                     {viewMode === "stock"
                       ? it.name
                       : getDisplayProductName(it, products, viewMode)}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-sm text-gray-800 border">
-                    {getCategoryName(
-                      it.productId
-                        ? window.__dashboardProducts?.find(
-                            (p) => p._id === it.productId
-                          ) || {}
-                        : it
-                    )}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-sm text-right text-gray-800 border">
-                    ${formatCurrency(price)}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-sm text-right text-gray-800 border">
-                    {qty.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-sm font-bold text-right text-gray-900 border">
-                    ${formatCurrency(price * qty)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            <TableRow className="bg-indigo-700">
-              <TableCell
-                className="px-2 py-1 text-sm font-bold text-white border"
-                colSpan={5}
-                align="right"
-              >
-                Total:
-              </TableCell>
-              <TableCell className="px-2 py-1 text-sm font-bold text-right text-white border">
-                ${formatCurrency(total)}
-              </TableCell>
-            </TableRow>
-          </tbody>
-        </table>
+                  </span>
+
+                  {viewMode !== "stock" && (
+                    <>
+                      <span className="font-semibold">Brand:</span>
+                      <span className="truncate">
+                        {(() => {
+                          const prod = it.productId
+                            ? window.__dashboardProducts?.find(
+                                (p) => p._id === it.productId
+                              ) || {}
+                            : it;
+                          return getBrandName(prod);
+                        })()}
+                      </span>
+                    </>
+                  )}
+
+                  <span className="font-semibold">
+                    {useAveragePrice ? "Avg. Price:" : "Price:"}
+                  </span>
+                  <span>${formatCurrency(price)}</span>
+
+                  <span className="font-semibold">Qty:</span>
+                  <span>{qty.toLocaleString()}</span>
+
+                  <span className="font-semibold">Value:</span>
+                  <span>${formatCurrency(value)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="p-2 mt-3 font-bold text-right text-indigo-700 border-t">
+          Total: ${formatCurrency(total)}
+        </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    // Desktop: Render table layout (ensure all text has high contrast)
+    return (
+      <div className="p-3 mt-2 bg-white border rounded shadow">
+        <h3 className="mb-3 text-lg font-bold text-gray-900">
+          {category.trim()} Details
+        </h3>
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-full text-xs text-left border-collapse table-auto">
+            <thead>
+              <tr className="bg-gray-100">
+                <TableHeader className="px-2 py-1 text-sm text-gray-900 border">
+                  S/N
+                </TableHeader>
+                <TableHeader
+                  style={{ minWidth: "250px" }}
+                  className="px-2 py-1 text-sm text-gray-900 border"
+                >
+                  Name
+                </TableHeader>
+                <TableHeader className="hidden px-2 py-1 text-sm text-gray-900 border md:table-cell">
+                  Brand
+                </TableHeader>
+                <TableHeader className="px-2 py-1 text-sm text-right text-gray-900 border">
+                  {useAveragePrice ? "Avg. Price" : "Price"}
+                </TableHeader>
+                <TableHeader className="px-2 py-1 text-sm text-right text-gray-900 border">
+                  Qty
+                </TableHeader>
+                <TableHeader className="px-2 py-1 text-sm text-right text-gray-900 border">
+                  Value
+                </TableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, idx) => {
+                const price = useAveragePrice
+                  ? getAverageMarketPrice(it)
+                  : Number(it.price || it.purchasePrice || it.sellPrice) || 0;
+                const qty = Number(it.quantity) || 0;
+                return (
+                  <TableRow
+                    key={it._id}
+                    className="transition bg-white border-b hover:bg-gray-50"
+                  >
+                    <TableCell className="px-2 py-1 text-sm text-gray-900 border">
+                      {idx + 1}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-sm font-semibold text-gray-900 border">
+                      {viewMode === "stock"
+                        ? it.name
+                        : getDisplayProductName(it, products, viewMode)}
+                    </TableCell>
+                    <TableCell className="hidden px-2 py-1 text-sm text-gray-900 border md:table-cell">
+                      {(() => {
+                        const prod = it.productId
+                          ? window.__dashboardProducts?.find(
+                              (p) => p._id === it.productId
+                            ) || {}
+                          : it;
+                        return getBrandName(prod);
+                      })()}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-sm text-right text-gray-900 border">
+                      ${formatCurrency(price)}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-sm text-right text-gray-900 border">
+                      {qty.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="px-2 py-1 text-sm font-bold text-right text-gray-900 border">
+                      ${formatCurrency(price * qty)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow className="bg-indigo-700">
+                <TableCell colSpan={6} className="px-2 py-1 border">
+                  <div className="text-sm font-bold text-right text-white">
+                    Total: ${formatCurrency(total)}
+                  </div>
+                </TableCell>
+              </TableRow>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 }
 
 // --------------------------------------------------------------------
@@ -295,8 +380,7 @@ function DashboardBoard() {
   }, [products]);
 
   // --------------------------------------------------------------------
-  // Revised getDisplayCategory is used in breakdown calculations.
-  // It accepts (item, products, viewMode)
+  // Category Display for breakdown
   // --------------------------------------------------------------------
   function getDisplayCategoryForBreakdown(item) {
     return getDisplayCategory(item, products, viewMode);
@@ -361,7 +445,11 @@ function DashboardBoard() {
 
   function getAveragePurchasePrice(productId) {
     const data = purchaseMap[productId];
-    if (!data || data.totalQty === 0) return 0;
+    if (!data || data.totalQty === 0) {
+      const product = products.find((p) => String(p._id) === String(productId));
+      if (product) return getAverageMarketPrice(product) * 0.75;
+      return 0;
+    }
     return data.totalSpent / data.totalQty;
   }
 
@@ -476,37 +564,41 @@ function DashboardBoard() {
   // Modal Data Filtering Based on View Mode
   // --------------------------------------------------------------------
   const modalFilteredData = useMemo(() => {
-    if (viewMode === "stock") {
-      return products.filter((p) => {
-        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        const brId = p.brandId ? p.brandId._id || p.brandId : "";
-        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-          return false;
-        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
-          return false;
-        return true;
-      });
-    } else if (viewMode === "purchases") {
-      return purchases.filter((p) => {
-        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        const brId = p.brandId ? p.brandId._id || p.brandId : "";
-        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-          return false;
-        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
-          return false;
-        return true;
-      });
-    } else if (viewMode === "sells") {
-      return sells.filter((p) => {
-        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        const brId = p.brandId ? p.brandId._id || p.brandId : "";
-        if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-          return false;
-        if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
-          return false;
-        return true;
-      });
-    }
+    return (() => {
+      if (viewMode === "stock") {
+        return (products || []).filter((p) => {
+          const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+          const brId = p.brandId ? p.brandId._id || p.brandId : "";
+          if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
+            return false;
+          if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
+            return false;
+          return true;
+        });
+      } else {
+        const dataList = viewMode === "purchases" ? purchases : sells;
+        return (dataList || []).filter((rec) => {
+          const product = products.find(
+            (prod) => String(prod._id) === String(rec.productId)
+          );
+          let catId = "";
+          let brId = "";
+          if (product) {
+            catId = product.categoryId
+              ? product.categoryId._id || product.categoryId
+              : "";
+            brId = product.brandId
+              ? product.brandId._id || product.brandId
+              : "";
+          }
+          if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
+            return false;
+          if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
+            return false;
+          return true;
+        });
+      }
+    })();
   }, [
     viewMode,
     products,
@@ -518,46 +610,43 @@ function DashboardBoard() {
 
   const availableBrands = useMemo(() => {
     if (modalFilterCategory === "all") return brands;
-    const prodBrands = products
-      .filter((p) => {
-        const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        return catId === modalFilterCategory;
-      })
-      .map((p) =>
-        typeof p.brandId === "object"
-          ? p.brandId
-          : { _id: p.brandId, name: p.brand }
-      );
-    return Array.from(new Map(prodBrands.map((b) => [b._id, b])).values());
+    return brands.filter((b) => {
+      return products.some((p) => {
+        const pCatId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+        const pBrId = p.brandId ? p.brandId._id || p.brandId : "";
+        return pCatId === modalFilterCategory && pBrId === b._id;
+      });
+    });
   }, [modalFilterCategory, products, brands]);
 
   const availableCategories = useMemo(() => {
     if (modalFilterBrand === "all") return categories;
-    const prodCats = products
-      .filter((p) => {
-        const brId = p.brandId ? p.brandId._id || p.brandId : "";
-        return brId === modalFilterBrand;
-      })
-      .map((p) =>
-        typeof p.categoryId === "object"
-          ? p.categoryId
-          : { _id: p.categoryId, name: p.category }
-      );
-    return Array.from(new Map(prodCats.map((c) => [c._id, c])).values());
+    return categories.filter((c) => {
+      return products.some((p) => {
+        const pCatId = p.categoryId ? p.categoryId._id || p.categoryId : "";
+        const pBrId = p.brandId ? p.brandId._id || p.brandId : "";
+        return pBrId === modalFilterBrand && pCatId === c._id;
+      });
+    });
   }, [modalFilterBrand, products, categories]);
 
   // --------------------------------------------------------------------
-  // "See All" Modal Component
+  // "See All" Modal with responsive layout
   // --------------------------------------------------------------------
   function AllProductsModal() {
+    const windowWidth = useWindowWidth();
+    const isMobile = windowWidth < 640; // mobile breakpoint
+
     const modalTotal = useMemo(() => {
       return modalFilteredData.reduce((acc, p) => {
-        const price =
-          viewMode === "stock"
-            ? Number(p.price)
-            : viewMode === "purchases"
-              ? Number(p.purchasePrice)
-              : Number(p.sellPrice);
+        let price = 0;
+        if (viewMode === "stock") {
+          price = Number(p.price) || 0;
+        } else if (viewMode === "purchases") {
+          price = Number(p.purchasePrice) || 0;
+        } else {
+          price = Number(p.sellPrice) || 0;
+        }
         return acc + price * Number(p.quantity);
       }, 0);
     }, [modalFilteredData, viewMode]);
@@ -569,195 +658,284 @@ function DashboardBoard() {
           ? "Purchase Price"
           : "Sell Price";
 
-    return (
-      <Transition appear show={allProductsModalOpen} as={Fragment}>
-        <Dialog
-          as="div"
-          className="relative z-50"
-          onClose={() => setAllProductsModalOpen(false)}
-        >
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
+    if (isMobile) {
+      // MOBILE LAYOUT: Render each record as a vertical card (omit less important columns)
+      return (
+        <Transition appear show={allProductsModalOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-50"
+            onClose={() => setAllProductsModalOpen(false)}
           >
-            <div className="fixed inset-0 bg-black/30" />
-          </Transition.Child>
-          <div className="fixed inset-0">
-            <div className="flex items-center justify-center min-h-full p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl">
-                  <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
-                    {viewMode === "stock"
-                      ? "All Products"
-                      : viewMode === "purchases"
-                        ? "All Purchases"
-                        : "All Sells"}
-                  </Dialog.Title>
-                  <div className="flex flex-col gap-4 mb-4 sm:flex-row">
-                    <div>
-                      <label className="block mb-1 text-sm font-bold text-gray-800">
-                        Category
-                      </label>
-                      <select
-                        value={modalFilterCategory}
-                        onChange={(e) => setModalFilterCategory(e.target.value)}
-                        className="px-3 py-2 rounded border min-w-[150px]"
-                      >
-                        <option value="all">All Categories</option>
-                        {availableCategories.map((cat) => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm font-bold text-gray-800">
-                        Brand
-                      </label>
-                      <select
-                        value={modalFilterBrand}
-                        onChange={(e) => setModalFilterBrand(e.target.value)}
-                        className="px-3 py-2 rounded border min-w-[150px]"
-                      >
-                        <option value="all">All Brands</option>
-                        {availableBrands.map((b) => (
-                          <option key={b._id} value={b._id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="w-full overflow-x-auto max-h-[60vh]">
-                    <Table className="w-full table-auto">
-                      <TableHead>
-                        <tr className="bg-gray-100">
-                          <TableHeader
-                            style={{ minWidth: "50px" }}
-                            className="px-4 py-2 text-sm font-bold text-blue-900"
-                          >
-                            S/N
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "150px" }}
-                            className="px-4 py-2 text-sm font-bold text-blue-900 break-words whitespace-normal"
-                          >
-                            Name
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "150px" }}
-                            className="px-4 py-2 text-sm font-bold text-blue-900"
-                          >
-                            Category
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "150px" }}
-                            className="px-4 py-2 text-sm font-bold text-blue-900"
-                          >
-                            Brand
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "150px" }}
-                            className="px-4 py-2 text-sm font-bold text-right text-blue-900"
-                          >
-                            {priceLabel}
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "80px" }}
-                            className="px-4 py-2 text-sm font-bold text-right text-blue-900"
-                          >
-                            Qty
-                          </TableHeader>
-                          <TableHeader
-                            style={{ minWidth: "100px" }}
-                            className="px-4 py-2 text-sm font-bold text-right text-blue-900"
-                          >
-                            Value
-                          </TableHeader>
-                        </tr>
-                      </TableHead>
-                      <TableBody>
-                        {modalFilteredData.map((p, idx) => {
-                          const price =
-                            viewMode === "stock"
-                              ? Number(p.price)
-                              : viewMode === "purchases"
-                                ? Number(p.purchasePrice)
-                                : Number(p.sellPrice);
-                          const qty = Number(p.quantity) || 0;
-                          return (
-                            <TableRow
-                              key={p._id}
-                              className="transition bg-white border-b hover:bg-gray-50"
-                            >
-                              <TableCell className="px-4 py-2 text-sm text-gray-700">
-                                {idx + 1}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm font-semibold text-gray-900 break-words whitespace-normal">
-                                {p.name}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm text-gray-700">
-                                {getCategoryName(p)}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm text-gray-700">
-                                {getBrandName(p)}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
-                                ${formatCurrency(price)}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm text-right text-gray-700">
-                                {qty.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-sm font-bold text-right text-gray-900">
-                                ${formatCurrency(price * qty)}
-                              </TableCell>
-                            </TableRow>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black/30" />
+            </Transition.Child>
+            <div className="fixed inset-0">
+              <div className="flex items-center justify-center min-h-full p-4 text-center">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+                    <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
+                      {viewMode === "stock"
+                        ? "All Products"
+                        : viewMode === "purchases"
+                          ? "All Purchases"
+                          : "All Sells"}
+                    </Dialog.Title>
+                    <div className="flex flex-col gap-3">
+                      {modalFilteredData.map((p, idx) => {
+                        let price = 0;
+                        if (viewMode === "stock") {
+                          price = Number(p.price) || 0;
+                        } else if (viewMode === "purchases") {
+                          price = Number(p.purchasePrice) || 0;
+                        } else {
+                          price = Number(p.sellPrice) || 0;
+                        }
+                        const qty = Number(p.quantity) || 0;
+                        const value = price * qty;
+                        let prod = null;
+                        if (viewMode === "stock") {
+                          prod = p;
+                        } else {
+                          prod = products.find(
+                            (x) => String(x._id) === String(p.productId)
                           );
-                        })}
-                        <TableRow className="bg-indigo-700">
-                          <TableCell
-                            className="px-4 py-2 text-sm font-bold text-white"
-                            colSpan={6}
-                            align="right"
+                        }
+                        return (
+                          <div
+                            key={p._id}
+                            className="p-3 text-gray-900 border rounded bg-gray-50"
                           >
-                            Grand Total:
-                          </TableCell>
-                          <TableCell className="px-4 py-2 text-sm font-bold text-right text-white">
-                            ${formatCurrency(modalTotal)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={() => setAllProductsModalOpen(false)}
-                      className="px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <span className="font-bold">S/N:</span>
+                              <span>{idx + 1}</span>
+                              <span className="font-bold">Name:</span>
+                              <span className="truncate max-w-[150px]">
+                                {viewMode === "stock"
+                                  ? p.name
+                                  : getDisplayProductName(
+                                      p,
+                                      products,
+                                      viewMode
+                                    )}
+                              </span>
+                              <span className="font-bold">{priceLabel}:</span>
+                              <span>${formatCurrency(price)}</span>
+                              <span className="font-bold">Qty:</span>
+                              <span>{qty.toLocaleString()}</span>
+                              <span className="font-bold">Value:</span>
+                              <span>${formatCurrency(value)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-2 mt-4 font-bold text-right text-indigo-700 border-t">
+                      Grand Total: ${formatCurrency(modalTotal)}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <button
+                        onClick={() => setAllProductsModalOpen(false)}
+                        className="px-6 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
             </div>
-          </div>
-        </Dialog>
-      </Transition>
-    );
+          </Dialog>
+        </Transition>
+      );
+    } else {
+      // DESKTOP LAYOUT: Render full table with horizontal scroll if needed.
+      return (
+        <Transition appear show={allProductsModalOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className="relative z-50"
+            onClose={() => setAllProductsModalOpen(false)}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black/30" />
+            </Transition.Child>
+            <div className="fixed inset-0">
+              <div className="flex items-center justify-center min-h-full p-4 text-center">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl">
+                    <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
+                      {viewMode === "stock"
+                        ? "All Products"
+                        : viewMode === "purchases"
+                          ? "All Purchases"
+                          : "All Sells"}
+                    </Dialog.Title>
+                    <p className="mb-2 text-xs text-gray-600">
+                      Swipe horizontally to view more columns
+                    </p>
+                    <div className="relative overflow-x-auto max-h-[60vh]">
+                      <table className="w-full text-sm border-collapse table-auto">
+                        <thead className="text-white bg-blue-600">
+                          <tr>
+                            <th
+                              className="sticky left-0 z-10 px-3 py-2 align-middle bg-blue-600"
+                              style={{ minWidth: "auto" }}
+                            >
+                              S/N
+                            </th>
+                            <th
+                              style={{ minWidth: "250px" }}
+                              className="px-3 py-2 align-middle"
+                            >
+                              Name
+                            </th>
+                            <th
+                              className="hidden px-3 py-2 align-middle sm:table-cell"
+                              style={{ minWidth: "auto" }}
+                            >
+                              Category
+                            </th>
+                            <th
+                              className="hidden px-3 py-2 align-middle md:table-cell"
+                              style={{ minWidth: "auto" }}
+                            >
+                              Brand
+                            </th>
+                            <th className="px-3 py-2 text-right align-middle">
+                              {priceLabel}
+                            </th>
+                            <th className="px-3 py-2 text-right align-middle">
+                              Qty
+                            </th>
+                            <th className="px-3 py-2 text-right align-middle">
+                              Value
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {modalFilteredData.map((p, idx) => {
+                            let price = 0;
+                            if (viewMode === "stock") {
+                              price = Number(p.price) || 0;
+                            } else if (viewMode === "purchases") {
+                              price = Number(p.purchasePrice) || 0;
+                            } else {
+                              price = Number(p.sellPrice) || 0;
+                            }
+                            const qty = Number(p.quantity) || 0;
+                            const value = price * qty;
+                            let prod = null;
+                            if (viewMode === "stock") {
+                              prod = p;
+                            } else {
+                              prod = products.find(
+                                (x) => String(x._id) === String(p.productId)
+                              );
+                            }
+                            return (
+                              <tr
+                                key={p._id}
+                                className="border-b hover:bg-gray-50"
+                              >
+                                <td className="sticky left-0 z-10 px-3 py-2 text-gray-700 align-middle bg-white">
+                                  {idx + 1}
+                                </td>
+                                <td
+                                  style={{ minWidth: "250px" }}
+                                  className="px-3 py-2 font-semibold text-gray-900 break-words truncate whitespace-normal align-middle"
+                                >
+                                  {viewMode === "stock"
+                                    ? p.name
+                                    : getDisplayProductName(
+                                        p,
+                                        products,
+                                        viewMode
+                                      )}
+                                </td>
+                                <td className="hidden px-3 py-2 text-gray-700 align-middle sm:table-cell">
+                                  {prod
+                                    ? getCategoryName(prod)
+                                    : "Unknown Category"}
+                                </td>
+                                <td className="hidden px-3 py-2 text-gray-700 align-middle md:table-cell">
+                                  {prod ? getBrandName(prod) : "Unknown Brand"}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-700 align-middle">
+                                  ${formatCurrency(price)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-gray-700 align-middle">
+                                  {qty.toLocaleString()}
+                                </td>
+                                <td className="px-3 py-2 font-bold text-right text-gray-900 align-middle">
+                                  ${formatCurrency(value)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="text-white bg-indigo-700">
+                            <td
+                              className="px-3 py-2 font-bold"
+                              colSpan={6}
+                              align="right"
+                            >
+                              Grand Total:
+                            </td>
+                            <td className="px-3 py-2 font-bold text-right">
+                              ${formatCurrency(modalTotal)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <button
+                        onClick={() => setAllProductsModalOpen(false)}
+                        className="px-6 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
+      );
+    }
   }
 
   // --------------------------------------------------------------------
@@ -767,14 +945,16 @@ function DashboardBoard() {
     return breakdownData.map((row) => (
       <Fragment key={row.category}>
         <TableRow className="transition bg-white border-b hover:bg-gray-50">
-          <TableCell className="px-4 py-2 text-sm text-gray-800">
+          <TableCell className="px-4 py-2 text-sm text-gray-900">
             {row.category}
           </TableCell>
-          <TableCell className="px-4 py-2 text-sm text-right text-gray-800">
+          <TableCell className="px-4 py-2 text-sm text-right text-gray-900">
             {row.total}
           </TableCell>
-          <TableCell className="px-4 py-2 text-sm text-right text-gray-800">
-            ${formatCurrency(row.value)}
+          <TableCell className="px-4 py-2 text-sm text-right text-gray-900">
+            {viewMode === "sells" && currentBreakdownType === "profit"
+              ? `$${formatCurrency(row.totalProfit || 0)}`
+              : `$${formatCurrency(row.value || 0)}`}
           </TableCell>
           <TableCell>
             <button
@@ -793,7 +973,7 @@ function DashboardBoard() {
                 items={row.items || []}
                 useAveragePrice={viewMode === "stock"}
                 viewMode={viewMode}
-                getDisplayProductName={getDisplayProductNameWrapper}
+                getDisplayProductName={getDisplayProductName}
                 products={products}
               />
             </TableCell>
@@ -816,7 +996,7 @@ function DashboardBoard() {
   }
 
   return (
-    <div className="min-h-screen p-4 text-gray-800 bg-gray-100">
+    <div className="min-h-screen p-4 text-gray-900 bg-gray-100">
       {/* Header: View Mode Buttons */}
       <div className="flex flex-wrap justify-center gap-4 mb-6">
         <button
@@ -829,7 +1009,7 @@ function DashboardBoard() {
             "px-6 py-2 rounded-lg font-bold",
             viewMode === "stock"
               ? "bg-blue-500 text-white"
-              : "bg-gray-200 text-gray-800"
+              : "bg-gray-200 text-gray-900"
           )}
         >
           Stock
@@ -844,7 +1024,7 @@ function DashboardBoard() {
             "px-6 py-2 rounded-lg font-bold",
             viewMode === "purchases"
               ? "bg-blue-500 text-white"
-              : "bg-gray-200 text-gray-800"
+              : "bg-gray-200 text-gray-900"
           )}
         >
           Purchases
@@ -859,7 +1039,7 @@ function DashboardBoard() {
             "px-6 py-2 rounded-lg font-bold",
             viewMode === "sells"
               ? "bg-blue-500 text-white"
-              : "bg-gray-200 text-gray-800"
+              : "bg-gray-200 text-gray-900"
           )}
         >
           Sells
@@ -868,7 +1048,7 @@ function DashboardBoard() {
 
       {/* Breakdown Summary Table */}
       <div className="w-full mb-6 overflow-x-auto">
-        <Table className="w-full table-auto">
+        <Table className="w-full border-collapse table-auto">
           <TableHead>
             <tr className="text-white bg-gradient-to-r from-blue-500 to-blue-600">
               <TableHeader className="px-4 py-2 text-sm">Category</TableHeader>
@@ -876,7 +1056,9 @@ function DashboardBoard() {
                 Count
               </TableHeader>
               <TableHeader className="px-4 py-2 text-sm text-right">
-                Total Value
+                {viewMode === "sells" && currentBreakdownType === "profit"
+                  ? "Total Profit"
+                  : "Total Value"}
               </TableHeader>
               <TableHeader className="px-4 py-2 text-sm">Action</TableHeader>
             </tr>
@@ -905,22 +1087,20 @@ function DashboardBoard() {
                 ${formatCurrency(grandTotal)}
               </TableCell>
               <TableCell className="px-4 py-2 text-sm font-bold text-left text-white">
-                {/* Empty cell */}
+                {/* Empty */}
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
       </div>
 
-      {/* Note for Stock View */}
       {viewMode === "stock" && (
-        <div className="mt-4 text-sm text-center text-gray-600">
+        <div className="mt-4 text-sm text-center text-gray-700">
           Note: In the Stock view, the grand total is calculated using the
           average market price.
         </div>
       )}
 
-      {/* "See All" Button (text changes based on viewMode) */}
       <div className="flex justify-center mt-6">
         <button
           onClick={() => setAllProductsModalOpen(true)}
@@ -934,7 +1114,6 @@ function DashboardBoard() {
         </button>
       </div>
 
-      {/* "See All" Modal */}
       {allProductsModalOpen && <AllProductsModal />}
     </div>
   );

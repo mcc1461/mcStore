@@ -40,60 +40,62 @@ function App() {
   }, [dispatch]);
 
   return (
-    <Routes>
-      {/* --------------------- Public Routes --------------------- */}
-      <Route path="/" element={<Home />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgotPassword" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/categories" element={<CategoriesList />} />
-      <Route path="/brands" element={<BrandList />} />
-      <Route path="/firms" element={<FirmList />} />
-      <Route path="/products" element={<ProductList />} />
-      <Route path="/purchases" element={<PurchasesList />} />
-      <Route path="/sells" element={<SellsList />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/board" element={<Board />} />
-      <Route path="/overview" element={<Overview />} />
-      <Route path="/team" element={<Team />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* --------------------- Public Routes --------------------- */}
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgotPassword" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/categories" element={<CategoriesList />} />
+        <Route path="/brands" element={<BrandList />} />
+        <Route path="/firms" element={<FirmList />} />
+        <Route path="/products" element={<ProductList />} />
+        <Route path="/purchases" element={<PurchasesList />} />
+        <Route path="/sells" element={<SellsList />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/board" element={<Board />} />
+        <Route path="/overview" element={<Overview />} />
+        <Route path="/team" element={<Team />} />
 
-      {/* --------------------- Private (Auth) Routes --------------------- */}
-      {/* Wrap them in <PrivateRoute> so user must be logged in */}
-      <Route
-        element={
-          <ErrorBoundary>
-            <PrivateRoute />
-          </ErrorBoundary>
-        }
-      >
-        {/* Our main /dashboard path uses <DashboardLayout> as wrapper */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Dashboard />} />
+        {/* --------------------- Private (Auth) Routes --------------------- */}
+        {/* Wrap them in <PrivateRoute> so user must be logged in */}
+        <Route
+          element={
+            <ErrorBoundary>
+              <PrivateRoute />
+            </ErrorBoundary>
+          }
+        >
+          {/* Our main /dashboard path uses <DashboardLayout> as wrapper */}
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Dashboard />} />
 
-          {/* Nested routes inside /dashboard */}
-          <Route path="profile" element={<Profile />} />
-          <Route path="update" element={<EditProfileModal />} />
-          <Route path="board" element={<Board />} />
-          <Route path="overview" element={<Overview />} />
+            {/* Nested routes inside /dashboard */}
+            <Route path="profile" element={<Profile />} />
+            <Route path="update" element={<EditProfileModal />} />
+            <Route path="board" element={<Board />} />
+            <Route path="overview" element={<Overview />} />
 
-          {/* Example nested 'products' route */}
-          <Route path="products">
-            <Route index element={<Products />} />
-            <Route path=":id" element={<Products />} />
+            {/* Example nested 'products' route */}
+            <Route path="products">
+              <Route index element={<Products />} />
+              <Route path=":id" element={<Products />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      {/* --------------------- Admin-Only Routes --------------------- */}
-      {/* For example: /admin-panel is only for admins */}
-      <Route element={<AdminRoute />}>
-        <Route path="/admin-panel" element={<AdminPanel />} />
-      </Route>
+        {/* --------------------- Admin-Only Routes --------------------- */}
+        {/* For example: /admin-panel is only for admins */}
+        <Route element={<AdminRoute />}>
+          <Route path="/admin-panel" element={<AdminPanel />} />
+        </Route>
 
-      {/* --------------------- Fallback Route --------------------- */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* --------------------- Fallback Route --------------------- */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }
 

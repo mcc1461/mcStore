@@ -24,6 +24,10 @@ function Register() {
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
 
+  // States for showing/hiding password hints
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+
   // Other states
   const [userInfo, setUserInfo] = useState(
     JSON.parse(localStorage.getItem("userInfo")) || null
@@ -92,9 +96,17 @@ function Register() {
       return;
     }
 
-    // Validate role code for admin/staff
-    if ((role === "admin" || role === "staff") && !roleCode.trim()) {
-      toast.error(`Please provide the ${role} code.`);
+    // Normalize role: trim and lower-case it
+    const roleLower = role.trim().toLowerCase();
+
+    // Validate role code for admin/staff/coordinator
+    if (
+      (roleLower === "admin" ||
+        roleLower === "staff" ||
+        roleLower === "coordinator") &&
+      !roleCode.trim()
+    ) {
+      toast.error(`Please provide the ${roleLower} code.`);
       return;
     }
 
@@ -114,8 +126,10 @@ function Register() {
         payload.append("username", username.trim());
         payload.append("email", email.trim());
         payload.append("password", password.trim());
-        payload.append("role", role);
-        if (roleCode) payload.append("roleCode", roleCode.trim());
+        payload.append("role", roleLower);
+        if (roleLower !== "user") {
+          payload.append("roleCode", roleCode.trim());
+        }
         if (imageSource === "upload" && selectedImageFile) {
           payload.append("image", selectedImageFile);
         } else if (imageSource === "url" && imageUrl.trim() !== "") {
@@ -130,11 +144,26 @@ function Register() {
           username: username.trim(),
           email: email.trim(),
           password: password.trim(),
-          role,
-          roleCode: roleCode.trim(),
+          role: roleLower,
         };
+        if (roleLower !== "user") {
+          payload.roleCode = roleCode.trim();
+        }
         headers = { "Content-Type": "application/json" };
       }
+
+      // --- Temporary Data Tagging ---
+      // If the registering role is "user", tag the record as temporary.
+      if (roleLower === "user") {
+        if (payload instanceof FormData) {
+          payload.append("tester", true);
+          payload.append("testerCreatedAt", new Date().toISOString());
+        } else {
+          payload.tester = true;
+          payload.testerCreatedAt = new Date().toISOString();
+        }
+      }
+      // --------------------------------
 
       // Send registration request
       const { data } = await axios.post("/api/auth/register", payload, {
@@ -161,18 +190,18 @@ function Register() {
   };
 
   return (
-    <section className="flex flex-col items-center justify-center w-screen h-screen p-0 m-0 overflow-hidden lg:flex-row lg:justify-center lg:items-center">
-      {/* Logo */}
+    <section className="flex flex-col items-center justify-center min-h-screen p-0 m-0 overflow-auto lg:flex-row lg:justify-center lg:items-center">
+      {/* Logo is smaller, using object-cover to crop empty space */}
       <img
         src={log}
         alt="Logo"
-        className="object-contain w-1/2 h-auto mb-4 lg:mb-0 lg:w-1/3 max-h-[30vh]"
+        className="object-fit h-[30vh] lg:mb-0 lg:w-1/3 lg:h-[30vh] -mt-16 -mb-16"
       />
 
       {/* Form Container */}
-      <div className="flex flex-col items-center justify-center w-full lg:w-2/3 h-[50%] p-4">
+      <div className="flex flex-col items-center justify-center w-full p-4 lg:w-2/3">
         {/* Header */}
-        <div className="w-full mb-4">
+        <div className="w-full mb-2">
           <p className="mb-2 text-3xl font-bold text-center">Register</p>
         </div>
 
@@ -194,51 +223,80 @@ function Register() {
             />
           ))}
 
-          {/* Password and Confirm Password */}
-          {["password", "confirmPassword"].map((field) => (
-            <div className="relative w-3/5 h-9" key={field}>
+          {/* Password Field */}
+          <div className="w-3/5">
+            {/* Fixed container for input + icon */}
+            <div className="relative mb-2 h-9">
               <input
-                type={
-                  field === "password"
-                    ? showPassword
-                      ? "text"
-                      : "password"
-                    : showConfirmPassword
-                      ? "text"
-                      : "password"
-                }
-                name={field}
-                placeholder={
-                  field === "password" ? "Password" : "Confirm Password"
-                }
-                className="w-full h-full text-center border-2 border-slate-400 rounded-xl"
-                value={formData[field]}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                className="w-full h-full pr-12 text-center border-2 border-slate-400 rounded-xl"
+                value={formData.password}
                 onChange={handleChange}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
               />
               <button
                 type="button"
-                onClick={() =>
-                  field === "password"
-                    ? setShowPassword(!showPassword)
-                    : setShowConfirmPassword(!showConfirmPassword)
-                }
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute transform -translate-y-1/2 right-4 top-1/2"
               >
-                {field === "password"
-                  ? showPassword
-                    ? "🙈"
-                    : "👁️"
-                  : showConfirmPassword
-                    ? "🙈"
-                    : "👁️"}
+                {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
-          ))}
+            {/* Hint text directly beneath with minimal margin */}
+            {passwordFocused && (
+              <p className="mt-0.5 text-xs text-gray-600">
+                Min 8: 1 upper, 1 lower, 1 digit, 1 @$!%*?&
+              </p>
+            )}
+          </div>
+
+          {/* Confirm Password Field */}
+          <div className="w-3/5">
+            {/* Fixed container for input + icon */}
+            <div className="relative mb-2 h-9">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                className="w-full h-full pr-12 text-center border-2 border-slate-400 rounded-xl"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                onFocus={() => setConfirmPasswordFocused(true)}
+                onBlur={() => setConfirmPasswordFocused(false)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute transform -translate-y-1/2 right-4 top-1/2"
+              >
+                {showConfirmPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+            {/* Matched/Not Matched text to the right, minimal margin above */}
+            {confirmPasswordFocused && (
+              <p
+                className={`mt-0.5 text-xs text-right ${
+                  formData.confirmPassword === formData.password &&
+                  formData.confirmPassword
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {formData.confirmPassword === formData.password &&
+                formData.confirmPassword
+                  ? "✅ Matched"
+                  : "Not matched"}
+              </p>
+            )}
+          </div>
 
           {/* Role Selection */}
           <div className="flex flex-col w-3/5 mt-4">
             <p className="mb-2 text-xl font-bold">Register as:</p>
-            {["user", "staff", "admin"].map((roleOption) => (
+            {["user", "staff", "admin", "coordinator"].map((roleOption) => (
               <label key={roleOption} className="flex items-center">
                 <input
                   type="radio"
@@ -252,8 +310,10 @@ function Register() {
             ))}
           </div>
 
-          {/* Role Code Input (for Admin/Staff) */}
-          {(formData.role === "admin" || formData.role === "staff") && (
+          {/* Role Code Input (for Admin/Staff/Coordinator) */}
+          {(formData.role === "admin" ||
+            formData.role === "staff" ||
+            formData.role === "coordinator") && (
             <div className="relative w-3/5 h-9">
               <input
                 type={showRoleCode ? "text" : "password"}
@@ -307,6 +367,7 @@ function Register() {
             <div className="flex flex-col items-center w-3/5 mt-4">
               <input
                 type="file"
+                name="image"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="w-full"

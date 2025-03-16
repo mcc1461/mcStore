@@ -7,7 +7,7 @@ const multerS3 = require("multer-s3-v3");
 const {
   authenticate,
   authorizeRoles,
-} = require("../middlewares/.authMiddleware");
+} = require("../middlewares/authMiddleware");
 const {
   list,
   create,
@@ -64,15 +64,25 @@ router.get(
 router.post(
   "/",
   authenticate,
-  authorizeRoles("admin", "staff"),
+  authorizeRoles("admin", "staff", "coordinator", "user"),
   upload.any(),
   create
 );
 router
   .route("/:id")
   .get(authenticate, read)
-  .put(authenticate, authorizeRoles("admin", "staff"), upload.any(), update)
-  .patch(authenticate, authorizeRoles("admin", "staff"), upload.any(), update)
-  .delete(authenticate, authorizeRoles("admin"), remove);
+  .put(
+    authenticate,
+    authorizeRoles("admin", "staff", "coordinator", "user"),
+    upload.any(),
+    update
+  )
+  .patch(
+    authenticate,
+    authorizeRoles("admin", "staff", "coordinator", "user"),
+    upload.any(),
+    update
+  )
+  .delete(authenticate, authorizeRoles("admin", "user"), remove);
 
 module.exports = router;
