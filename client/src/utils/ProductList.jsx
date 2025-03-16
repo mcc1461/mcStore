@@ -472,16 +472,21 @@ export default function ProductsList() {
       <header
         className={`fixed top-0 z-10 w-full shadow-md ${roleColors[userRole]}`}
       >
-        <div className="flex items-center justify-between px-4 py-4 text-white">
-          <div className="flex items-center space-x-3">
-            <h1 className="text-3xl font-bold">Products ({totalFiltered})</h1>
-            <span className="px-2 py-1 text-sm font-medium text-black bg-white rounded">
+        <div className="flex flex-col items-center justify-between px-2 py-2 space-y-2 text-white md:flex-row md:space-y-0">
+          {/* Left side: Products heading + user role */}
+          <div className="flex items-center space-x-2">
+            <h1 className="text-base font-bold md:text-3xl">
+              Products ({totalFiltered})
+            </h1>
+            <span className="px-2 py-1 text-xs font-medium text-black bg-white rounded md:text-sm">
               {userRole.toUpperCase()}
             </span>
           </div>
+
+          {/* Right side: Dashboard button */}
           <button
             onClick={navigateToDashboard}
-            className="px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="px-2 py-1 text-xs font-bold text-white bg-blue-600 rounded-lg md:px-4 md:py-2 md:text-base hover:bg-blue-700"
           >
             ➤ Dashboard
           </button>
