@@ -147,7 +147,6 @@ function ExpandedDetails({
               : Number(it.price || it.purchasePrice || it.sellPrice) || 0;
             const qty = Number(it.quantity) || 0;
             const value = price * qty;
-            // For mobile, show a simple grid of label/value pairs
             return (
               <div
                 key={it._id}
@@ -156,14 +155,12 @@ function ExpandedDetails({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="font-semibold">S/N:</span>
                   <span>{idx + 1}</span>
-
                   <span className="font-semibold">Name:</span>
-                  <span className="truncate">
+                  <span className="truncate max-w-[150px]">
                     {viewMode === "stock"
                       ? it.name
                       : getDisplayProductName(it, products, viewMode)}
                   </span>
-
                   {viewMode !== "stock" && (
                     <>
                       <span className="font-semibold">Brand:</span>
@@ -179,15 +176,12 @@ function ExpandedDetails({
                       </span>
                     </>
                   )}
-
                   <span className="font-semibold">
                     {useAveragePrice ? "Avg. Price:" : "Price:"}
                   </span>
                   <span>${formatCurrency(price)}</span>
-
                   <span className="font-semibold">Qty:</span>
                   <span>{qty.toLocaleString()}</span>
-
                   <span className="font-semibold">Value:</span>
                   <span>${formatCurrency(value)}</span>
                 </div>
@@ -201,7 +195,7 @@ function ExpandedDetails({
       </div>
     );
   } else {
-    // Desktop: Render table layout (ensure all text has high contrast)
+    // Desktop: Render table layout
     return (
       <div className="p-3 mt-2 bg-white border rounded shadow">
         <h3 className="mb-3 text-lg font-bold text-gray-900">
@@ -472,7 +466,7 @@ function DashboardBoard() {
   let breakdownData = [];
   if (viewMode === "stock") {
     breakdownData = stockBreakdown.map((item) => ({
-      category: item.category,
+      category: item.category.trim(), // normalize
       total: item.total,
       value: item.value,
       items: item.items,
@@ -492,7 +486,7 @@ function DashboardBoard() {
     }));
   } else if (viewMode === "purchases") {
     breakdownData = purchaseBreakdown.map((item) => ({
-      category: item.category,
+      category: item.category.trim(),
       total: item.total,
       value: item.value,
       items: item.items,
@@ -509,7 +503,7 @@ function DashboardBoard() {
   } else if (viewMode === "sells") {
     if (currentBreakdownType === "profit") {
       breakdownData = sellProfitBreakdown.map((item) => ({
-        category: item.category,
+        category: item.category.trim(),
         totalProfit: item.totalProfit,
         items: item.items,
         topItems: item.items
@@ -524,7 +518,7 @@ function DashboardBoard() {
       }));
     } else {
       breakdownData = sellBreakdown.map((item) => ({
-        category: item.category,
+        category: item.category.trim(),
         total: item.total,
         value: item.value,
         items: item.items,
@@ -556,82 +550,16 @@ function DashboardBoard() {
     return breakdownData.reduce((acc, row) => acc + (row.total || 0), 0);
   }, [breakdownData]);
 
+  // Updated toggleExpand: normalize category strings to ensure proper matching.
   function toggleExpand(category) {
-    setExpandedCategory((prev) => (prev === category ? null : category));
+    const normCat = category.trim();
+    setExpandedCategory((prev) =>
+      prev && prev.trim() === normCat ? null : normCat
+    );
   }
 
   // --------------------------------------------------------------------
-  // Modal Data Filtering Based on View Mode
-  // --------------------------------------------------------------------
-  const modalFilteredData = useMemo(() => {
-    return (() => {
-      if (viewMode === "stock") {
-        return (products || []).filter((p) => {
-          const catId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-          const brId = p.brandId ? p.brandId._id || p.brandId : "";
-          if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-            return false;
-          if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
-            return false;
-          return true;
-        });
-      } else {
-        const dataList = viewMode === "purchases" ? purchases : sells;
-        return (dataList || []).filter((rec) => {
-          const product = products.find(
-            (prod) => String(prod._id) === String(rec.productId)
-          );
-          let catId = "";
-          let brId = "";
-          if (product) {
-            catId = product.categoryId
-              ? product.categoryId._id || product.categoryId
-              : "";
-            brId = product.brandId
-              ? product.brandId._id || product.brandId
-              : "";
-          }
-          if (modalFilterCategory !== "all" && catId !== modalFilterCategory)
-            return false;
-          if (modalFilterBrand !== "all" && brId !== modalFilterBrand)
-            return false;
-          return true;
-        });
-      }
-    })();
-  }, [
-    viewMode,
-    products,
-    purchases,
-    sells,
-    modalFilterCategory,
-    modalFilterBrand,
-  ]);
-
-  const availableBrands = useMemo(() => {
-    if (modalFilterCategory === "all") return brands;
-    return brands.filter((b) => {
-      return products.some((p) => {
-        const pCatId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        const pBrId = p.brandId ? p.brandId._id || p.brandId : "";
-        return pCatId === modalFilterCategory && pBrId === b._id;
-      });
-    });
-  }, [modalFilterCategory, products, brands]);
-
-  const availableCategories = useMemo(() => {
-    if (modalFilterBrand === "all") return categories;
-    return categories.filter((c) => {
-      return products.some((p) => {
-        const pCatId = p.categoryId ? p.categoryId._id || p.categoryId : "";
-        const pBrId = p.brandId ? p.brandId._id || p.brandId : "";
-        return pBrId === modalFilterBrand && pCatId === c._id;
-      });
-    });
-  }, [modalFilterBrand, products, categories]);
-
-  // --------------------------------------------------------------------
-  // "See All" Modal with responsive layout
+  // "See All" Modal
   // --------------------------------------------------------------------
   function AllProductsModal() {
     const windowWidth = useWindowWidth();
@@ -659,7 +587,7 @@ function DashboardBoard() {
           : "Sell Price";
 
     if (isMobile) {
-      // MOBILE LAYOUT: Render each record as a vertical card (omit less important columns)
+      // MOBILE LAYOUT: Each record as a vertical card
       return (
         <Transition appear show={allProductsModalOpen} as={Fragment}>
           <Dialog
@@ -720,7 +648,7 @@ function DashboardBoard() {
                         return (
                           <div
                             key={p._id}
-                            className="p-3 text-gray-900 border rounded bg-gray-50"
+                            className="p-3 mb-2 text-left border rounded bg-gray-50"
                           >
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               <span className="font-bold">S/N:</span>
@@ -765,7 +693,7 @@ function DashboardBoard() {
         </Transition>
       );
     } else {
-      // DESKTOP LAYOUT: Render full table with horizontal scroll if needed.
+      // DESKTOP LAYOUT: Render full table with horizontal scroll if needed
       return (
         <Transition appear show={allProductsModalOpen} as={Fragment}>
           <Dialog
@@ -834,13 +762,22 @@ function DashboardBoard() {
                             >
                               Brand
                             </th>
-                            <th className="px-3 py-2 text-right align-middle">
+                            <th
+                              className="px-3 py-2 text-right align-middle"
+                              style={{ minWidth: "auto" }}
+                            >
                               {priceLabel}
                             </th>
-                            <th className="px-3 py-2 text-right align-middle">
+                            <th
+                              className="px-3 py-2 text-right align-middle"
+                              style={{ minWidth: "auto" }}
+                            >
                               Qty
                             </th>
-                            <th className="px-3 py-2 text-right align-middle">
+                            <th
+                              className="px-3 py-2 text-right align-middle"
+                              style={{ minWidth: "auto" }}
+                            >
                               Value
                             </th>
                           </tr>
@@ -992,7 +929,7 @@ function DashboardBoard() {
     );
   }
   if (error) {
-    return <div className="mt-8 text-xl text-center text-red-600">{error}</div>;
+    return <div className="mt-8 text-xl text-center text-red-900">{error}</div>;
   }
 
   return (
