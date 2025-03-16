@@ -220,6 +220,7 @@ function Register() {
               className="w-3/5 text-center border-2 h-9 border-slate-400 rounded-xl"
               value={formData[field]}
               onChange={handleChange}
+              autoComplete="given-name"
             />
           ))}
 
@@ -236,6 +237,7 @@ function Register() {
                 onChange={handleChange}
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -266,6 +268,7 @@ function Register() {
                 onChange={handleChange}
                 onFocus={() => setConfirmPasswordFocused(true)}
                 onBlur={() => setConfirmPasswordFocused(false)}
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -304,6 +307,7 @@ function Register() {
                   value={roleOption}
                   checked={formData.role === roleOption}
                   onChange={handleChange}
+                  autoComplete="off"
                 />
                 <span className="ml-2 capitalize">{roleOption}</span>
               </label>
@@ -322,6 +326,7 @@ function Register() {
                 className="w-full h-full text-center border-2 border-slate-400 rounded-xl"
                 value={formData.roleCode}
                 onChange={handleChange}
+                autoComplete="off"
               />
               <button
                 type="button"
@@ -346,6 +351,7 @@ function Register() {
                   value="upload"
                   checked={imageSource === "upload"}
                   onChange={() => setImageSource("upload")}
+                  autoComplete="off"
                 />
                 <span className="ml-2">Upload File</span>
               </label>
@@ -356,6 +362,7 @@ function Register() {
                   value="url"
                   checked={imageSource === "url"}
                   onChange={() => setImageSource("url")}
+                  autoComplete="off"
                 />
                 <span className="ml-2">Image URL</span>
               </label>
@@ -397,6 +404,7 @@ function Register() {
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 className="w-full text-center border-2 h-9 border-slate-400 rounded-xl"
+                autoComplete="off"
               />
               {imageUrl && (
                 <div className="mt-4">

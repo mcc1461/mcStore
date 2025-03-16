@@ -109,7 +109,7 @@ function Login() {
         <div className="flex flex-col items-center justify-center w-full p-4 lg:w-2/3">
           {/* Heading */}
           <div className="w-full mb-4">
-            <p className="text-3xl font-bold text-center">Login</p>
+            <p className="text-xl font-bold text-center md:text-3xl">Login</p>
           </div>
 
           {/* Form */}
@@ -124,6 +124,7 @@ function Login() {
               className="w-3/5 h-12 text-center border-2 border-gray-400 rounded-xl focus:outline-none focus:border-blue-500"
               value={credentials.username}
               onChange={handleChange}
+              autoComplete="username"
             />
 
             <input
@@ -133,6 +134,7 @@ function Login() {
               className="w-3/5 h-12 text-center border-2 border-gray-400 rounded-xl focus:outline-none focus:border-blue-500"
               value={credentials.password}
               onChange={handleChange}
+              autoComplete="current-password"
             />
 
             {isLoading && <Loader />}
@@ -151,7 +153,7 @@ function Login() {
             </div>
           </form>
 
-          <p className="mt-4 text-xl font-bold">
+          <p className="mt-4 text-base font-bold md:text-xl">
             Don't have an account?{" "}
             <Link to="/register" className="text-red-500">
               Register
