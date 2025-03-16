@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "23" # Use a Node version compatible with your app
+          node-version: "23" # use node version compatible with your app
 
       - name: Install Dependencies and Build
         working-directory: ./client
@@ -51,19 +51,16 @@ jobs:
             sudo rm -rf /var/www/softrealizer/*
             sudo rm -rf /var/www/softrealizer/.*
 
-            # Copy new build using cp (first method)
-            sudo cp -R dist/* /var/www/softrealizer/
-
-            # Synchronize new build using rsync (ensures an exact mirror)
+            # Copy new build using rsync to ensure an exact mirror of dist/
             sudo rsync -av --delete dist/ /var/www/softrealizer/
+
+            # Set proper ownership for nginx to serve the files
+            sudo chown -R www-data:www-data /var/www/softrealizer
 
             # Debug: list contents of the deployment folder
             echo "Updated /var/www/softrealizer contents:"
             ls -la /var/www/softrealizer
 
-            # Set proper ownership (if nginx runs as www-data)
-            sudo chown -R www-data:www-data /var/www/softrealizer
-
-            # Reload nginx and restart the Node.js application
+            # Reload nginx and restart the Node.js app
             sudo systemctl reload nginx
             pm2 restart all
