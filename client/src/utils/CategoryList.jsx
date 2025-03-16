@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
-import { computeCategorySummary, parseNumber } from "../utils/categoryUtils";
+import { computeCategorySummary, parseNumber } from "../utils/CategoryUtils";
 import { formatCurrency } from "./..formatCurrency";
 
 // Define background colors for category cards.
