@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "23" # use node version compatible with your app
+          node-version: "23" # Use a Node version compatible with your app
 
       - name: Install Dependencies and Build
         working-directory: ./client
@@ -34,7 +34,7 @@ jobs:
           script: |
             cd ~/mcStore/client
 
-            # Reset and fetch the latest code
+            # Reset repository and pull the latest changes
             git reset --hard HEAD
             git clean -fd
             git pull origin main
@@ -43,21 +43,22 @@ jobs:
             npm install
             npm run build
 
-            # Debug: list contents of the new build folder
+            # Debug: list the updated build folder
             echo "New build (dist/) contents:"
             ls -la dist
 
-            # Remove old build files from the document root
+            # Remove old files from the document root
             sudo rm -rf /var/www/softrealizer/*
-            sudo rm -rf /var/www/softrealizer/.*
+            # Optionally remove hidden files if you intend to clear them (be cautious)
+            # sudo rm -rf /var/www/softrealizer/.*
 
-            # Copy new build using rsync to ensure an exact mirror of dist/
+            # Deploy new build using rsync (ensure source is 'dist/' with trailing slash)
             sudo rsync -av --delete dist/ /var/www/softrealizer/
 
-            # Set proper ownership for nginx to serve the files
+            # Set proper ownership so that nginx can serve the files
             sudo chown -R www-data:www-data /var/www/softrealizer
 
-            # Debug: list contents of the deployment folder
+            # Debug: list the updated deployment folder
             echo "Updated /var/www/softrealizer contents:"
             ls -la /var/www/softrealizer
 
