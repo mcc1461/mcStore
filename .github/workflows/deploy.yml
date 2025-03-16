@@ -51,6 +51,9 @@ jobs:
             # Deploy new build using rsync (replace "dist/" with the correct build folder if different)
             sudo rsync -av --delete dist/ /var/www/softrealizer/
 
+             # Set proper ownership for the deployed files
+            sudo chown -R www-data:www-data /var/www/softrealizer
+
             # Reload nginx and restart the node app
             sudo systemctl reload nginx
             pm2 restart all
