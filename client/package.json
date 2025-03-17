@@ -32,7 +32,7 @@
     "react-toastify": "^11.0.5",
     "redux-persist": "^6.0.0",
     "slick-carousel": "^1.8.1",
-    "sweetalert2": "^11.6.13",
+    "sweetalert2": "11.4.8",
     "swipe-js-iso": "^2.1.5"
   },
   "devDependencies": {
