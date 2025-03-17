@@ -29,9 +29,10 @@ jobs:
         with:
           node-version: "23"
 
-      - name: Install Dependencies and Build
+      - name: Install Dependencies and Build (Local Runner)
         working-directory: ./client
         run: |
+          echo "Cleaning up previous build..."
           rm -rf dist
           npm cache clean --force
           npm install
@@ -47,28 +48,34 @@ jobs:
           key: ${{ secrets.AWS_MUSCO_STORE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
+            # Change to the client directory on the server
             cd ~/mcStore/client
 
-            # Reset repository and pull latest changes
+            # Reset repository, clean and pull latest changes
             git reset --hard HEAD
             git clean -fd
             git pull origin main
 
-            # Install dependencies and build on the server
+            # Clean previous build, install dependencies, and run build
+            echo "Building client on server..."
             rm -rf dist
             npm cache clean --force
             npm install
             npm run build
+
+            # Ensure the dist folder exists (create it if missing)
+            mkdir -p dist
+
             echo "Server dist folder contents:"
             ls -la dist
 
-            # Remove old files from the document root
+            # Remove old files from the deployment directory
+            echo "Cleaning deployment directory..."
             sudo rm -rf /var/www/softrealizer/*
 
-            # # Deploy new build using rsync (ensure trailing slash on source)
-            # sudo rsync -av --delete /home/ubuntu/mcStore/client/dist/ /var/www/softrealizer/
+            # Deploy the new build by copying build files from dist
+            echo "Deploying new build..."
             sudo cp -r /home/ubuntu/mcStore/client/dist/* /var/www/softrealizer/
-
 
             # Set proper ownership so nginx can serve the files
             sudo chown -R www-data:www-data /var/www/softrealizer
