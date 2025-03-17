@@ -65,8 +65,10 @@ jobs:
             # Remove old files from the document root
             sudo rm -rf /var/www/softrealizer/*
 
-            # Deploy new build using rsync (ensure trailing slash on source)
-            sudo rsync -av --delete /home/ubuntu/mcStore/client/dist/ /var/www/softrealizer/
+            # # Deploy new build using rsync (ensure trailing slash on source)
+            # sudo rsync -av --delete /home/ubuntu/mcStore/client/dist/ /var/www/softrealizer/
+            sudo cp -r /home/ubuntu/mcStore/client/dist/* /var/www/softrealizer/
+
 
             # Set proper ownership so nginx can serve the files
             sudo chown -R www-data:www-data /var/www/softrealizer
