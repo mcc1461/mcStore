@@ -32,7 +32,7 @@ jobs:
       - name: Install Dependencies and Build (Local Runner)
         working-directory: ./client
         run: |
-          echo "Cleaning up previous build..."
+          echo "Local build: Cleaning up previous build..."
           rm -rf dist
           npm cache clean --force
           npm install
@@ -51,23 +51,36 @@ jobs:
             # Change to the client directory on the server
             cd ~/mcStore/client
 
-            # Reset repository, clean and pull latest changes
+            echo "Server: Resetting repo and pulling latest changes..."
             git reset --hard HEAD
             git clean -fd
             git pull origin main
 
-            # Clean previous build, install dependencies, and run build
-            echo "Building client on server..."
+            echo "Server: Cleaning previous build and installing dependencies..."
             rm -rf dist
             npm cache clean --force
             npm install
+
+            echo "Server: Environment variables:"
+            echo "VITE_APP_API_URL is $VITE_APP_API_URL"
+            # (Print any other needed variables)
+
+            echo "Server: Starting build..."
             npm run build
 
             # Ensure the dist folder exists (create it if missing)
             mkdir -p dist
 
-            echo "Server dist folder contents:"
+            echo "Server: Final dist folder contents:"
             ls -la dist
+
+            # Check if any build files exist
+            if [ "$(ls -A dist)" ]; then
+              echo "Build files found in dist."
+            else
+              echo "No build files found in dist! Exiting."
+              exit 1
+            fi
 
             # Remove old files from the deployment directory
             echo "Cleaning deployment directory..."
@@ -81,7 +94,7 @@ jobs:
             sudo chown -R www-data:www-data /var/www/softrealizer
 
             echo "Updated /var/www/softrealizer contents:"
-            ls -la /var/www/softrealizer
+            sudo ls -la /var/www/softrealizer
 
             # Reload nginx and restart the Node.js app
             sudo systemctl reload nginx
