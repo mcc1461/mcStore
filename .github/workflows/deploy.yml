@@ -48,6 +48,11 @@ jobs:
           key: ${{ secrets.AWS_MUSCO_STORE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
+            # Load nvm to ensure correct Node version is used
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 23
+
             # Change to the client directory on the server
             cd ~/mcStore/client
 
