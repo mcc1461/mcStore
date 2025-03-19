@@ -471,10 +471,10 @@ export default function SellsList() {
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getBrandName(product)}
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 xl:table-cell">
           {inStock}
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 xl:table-cell">
           ${avgPurchasePrice.toFixed(2)}
         </td>
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
@@ -489,7 +489,7 @@ export default function SellsList() {
           <span className="block sm:hidden">${formatNumber(profit)} </span>
           <span className="hidden sm:block">${profit.toFixed(2)}</span>
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 md:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getSellerNameById(sell.sellerId)}
         </td>
         {/* Action Buttons */}
@@ -723,10 +723,10 @@ export default function SellsList() {
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Brand
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 xl:table-cell">
                 In Stock
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 xl:table-cell">
                 Avg Purchase Price
               </th>
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
@@ -741,7 +741,7 @@ export default function SellsList() {
               <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Profit
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 md:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Seller
               </th>
               <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
