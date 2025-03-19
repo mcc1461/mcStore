@@ -808,10 +808,20 @@ export default function SellsList() {
                         {getSellerNameById(sellerId)}
                       </td>
                       <td className="w-1/6 px-2 py-2 text-right">
-                        ${totalSold.toFixed(2)}
+                        <span className="hidden sm:block">
+                          ${totalSold.toFixed(2)}
+                        </span>
+                        <span className="block sm:hidden">
+                          ${formatNumber(totalSold)}
+                        </span>
                       </td>
                       <td className="w-1/6 px-2 py-2 text-right">
-                        ${totalProfit.toFixed(2)}
+                        <span className="hidden sm:block">
+                          ${totalProfit.toFixed(2)}
+                        </span>
+                        <span className="block sm:hidden">
+                          ${formatNumber(totalProfit)}
+                        </span>
                       </td>
                       <td className="w-3/6 px-2 py-2 text-center"></td>
                     </tr>
