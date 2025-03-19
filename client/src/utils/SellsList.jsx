@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
-import { formatCurrency } from "../utils/helpers";
+import { formatCurrency, formatNumber } from "../utils/helpers";
 
 /************************************************************************************
  * 1) ROLE & NAVIGATION
@@ -461,35 +461,39 @@ export default function SellsList() {
         key={sell._id}
         className="transition bg-white border-b hover:bg-gray-50"
       >
-        <td className="px-4 py-2 text-sm text-gray-600">{index + 1}</td>
-        <td className="px-4 py-2 text-sm font-semibold text-gray-900">
+        <td className="px-2 py-2 text-sm text-gray-600 sm:px-4">{index + 1}</td>
+        <td className="px-2 py-2 text-sm font-semibold text-gray-900 sm:px-4">
           {getProductNameById(sell.productId)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getCategoryName(product)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getBrandName(product)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">{inStock}</td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
+          {inStock}
+        </td>
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           ${avgPurchasePrice.toFixed(2)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           ${sellPrice.toFixed(2)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">{qty}</td>
-        <td className="px-4 py-2 text-sm font-semibold text-gray-700">
-          ${total.toFixed(2)}
+        <td className="px-2 py-2 text-sm text-gray-600 sm:px-4">{qty}</td>
+        <td className="px-2 py-2 text-sm font-semibold text-gray-700 sm:px-4">
+          <span className="block sm:hidden">${formatNumber(total)} </span>
+          <span className="hidden sm:block">${total.toFixed(2)}</span>
         </td>
-        <td className="px-4 py-2 text-sm font-semibold text-gray-700">
-          ${profit.toFixed(2)}
+        <td className="px-2 py-2 text-sm font-semibold text-gray-700 sm:px-4">
+          <span className="block sm:hidden">${formatNumber(profit)} </span>
+          <span className="hidden sm:block">${profit.toFixed(2)}</span>
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 md:table-cell">
           {getSellerNameById(sell.sellerId)}
         </td>
         {/* Action Buttons */}
-        <td className="px-4 py-2 space-x-2 text-center">
+        <td className="px-2 py-2 space-x-2 text-center sm:px-4">
           {canAddSell && (
             <button
               onClick={() => openEditModal(sell)}
@@ -587,14 +591,14 @@ export default function SellsList() {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="px-4 py-2 text-xs text-white bg-blue-600 rounded-md md:text-base hover:bg-blue-700"
           >
             ➤ Dashboard
           </button>
           {canAddSell && (
             <button
               onClick={openModal}
-              className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700"
+              className="px-4 py-2 text-xs text-white bg-green-600 rounded-md md:text-base hover:bg-green-700"
             >
               + Add Sell
             </button>
@@ -612,7 +616,7 @@ export default function SellsList() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Categories</option>
             {[...availableCategories]
@@ -632,7 +636,7 @@ export default function SellsList() {
           <select
             value={selectedBrand}
             onChange={(e) => setSelectedBrand(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Brands</option>
             {[...availableBrands]
@@ -652,7 +656,7 @@ export default function SellsList() {
           <select
             value={selectedProduct}
             onChange={(e) => setSelectedProduct(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Products</option>
             {[...availableProducts]
@@ -666,13 +670,13 @@ export default function SellsList() {
         </div>
         {/* Seller filter */}
         <div>
-          <label className="block mb-1 text-sm font-semibold text-gray-600">
+          <label className="hidden mb-1 text-sm font-semibold text-gray-600 md:block">
             Seller
           </label>
           <select
             value={selectedSeller}
             onChange={(e) => setSelectedSeller(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="hidden w-40 px-2 py-1 border rounded md:block"
           >
             <option value="all">All Sellers</option>
             {[...users]
@@ -707,40 +711,40 @@ export default function SellsList() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 No
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Product
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Category
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Brand
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 In Stock
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Avg Purchase Price
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Sell Price
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Qty
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Total
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Profit
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 md:table-cell">
                 Seller
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Action
               </th>
             </tr>
@@ -804,10 +808,10 @@ export default function SellsList() {
                         {getSellerNameById(sellerId)}
                       </td>
                       <td className="w-1/6 px-2 py-2 text-right">
-                        {formatCurrency(totalSold)}
+                        ${totalSold.toFixed(2)}
                       </td>
                       <td className="w-1/6 px-2 py-2 text-right">
-                        {formatCurrency(totalProfit)}
+                        ${totalProfit.toFixed(2)}
                       </td>
                       <td className="w-3/6 px-2 py-2 text-center"></td>
                     </tr>

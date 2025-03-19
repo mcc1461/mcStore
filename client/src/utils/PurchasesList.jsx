@@ -9,7 +9,7 @@ import { useSelector } from "react-redux";
 import { Dialog, Transition } from "@headlessui/react";
 import apiClient from "../services/apiClient";
 import { all } from "axios";
-import { formatCurrency } from "../utils/helpers";
+import { formatCurrency, formatNumber } from "../utils/helpers";
 
 /************************************************************************************
  * 1) ROLE & NAVIGATION
@@ -446,33 +446,37 @@ export default function PurchasesList() {
         className="transition bg-white border-b hover:bg-gray-50"
       >
         <td className="px-4 py-2 text-sm text-gray-600">{index + 1}</td>
-        <td className="px-4 py-2 text-sm font-semibold text-gray-900">
+        <td className="px-2 py-2 text-sm font-semibold text-gray-900 sm:px-4">
           {getProductNameById(purchase.productId)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getCategoryName(product)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getBrandName(product)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           ${marketPrice.toFixed(2)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           ${purchasePrice.toFixed(2)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">{qty}</td>
-        <td className="px-4 py-2 text-sm font-bold text-gray-800">
-          ${total.toFixed(2)}
+        <td className="px-2 py-2 text-sm text-gray-600 sm:px-4">{qty}</td>
+        <td className="px-2 py-2 text-sm font-bold text-gray-800 sm:px-4">
+          {/* On extra-small screens, show the abbreviated format */}
+          <span className="block sm:hidden">${formatNumber(total)}</span>
+          {/* On small and larger screens, show the full fixed value */}
+          <span className="hidden sm:block">${total.toFixed(2)}</span>
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 md:table-cell">
           {getFirmNameById(purchase.firmId)}
         </td>
-        <td className="px-4 py-2 text-sm text-gray-600">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 md:table-cell">
           {getBuyerNameById(actualBuyerId)}
         </td>
         {/* Action Buttons */}
-        <td className="px-4 py-2 space-x-2 text-center">
+        <td className="px-2 py-2 space-x-2 text-center sm:px-4">
           {canAddPurchase && (
             <button
               onClick={() => openEditModal(purchase)}
@@ -547,21 +551,23 @@ export default function PurchasesList() {
    * 13) RETURN (final render)
    ************************************************************************************/
   return (
-    <div className="px-4 py-6 mx-auto max-w-7xl">
+    <div className="px-4 py-6 mx-auto overflow-auto max-w-7xl sm:px-6 lg:px-8">
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Purchases List</h1>
+        <h1 className="text-xl font-bold text-gray-800 sm:text-2xl">
+          Purchases List
+        </h1>
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate("/dashboard")}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="px-4 py-2 text-xs text-white bg-blue-600 rounded-md md:text-base hover:bg-blue-700"
           >
             ➤ Dashboard
           </button>
           {canAddPurchase && (
             <button
               onClick={openModal}
-              className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700"
+              className="px-4 py-2 text-xs text-white bg-green-600 rounded-md md:text-base hover:bg-green-700"
             >
               + Add Purchase
             </button>
@@ -570,7 +576,7 @@ export default function PurchasesList() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col items-start mb-4 space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-6">
+      <div className="flex flex-col items-start mb-4 space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-3">
         {/* Category filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
@@ -579,7 +585,7 @@ export default function PurchasesList() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Categories</option>
             {[...availableCategories]
@@ -600,7 +606,7 @@ export default function PurchasesList() {
           <select
             value={selectedBrand}
             onChange={(e) => setSelectedBrand(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Brands</option>
             {[...availableBrands]
@@ -621,7 +627,7 @@ export default function PurchasesList() {
           <select
             value={selectedProduct}
             onChange={(e) => setSelectedProduct(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="w-40 px-2 py-1 border rounded"
           >
             <option value="all">All Products</option>
             {[...availableProducts]
@@ -636,13 +642,13 @@ export default function PurchasesList() {
 
         {/* Firm filter */}
         <div>
-          <label className="block mb-1 text-sm font-semibold text-gray-600">
+          <label className="hidden mb-1 text-sm font-semibold text-gray-600 md:block">
             Firm
           </label>
           <select
             value={selectedFirm}
             onChange={(e) => setSelectedFirm(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="hidden w-40 px-2 py-1 border rounded md:block"
           >
             <option value="all">All Firms</option>
             {[...firms]
@@ -657,13 +663,13 @@ export default function PurchasesList() {
 
         {/* Buyer filter */}
         <div>
-          <label className="block mb-1 text-sm font-semibold text-gray-600">
+          <label className="hidden mb-1 text-sm font-semibold text-gray-600 md:block">
             Buyer
           </label>
           <select
             value={selectedBuyer}
             onChange={(e) => setSelectedBuyer(e.target.value)}
-            className="w-48 px-2 py-1 border rounded"
+            className="hidden w-40 px-2 py-1 border rounded md:block"
           >
             <option value="all">All Buyers</option>
             {[...allUsers]
@@ -702,37 +708,37 @@ export default function PurchasesList() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 No
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Product
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Category
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Brand
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Market Price
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Purchase Price
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Qty
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Total
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 md:table-cell">
                 Firm
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 md:table-cell">
                 Buyer
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-700">
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Action
               </th>
             </tr>

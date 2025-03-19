@@ -2,6 +2,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "tailwindcss/tailwind.css";
+import "sweetalert2/dist/sweetalert2.min.css";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import store, { persistor } from "./store"; // your Redux store & persistor

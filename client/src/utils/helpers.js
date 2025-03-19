@@ -26,6 +26,32 @@ export function formatCurrency(amount) {
   });
 }
 
+export function formatNumber(num) {
+  const absVal = Math.abs(num);
+
+  // For values under 1000
+  if (absVal < 1000) {
+    const integerPart = Math.floor(absVal);
+    const leftover = absVal - integerPart;
+    // leftover === 0 means exactly an integer => no plus sign
+    return leftover === 0 ? String(integerPart) : integerPart + "+";
+  }
+
+  // For values under 1,000,000
+  if (absVal < 1_000_000) {
+    const thousandsPart = Math.floor(absVal / 1000);
+    const leftover = absVal % 1000;
+    // leftover === 0 => exactly multiple of 1,000 => "5k"
+    return thousandsPart + "k" + (leftover === 0 ? "" : "+");
+  }
+
+  // For values >= 1,000,000
+  const millionsPart = Math.floor(absVal / 1_000_000);
+  const leftover = absVal % 1_000_000;
+  // leftover === 0 => exactly multiple of 1,000,000 => "12M"
+  return millionsPart + "M" + (leftover === 0 ? "" : "+");
+}
+
 /**
  * Formats a date as a string.
  * @param {Date} date - The date to be formatted.

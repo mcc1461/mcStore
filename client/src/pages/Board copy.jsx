@@ -1,11 +1,4 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useState,
-  useMemo,
-  Fragment,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { Dialog, Transition } from "@headlessui/react";
@@ -208,7 +201,7 @@ function ExpandedDetails({
         <h3 className="mb-3 text-lg font-bold text-gray-900">
           {category.trim()} Details
         </h3>
-        <div className="w-full overflow-auto">
+        <div className="w-full overflow-x-auto">
           <table className="min-w-full text-xs text-left border-collapse table-auto">
             <thead>
               <tr className="bg-gray-100">
@@ -379,56 +372,6 @@ function DashboardBoard() {
   useEffect(() => {
     window.__dashboardProducts = products;
   }, [products]);
-
-  // --------------------------------------------------------------------
-  // Define modalFilteredData to filter products for the modal
-  // --------------------------------------------------------------------
-  const modalData = useMemo(() => {
-    if (viewMode === "stock") {
-      return products.filter((p) => {
-        const category = getCategoryName(p);
-        const brand = getBrandName(p);
-        const categoryMatches =
-          modalFilterCategory === "all" || category === modalFilterCategory;
-        const brandMatches =
-          modalFilterBrand === "all" || brand === modalFilterBrand;
-        return categoryMatches && brandMatches;
-      });
-    } else if (viewMode === "purchases") {
-      return purchases.filter((p) => {
-        const category = p.product
-          ? getCategoryName(p.product)
-          : getCategoryName(p);
-        const brand = p.product ? getBrandName(p.product) : getBrandName(p);
-        const categoryMatches =
-          modalFilterCategory === "all" || category === modalFilterCategory;
-        const brandMatches =
-          modalFilterBrand === "all" || brand === modalFilterBrand;
-        return categoryMatches && brandMatches;
-      });
-    } else if (viewMode === "sells") {
-      return sells.filter((p) => {
-        const category = p.product
-          ? getCategoryName(p.product)
-          : getCategoryName(p);
-        const brand = p.product ? getBrandName(p.product) : getBrandName(p);
-        const categoryMatches =
-          modalFilterCategory === "all" || category === modalFilterCategory;
-        const brandMatches =
-          modalFilterBrand === "all" || brand === modalFilterBrand;
-        return categoryMatches && brandMatches;
-      });
-    } else {
-      return [];
-    }
-  }, [
-    viewMode,
-    products,
-    purchases,
-    sells,
-    modalFilterCategory,
-    modalFilterBrand,
-  ]);
 
   // --------------------------------------------------------------------
   // Category Display for breakdown
@@ -621,20 +564,9 @@ function DashboardBoard() {
   function AllProductsModal() {
     const windowWidth = useWindowWidth();
     const isMobile = windowWidth < 640; // mobile breakpoint
-    const contentRef = useRef(null);
-
-    useEffect(() => {
-      if (allProductsModalOpen && contentRef.current) {
-        setTimeout(() => {
-          if (contentRef.current) {
-            contentRef.current.scrollTop = 0;
-          }
-        }, 0);
-      }
-    }, [allProductsModalOpen]);
 
     const modalTotal = useMemo(() => {
-      return modalData.reduce((acc, p) => {
+      return modalFilteredData.reduce((acc, p) => {
         let price = 0;
         if (viewMode === "stock") {
           price = Number(p.price) || 0;
@@ -645,7 +577,7 @@ function DashboardBoard() {
         }
         return acc + price * Number(p.quantity);
       }, 0);
-    }, [modalData, viewMode]);
+    }, [modalFilteredData, viewMode]);
 
     const priceLabel =
       viewMode === "stock"
@@ -678,11 +610,6 @@ function DashboardBoard() {
               <div className="flex items-center justify-center min-h-full p-4 text-center">
                 <Transition.Child
                   as={Fragment}
-                  beforeEnter={(node) => {
-                    if (node) {
-                      node.scrollTop = 0;
-                    }
-                  }}
                   enter="ease-out duration-300"
                   enterFrom="opacity-0 scale-95"
                   enterTo="opacity-100 scale-100"
@@ -690,10 +617,7 @@ function DashboardBoard() {
                   leaveFrom="opacity-100 scale-100"
                   leaveTo="opacity-0 scale-95"
                 >
-                  <Dialog.Panel
-                    ref={contentRef}
-                    className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl max-h-[80vh] overflow-auto"
-                  >
+                  <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
                     <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
                       {viewMode === "stock"
                         ? "All Products"
@@ -702,7 +626,7 @@ function DashboardBoard() {
                           : "All Sells"}
                     </Dialog.Title>
                     <div className="flex flex-col gap-3">
-                      {modalData.map((p, idx) => {
+                      {modalFilteredData.map((p, idx) => {
                         let price = 0;
                         if (viewMode === "stock") {
                           price = Number(p.price) || 0;
@@ -756,7 +680,7 @@ function DashboardBoard() {
                     <div className="flex justify-end mt-4">
                       <button
                         onClick={() => setAllProductsModalOpen(false)}
-                        className="px-3 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+                        className="px-6 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
                       >
                         Close
                       </button>
@@ -799,10 +723,7 @@ function DashboardBoard() {
                   leaveFrom="opacity-100 scale-100"
                   leaveTo="opacity-0 scale-95"
                 >
-                  <Dialog.Panel
-                    ref={contentRef}
-                    className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl"
-                  >
+                  <Dialog.Panel className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-xl">
                     <Dialog.Title className="p-3 mb-4 text-2xl font-bold text-white bg-blue-600 rounded">
                       {viewMode === "stock"
                         ? "All Products"
@@ -813,7 +734,7 @@ function DashboardBoard() {
                     <p className="mb-2 text-xs text-gray-600">
                       Swipe horizontally to view more columns
                     </p>
-                    <div className="relative overflow-auto max-h-[60vh]">
+                    <div className="relative overflow-x-auto max-h-[60vh]">
                       <table className="w-full text-sm border-collapse table-auto">
                         <thead className="text-white bg-blue-600">
                           <tr>
@@ -862,7 +783,7 @@ function DashboardBoard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {modalData.map((p, idx) => {
+                          {modalFilteredData.map((p, idx) => {
                             let price = 0;
                             if (viewMode === "stock") {
                               price = Number(p.price) || 0;
@@ -939,7 +860,7 @@ function DashboardBoard() {
                     <div className="flex justify-end mt-4">
                       <button
                         onClick={() => setAllProductsModalOpen(false)}
-                        className="px-3 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+                        className="px-6 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
                       >
                         Close
                       </button>
@@ -1012,7 +933,7 @@ function DashboardBoard() {
   }
 
   return (
-    <div className="min-h-screen px-2 py-4 text-gray-900 bg-gray-100 sm:px-4">
+    <div className="min-h-screen p-4 text-gray-900 bg-gray-100">
       {/* Header: View Mode Buttons */}
       <div className="flex flex-wrap justify-center gap-4 mb-6">
         <button
@@ -1022,7 +943,7 @@ function DashboardBoard() {
             setExpandedCategory(null);
           }}
           className={clsx(
-            "px-3 py-2 rounded-lg font-bold",
+            "px-6 py-2 rounded-lg font-bold",
             viewMode === "stock"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-900"
@@ -1037,7 +958,7 @@ function DashboardBoard() {
             setExpandedCategory(null);
           }}
           className={clsx(
-            "px-3 py-2 rounded-lg font-bold",
+            "px-6 py-2 rounded-lg font-bold",
             viewMode === "purchases"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-900"
@@ -1052,7 +973,7 @@ function DashboardBoard() {
             setExpandedCategory(null);
           }}
           className={clsx(
-            "px-3 py-2 rounded-lg font-bold",
+            "px-6 py-2 rounded-lg font-bold",
             viewMode === "sells"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-900"
@@ -1063,114 +984,52 @@ function DashboardBoard() {
       </div>
 
       {/* Breakdown Summary Table */}
-      <div className="w-full mb-6 overflow-auto">
-        <Table className="w-full border-collapse tab">
+      <div className="w-full mb-6 overflow-x-hidden">
+        <Table className="w-full border-collapse table-fixed">
           <TableHead>
             <tr className="text-xs text-white bg-gradient-to-r from-blue-500 to-blue-600 sm:text-sm">
-              <TableHeader className="px-2 py-1 sm:px-4 sm:py-2">
-                {/* Full text on sm+ screens, abbreviated on extra-small */}
-                <span className="hidden sm:inline">Category</span>
-                <span className="inline sm:hidden">Cat.</span>
+              <TableHeader className="px-2 py-1 text-sm sm:py-2 sm:px-4 sm:text-sm">
+                Category
               </TableHeader>
-              <TableHeader className="px-2 py-1 text-right sm:px-4 sm:py-2">
-                <span className="hidden sm:inline">Count</span>
-                <span className="inline sm:hidden">#</span>
+              <TableHeader className="px-2 py-1 text-sm sm:py-2 sm:px-4 sm:text-smtext-right">
+                Count
               </TableHeader>
-              <TableHeader className="px-2 py-1 text-right sm:px-4 sm:py-2">
+              <TableHeader className="px-2 py-1 text-sm text-right sm:py-2 sm:px-4 sm:text-sm">
                 {viewMode === "sells" && currentBreakdownType === "profit"
                   ? "Total Profit"
                   : "Total Value"}
               </TableHeader>
-              {/* Action header: visible on sm+ screens */}
-              <TableHeader className="hidden px-2 py-1 sm:px-4 sm:py-2 sm:table-cell">
+              <TableHeader className="px-2 py-1 text-sm sm:py-2 sm:px-4 sm:text-sm">
                 Action
               </TableHeader>
             </tr>
           </TableHead>
           <TableBody>
-            {breakdownData.map((row) => (
-              <Fragment key={row.category}>
-                {/* Main Row */}
-                <TableRow className="transition bg-white border-b hover:bg-gray-50">
-                  <TableCell className="px-2 py-1 text-xs text-blue-900 sm:px-4 sm:py-2">
-                    {row.category}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-xs text-right text-blue-900 sm:px-4 sm:py-2">
-                    {row.total}
-                  </TableCell>
-                  <TableCell className="px-2 py-1 text-xs text-right text-blue-900 sm:px-4 sm:py-2">
-                    {viewMode === "sells" && currentBreakdownType === "profit"
-                      ? `$${formatCurrency(row.totalProfit || 0)}`
-                      : `$${formatCurrency(row.value || 0)}`}
-                  </TableCell>
-                  {/* Action button: visible only on sm+ screens */}
-                  <TableCell className="hidden px-2 py-1 text-blue-900 sm:table-cell sm:px-4 sm:py-2">
-                    <button
-                      onClick={() => toggleExpand(row.category)}
-                      className="px-2 py-1 text-xs text-white bg-blue-500 rounded sm:text-sm hover:bg-blue-600"
-                    >
-                      {expandedCategory === row.category
-                        ? "Hide Details"
-                        : "Details"}
-                    </button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Extra Row for Mobile: Action button full width */}
-                <TableRow className="bg-white border-b sm:hidden">
-                  <TableCell colSpan={3} className="px-2 py-1 ">
-                    <button
-                      onClick={() => toggleExpand(row.category)}
-                      className="w-full px-2 py-1 text-xs text-white bg-blue-500 rounded sm:text-sm hover:bg-blue-600"
-                    >
-                      {expandedCategory === row.category
-                        ? "Hide Details"
-                        : "Details"}
-                    </button>
-                  </TableCell>
-                </TableRow>
-
-                {/* Expanded details row (if applicable) */}
-                {expandedCategory === row.category && (
-                  <TableRow className="bg-blue-100">
-                    <TableCell colSpan={4}>
-                      <ExpandedDetails
-                        category={row.category}
-                        items={row.items || []}
-                        useAveragePrice={viewMode === "stock"}
-                        viewMode={viewMode}
-                        getDisplayProductName={getDisplayProductName}
-                        products={products}
-                      />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </Fragment>
-            ))}
-            {/* Grand Total Row */}
+            {renderBreakdownRows(breakdownData, expandedCategory, toggleExpand)}
             <TableRow className="bg-indigo-700">
               <TableCell
-                className="px-2 py-1 text-xs font-bold text-white sm:px-4 sm:py-2"
+                className="px-2 py-1 text-sm font-bold text-white sm:py-2 sm:px-4 sm:text-sm"
                 colSpan={1}
                 align="right"
               >
                 Grand Total:
               </TableCell>
               <TableCell
-                className="px-2 py-1 text-xs font-bold text-white sm:px-4 sm:py-2"
+                className="px-2 py-1 text-sm font-bold text-white sm:py-2 sm:px-4 sm:text-sm"
                 colSpan={1}
                 align="right"
               >
                 {Number(totalItems).toLocaleString()}
               </TableCell>
               <TableCell
-                className="px-2 py-1 text-xs font-bold text-right text-white sm:px-4 sm:py-2"
+                className="px-2 py-1 text-sm font-bold text-right text-white sm:py-2 sm:px-4 sm:text-sm"
                 colSpan={1}
               >
                 ${formatCurrency(grandTotal)}
               </TableCell>
-              {/* Empty cell for Action column on sm+ screens */}
-              <TableCell className="hidden px-2 py-1 text-xs font-bold text-left text-white sm:table-cell sm:px-4 sm:py-2"></TableCell>
+              <TableCell className="px-2 py-1 text-sm font-bold text-left text-white sm:py-2 sm:px-4 sm:text-sm">
+                {/* Empty */}
+              </TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -1186,7 +1045,7 @@ function DashboardBoard() {
       <div className="flex justify-center mt-6">
         <button
           onClick={() => setAllProductsModalOpen(true)}
-          className="px-3 py-2 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
+          className="px-6 py-2 text-white bg-blue-500 rounded-lg shadow hover:bg-blue-600"
         >
           {viewMode === "stock"
             ? "See All Products"
