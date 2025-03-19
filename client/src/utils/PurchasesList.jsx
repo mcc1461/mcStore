@@ -455,7 +455,7 @@ export default function PurchasesList() {
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getBrandName(product)}
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           ${marketPrice.toFixed(2)}
         </td>
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
@@ -472,7 +472,7 @@ export default function PurchasesList() {
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getFirmNameById(purchase.firmId)}
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 md:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getBuyerNameById(actualBuyerId)}
         </td>
         {/* Action Buttons */}
@@ -663,13 +663,13 @@ export default function PurchasesList() {
 
         {/* Buyer filter */}
         <div>
-          <label className="hidden mb-1 text-sm font-semibold text-gray-600 md:block">
+          <label className="hidden mb-1 text-sm font-semibold text-gray-600 lg:block">
             Buyer
           </label>
           <select
             value={selectedBuyer}
             onChange={(e) => setSelectedBuyer(e.target.value)}
-            className="hidden w-40 px-2 py-1 border rounded md:block"
+            className="hidden w-40 px-2 py-1 border rounded lg:block"
           >
             <option value="all">All Buyers</option>
             {[...allUsers]
@@ -720,7 +720,7 @@ export default function PurchasesList() {
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Brand
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Market Price
               </th>
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
@@ -735,7 +735,7 @@ export default function PurchasesList() {
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Firm
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 md:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Buyer
               </th>
               <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
@@ -817,7 +817,7 @@ export default function PurchasesList() {
               .map(({ buyerId, total }) => (
                 <div
                   key={buyerId}
-                  className="flex items-center gap-2 justify-left"
+                  className="flex items-center gap-4 justify-left"
                 >
                   <div className="w-[30%]">
                     <strong className="w-[30%]">
@@ -827,7 +827,7 @@ export default function PurchasesList() {
                   {/* <div className="w-[30%]text-right">Total Paid:</div> */}
                   <div></div>
                   {/* Fixed width container for right alignment */}
-                  <div className="pl-4 w-[40%] text-right">
+                  <div className="pl-8 w-[40%] text-right">
                     {formatCurrency(total)}
                   </div>
                 </div>
