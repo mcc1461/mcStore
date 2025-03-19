@@ -468,7 +468,7 @@ export default function SellsList() {
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
           {getCategoryName(product)}
         </td>
-        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 sm:table-cell">
+        <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getBrandName(product)}
         </td>
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 xl:table-cell">
@@ -670,13 +670,13 @@ export default function SellsList() {
         </div>
         {/* Seller filter */}
         <div>
-          <label className="hidden mb-1 text-sm font-semibold text-gray-600 md:block">
+          <label className="hidden mb-1 text-sm font-semibold text-gray-600 lg:block">
             Seller
           </label>
           <select
             value={selectedSeller}
             onChange={(e) => setSelectedSeller(e.target.value)}
-            className="hidden w-40 px-2 py-1 border rounded md:block"
+            className="hidden w-40 px-2 py-1 border rounded lg:block"
           >
             <option value="all">All Sellers</option>
             {[...users]
@@ -720,7 +720,7 @@ export default function SellsList() {
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
                 Category
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Brand
               </th>
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 xl:table-cell">
