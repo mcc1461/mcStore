@@ -142,7 +142,7 @@ export default function Profile() {
             <img
               src={imageUrl}
               alt="Profile"
-              crossOrigin="anonymous"
+              // crossOrigin="anonymous"
               className="object-cover w-40 h-40 rounded-full shadow-lg"
               onError={(e) => {
                 e.currentTarget.src = defaultProfile;

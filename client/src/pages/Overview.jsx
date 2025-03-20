@@ -50,7 +50,6 @@ function formatNumber(num) {
   if (absVal < 1000) {
     const integerPart = Math.floor(absVal);
     const leftover = absVal - integerPart;
-    // leftover === 0 means exactly an integer => no plus sign
     return leftover === 0 ? String(integerPart) : integerPart + "+";
   }
 
@@ -58,14 +57,12 @@ function formatNumber(num) {
   if (absVal < 1_000_000) {
     const thousandsPart = Math.floor(absVal / 1000);
     const leftover = absVal % 1000;
-    // leftover === 0 => exactly multiple of 1,000 => "5k"
     return thousandsPart + "k" + (leftover === 0 ? "" : "+");
   }
 
   // For values >= 1,000,000
   const millionsPart = Math.floor(absVal / 1_000_000);
   const leftover = absVal % 1_000_000;
-  // leftover === 0 => exactly multiple of 1,000,000 => "12M"
   return millionsPart + "M" + (leftover === 0 ? "" : "+");
 }
 
@@ -108,13 +105,24 @@ function getBarChartData(labels, values) {
         ),
         borderColor: labels.map((label) => categoryColors[label] || "#000000"),
         borderWidth: 1,
-        maxBarThickness: 30,
+        maxBarThickness: 30, // Fixes the bar width
+        BarThickness: 30,
       },
     ],
   };
 }
 
 function Overview() {
+  // --------------------------- HOOKS MOVED INSIDE THE COMPONENT ---------------------------
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsLargeScreen(window.innerWidth >= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  // ---------------------------------------------------------------------------------------
+
   const navigate = useNavigate();
 
   // State declarations
@@ -344,7 +352,6 @@ function Overview() {
         setTopSellers(topSeller);
 
         // --- Top 3 Most Profitable Products ---
-        // 1) Build avg purchase price map
         const purchasePriceMap2 = {};
         purchasesData.forEach((p) => {
           const key = String(p.productId);
@@ -360,8 +367,6 @@ function Overview() {
           const data = purchasePriceMap2[key];
           avgPurchasePrices[key] = data.qty > 0 ? data.total / data.qty : 0;
         });
-
-        // 2) For sells: compute profit using effective cost
         const productProfitMap = {};
         sellsData.forEach((s) => {
           const key = String(s.productId);
@@ -465,7 +470,7 @@ function Overview() {
   // Pie chart options
   const pieOptions = {
     responsive: true,
-    maintainAspectRatio: false, // Let the chart grow in the container
+    maintainAspectRatio: false,
     plugins: {
       datalabels: {
         color: "#fff",
@@ -481,7 +486,7 @@ function Overview() {
       legend: {
         position: "bottom",
         labels: {
-          font: { size: 12 }, // Smaller legend text
+          font: { size: 12 },
           generateLabels: (chart) => {
             const { data } = chart;
             return data.labels.map((label, i) => {
@@ -504,52 +509,137 @@ function Overview() {
     },
   };
 
-  // Bar chart options: use horizontal bars (indexAxis: 'y') for vertical category labels
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    indexAxis: "y", // Categories on the y-axis => vertical list
-    layouts: {
-      padding: { left: 5, right: 50, top: 5, bottom: 5 },
-    },
-    plugins: {
-      legend: { display: false },
-      title: { display: true, text: chartTitle },
-      datalabels: {
-        color: "#000",
-        anchor: "end",
-        align: "end",
-        font: { size: 12 },
-        formatter: (value) => {
-          if (isMoneyChart) {
-            return "$" + formatNumber(Number(value));
-          }
-          return formatNumber(value);
-        },
-      },
-    },
-    scales: {
-      x: {
-        grace: "10%",
-        ticks: {
-          font: { size: 12 },
-        },
-      },
-      y: {
-        ticks: {
-          font: { size: 12 },
-          callback: function (value, index) {
-            let label = this.getLabelForValue(value) || "";
-            if (label.length > 4) {
-              label = label.slice(0, 4) + "...";
-            }
-            return label;
+  // Bar chart options: change configuration based on screen size
+  const barOptions = isLargeScreen
+    ? {
+        // Vertical bars configuration for large screens
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "x",
+        layout: {
+          padding: {
+            left: 10,
+            right: 70, // enough space for bar values
+            top: 20, // extra space above bars
+            bottom: 10,
           },
         },
-      },
-      macBarTickness: 30,
-    },
-  };
+        plugins: {
+          legend: { display: false },
+          title: { display: false, text: chartTitle },
+          datalabels: {
+            color: "#000",
+            anchor: "end",
+            align: "end",
+            font: { size: 12 },
+            formatter: (value) => {
+              return isMoneyChart ? "$" + Number(value).toFixed(2) : value;
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "category",
+            ticks: { font: { size: 12 } },
+            grid: { drawBorder: false },
+          },
+          y: {
+            grace: 5,
+            type: "linear",
+            ticks: {
+              font: { size: 12 },
+              padding: 2,
+              callback: function (value) {
+                return this.getLabelForValue(value) || "";
+              },
+            },
+            grid: { drawBorder: false },
+          },
+        },
+        datasets: {
+          bar: {
+            barThickness: 20,
+            maxBarThickness: 30,
+            minBarLength: 3,
+            categoryPercentage: 0.5,
+            barPercentage: 0.5,
+          },
+        },
+      }
+    : {
+        // Horizontal bars configuration for small screens
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: "y",
+        layout: {
+          padding: {
+            left: 2,
+            right: 50,
+            top: 5,
+            bottom: 5,
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          title: { display: false, text: chartTitle },
+          datalabels: {
+            color: "#000",
+            anchor: "end",
+            align: "end",
+            font: { size: 12 },
+            formatter: (value) => {
+              return isMoneyChart
+                ? "$" + formatNumber(Number(value).toFixed(2))
+                : formatNumber(value);
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "linear",
+            grace: 5,
+            ticks: { font: { size: 12 } },
+            grid: { drawBorder: false },
+          },
+          y: {
+            type: "category",
+            maxCategoryThickness: 50,
+            minCategoryThickness: 30,
+            categorySpacing: 0,
+            categoryPercentage: 0.5,
+            barPercentage: 0.5,
+            grace: 1,
+            ticks: {
+              font: { size: 12 },
+              padding: 2,
+              callback: function (value) {
+                let label = this.getLabelForValue(value) || "";
+                if (label.length > 4) {
+                  label = label.slice(0, 4) + "...";
+                }
+                return label;
+              },
+            },
+            grid: { drawBorder: false },
+          },
+        },
+        datasets: {
+          bar: {
+            barThickness: 20,
+            maxBarThickness: 30,
+            minBarLength: 3,
+            categoryPercentage: 0.5,
+            barPercentage: 0.5,
+          },
+        },
+      };
+
+  // Calculate dynamic container height based on number of bars
+  const barCount = (chartData.labels || []).length;
+  const dynamicHeight = isLargeScreen
+    ? Math.min(barCount * 80 + 50, 600) // for vertical bars on large screens
+    : Math.min(barCount * 40 + 50, 450); // for horizontal bars on small screens
+  const containerHeight = dynamicHeight;
 
   if (loading) {
     return (
@@ -603,17 +693,21 @@ function Overview() {
         </div>
       </div>
 
-      {/* Chart Container - bigger for small screens */}
+      {/* Chart Container */}
       <div className="p-4 mb-8 bg-white rounded shadow">
         <h2 className="mb-4 text-xl font-semibold text-center sm:text-2xl">
           {chartTitle}
         </h2>
-        {/* A relative container with a min-height that increases on bigger screens */}
-        <div className="relative w-full min-h-[400px] sm:min-h-[500px] md:min-h-[600px]">
+        {/* Container height set dynamically */}
+        <div
+          className="relative w-full"
+          style={{ height: `${containerHeight}px` }}
+        >
           {selectedChartType === "Pie" ? (
             <Pie data={chartData} options={pieOptions} />
           ) : (
             <Bar
+              key={`bar-chart-${isLargeScreen}`}
               data={getBarChartData(
                 chartData.labels,
                 chartData.datasets[0].data
@@ -857,6 +951,8 @@ function Overview() {
           </ul>
         </div>
       </div>
+
+      {/* ADD PURCHASE MODAL & EDIT PURCHASE MODAL - (unchanged code) */}
     </div>
   );
 }
