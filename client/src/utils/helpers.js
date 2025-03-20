@@ -150,3 +150,39 @@ export function formatEmail(str) {
 export function formatAddress(str) {
   return str.replace(/[^a-zA-Z0-9\s]/g, "").slice(0, 50);
 } // utils/helpers.js
+
+export function getChartData(labels, values) {
+  return {
+    labels,
+    datasets: [
+      {
+        data: values,
+        backgroundColor: labels.map(
+          (label) => categoryColors[label] || "#000000"
+        ),
+        hoverBackgroundColor: labels.map(
+          (label) => categoryColors[label] || "#000000"
+        ),
+      },
+    ],
+  };
+}
+
+export function getBarChartData(labels, values) {
+  return {
+    labels,
+    datasets: [
+      {
+        label: "Value",
+        data: values,
+        backgroundColor: labels.map((label) => {
+          // Adjust this as needed; you might import categoryColors from elsewhere
+          return categoryColors[label] || "#000000";
+        }),
+        borderColor: labels.map((label) => categoryColors[label] || "#000000"),
+        borderWidth: 1,
+        maxBarThickness: 30,
+      },
+    ],
+  };
+}

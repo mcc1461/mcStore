@@ -27,6 +27,7 @@ export default function PurchasesList() {
   /************************************************************************************
    * 2) STATES
    ************************************************************************************/
+  // Main data states
   const [purchases, setPurchases] = useState([]);
   const [products, setProducts] = useState([]);
   const [firms, setFirms] = useState([]);
@@ -34,11 +35,12 @@ export default function PurchasesList() {
   const [allUsers, setAllUsers] = useState([]); // for filtering & name lookups
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+
+  // Loading & error states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // CREATE Purchase modal
-  const [modalOpen, setModalOpen] = useState(false);
+  // Modal state for creating a new purchase
   const [newPurchase, setNewPurchase] = useState({
     productId: "",
     quantity: 1,
@@ -47,9 +49,7 @@ export default function PurchasesList() {
     userId: userInfo?._id || "",
     buyerId: "",
   });
-
-  // EDIT Purchase modal
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  // Modal state for editing an existing purchase
   const [editPurchase, setEditPurchase] = useState({
     _id: null,
     productId: "",
@@ -58,10 +58,15 @@ export default function PurchasesList() {
     firmId: "",
     buyerId: "",
   });
+  // Modal open/close states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
-  /************************************************************************************
-   * 3) FILTERS (top-level)
-   ************************************************************************************/
+  // **** NEW: Modal filtering states (for dynamic filtering in the modal) ****
+  const [modalCategory, setModalCategory] = useState("all");
+  const [modalBrand, setModalBrand] = useState("all");
+
+  // Table filter states
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState("all");
@@ -69,7 +74,10 @@ export default function PurchasesList() {
   const [selectedBuyer, setSelectedBuyer] = useState("all");
   const [selectedUser, setSelectedUser] = useState("all");
 
-  // Compute available categories based on current brand and product filters
+  /************************************************************************************
+   * 3) DYNAMIC FILTERING FOR TABLE FILTERS
+   ************************************************************************************/
+  // Compute available categories based on current brand and product filters (for table)
   const availableCategories = categories.filter((cat) =>
     products.some((p) => {
       const pCat = p.categoryId?._id || p.categoryId;
@@ -79,8 +87,7 @@ export default function PurchasesList() {
       return pCat === cat._id;
     })
   );
-
-  // Compute available brands based on current category and product filters
+  // Compute available brands based on current category and product filters (for table)
   const availableBrands = brands.filter((br) =>
     products.some((p) => {
       const pCat = p.categoryId?._id || p.categoryId;
@@ -90,13 +97,33 @@ export default function PurchasesList() {
       return pBrand === br._id;
     })
   );
-
-  // Compute available products based on current category and brand filters
+  // Compute available products based on current category and brand filters (for table)
   const availableProducts = products.filter((p) => {
     const pCat = p.categoryId?._id || p.categoryId;
     const pBrand = p.brandId?._id || p.brandId;
     if (selectedCategory !== "all" && pCat !== selectedCategory) return false;
     if (selectedBrand !== "all" && pBrand !== selectedBrand) return false;
+    return true;
+  });
+
+  /************************************************************************************
+   * 3A) DYNAMIC FILTERING FOR PURCHASE MODAL
+   ************************************************************************************/
+  // For modal, filter brands based on selected modalCategory:
+  const modalFilteredBrands = brands.filter((br) => {
+    if (modalCategory === "all") return true;
+    return products.some((p) => {
+      const pCat = p.categoryId?._id || p.categoryId;
+      const pBrand = p.brandId?._id || p.brandId;
+      return pCat === modalCategory && pBrand === br._id;
+    });
+  });
+  // For modal, filter products based on selected modalCategory and modalBrand:
+  const modalFilteredProducts = products.filter((p) => {
+    const pCat = p.categoryId?._id || p.categoryId;
+    const pBrand = p.brandId?._id || p.brandId;
+    if (modalCategory !== "all" && pCat !== modalCategory) return false;
+    if (modalBrand !== "all" && pBrand !== modalBrand) return false;
     return true;
   });
 
@@ -150,9 +177,6 @@ export default function PurchasesList() {
   /************************************************************************************
    * 5) CREATE PURCHASE
    ************************************************************************************/
-  const [modalCategory, setModalCategory] = useState("all");
-  const [modalBrand, setModalBrand] = useState("all");
-
   const openModal = () => {
     setNewPurchase({
       productId: "",
@@ -162,6 +186,7 @@ export default function PurchasesList() {
       userId: userInfo?._id || "",
       buyerId: "",
     });
+    // Reset modal filters when opening the modal
     setModalCategory("all");
     setModalBrand("all");
     setModalOpen(true);
@@ -173,19 +198,11 @@ export default function PurchasesList() {
     setNewPurchase((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Filter products by chosen category/brand in create modal
-  const modalFilteredProducts = products.filter((p) => {
-    const catId = p.categoryId?._id || p.categoryId;
-    const brId = p.brandId?._id || p.brandId;
+  // In the modal, the product dropdown will use the dynamically filtered products
+  // based on the selected modalCategory and modalBrand.
+  // (Note: modalFilteredBrands and modalFilteredProducts are computed above.)
 
-    if (modalCategory !== "all" && catId !== modalCategory) return false;
-    if (modalBrand !== "all" && brId !== modalBrand) return false;
-    return true;
-  });
-
-  // Save purchase => increments product quantity on server side
-  // ... (imports and other code remain unchanged)
-
+  // Save Purchase => increments product quantity on server side
   async function savePurchase() {
     try {
       const quantity = Number(newPurchase.quantity) || 1;
@@ -214,8 +231,8 @@ export default function PurchasesList() {
         (prod) => prod._id === newPurchase.productId
       );
       const brandId =
-        chosenProduct?.brandId?._id || chosenProduct?.brandId || null;
-      if (!brandId) {
+        chosenProduct?.brandId?._id || chosenProduct?.brandId || "unknown";
+      if (brandId === "unknown") {
         alert("No brandId found for this product! brandId is required.");
         return;
       }
@@ -233,8 +250,7 @@ export default function PurchasesList() {
 
       if (userRole === "user") {
         // Mark as temporary so that a TTL index (if set on your Purchase model)
-        // can remove it after 10 minutes. Alternatively, you can simulate
-        // the temporary mode by setting a timer to reload the page.
+        // can remove it after 10 minutes.
         payload.tester = true;
         payload.testerCreatedAt = new Date().toISOString();
       }
@@ -251,11 +267,11 @@ export default function PurchasesList() {
         setProducts(respProd.data.data || []);
         closeModal();
 
-        // If the user is regular, simulate the temporary mode by reloading after 10 minutes.
+        // For regular users, simulate temporary mode by reloading after 10 minutes.
         if (userRole === "user") {
           setTimeout(() => {
             window.location.reload();
-          }, 600000); // 600,000 ms = 10 minutes
+          }, 600000);
         }
       }
     } catch (err) {
@@ -333,7 +349,6 @@ export default function PurchasesList() {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
-
   function getProductById(id) {
     return products.find((p) => p._id === id);
   }
@@ -397,13 +412,12 @@ export default function PurchasesList() {
         return false;
       }
     }
-    // user
+    // User
     if (selectedUser !== "all" && purchase.userId !== selectedUser) {
       return false;
     }
     return true;
   }
-
   const filteredPurchases = purchases.filter(matchesFilter);
 
   /************************************************************************************
@@ -420,7 +434,7 @@ export default function PurchasesList() {
       await apiClient.delete(`/purchases/${purchaseId}`);
       setPurchases((prev) => prev.filter((p) => p._id !== purchaseId));
 
-      // re-fetch products => updated quantity
+      // Re-fetch products => updated quantity
       const respProd = await apiClient.get("/products?limit=0");
       setProducts(respProd.data.data || []);
     } catch (err) {
@@ -434,7 +448,7 @@ export default function PurchasesList() {
    ************************************************************************************/
   const tableRows = filteredPurchases.map((purchase, index) => {
     const product = getProductById(purchase.productId);
-    const marketPrice = product?.price || 0; // "market price" in DB
+    const marketPrice = product?.price || 0; // "market price" from DB
     const purchasePrice = purchase.purchasePrice || 0; // actual paid
     const qty = purchase.quantity || 0;
     const total = qty * purchasePrice;
@@ -463,12 +477,9 @@ export default function PurchasesList() {
         </td>
         <td className="px-2 py-2 text-sm text-gray-600 sm:px-4">{qty}</td>
         <td className="px-2 py-2 text-sm font-bold text-gray-800 sm:px-4">
-          {/* On extra-small screens, show the abbreviated format */}
           <span className="block sm:hidden">${formatNumber(total)}</span>
-          {/* On small and larger screens, show the full fixed value */}
           <span className="hidden sm:block">${total.toFixed(2)}</span>
         </td>
-
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
           {getFirmNameById(purchase.firmId)}
         </td>
@@ -501,7 +512,7 @@ export default function PurchasesList() {
   /************************************************************************************
    * 11) AGGREGATIONS
    ************************************************************************************/
-  // Global total
+  // Global total (total purchase amount)
   const totalPaidAll = filteredPurchases.reduce(
     (sum, p) => sum + (p.quantity || 0) * (p.purchasePrice || 0),
     0
@@ -529,7 +540,7 @@ export default function PurchasesList() {
       productMap[p.productId] = { totalSpent: 0, totalQty: 0 };
     }
     productMap[p.productId].totalSpent += (p.quantity || 0) * p.purchasePrice;
-    productMap[p.productId].totalQty += p.quantity;
+    productMap[p.productId].totalQty += p.quantity || 0;
   });
   const productAverages = Object.keys(productMap).map((prodId) => {
     const { totalSpent, totalQty } = productMap[prodId];
@@ -597,7 +608,6 @@ export default function PurchasesList() {
               ))}
           </select>
         </div>
-
         {/* Brand filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
@@ -618,7 +628,6 @@ export default function PurchasesList() {
               ))}
           </select>
         </div>
-
         {/* Product filter */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
@@ -639,7 +648,6 @@ export default function PurchasesList() {
               ))}
           </select>
         </div>
-
         {/* Firm filter */}
         <div>
           <label className="hidden mb-1 text-sm font-semibold text-gray-600 lg:block">
@@ -660,7 +668,6 @@ export default function PurchasesList() {
               ))}
           </select>
         </div>
-
         {/* Buyer filter */}
         <div>
           <label className="hidden mb-1 text-sm font-semibold text-gray-600 lg:block">
@@ -681,11 +688,9 @@ export default function PurchasesList() {
               ))}
           </select>
         </div>
-
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
-            {/* Empty space for alignment */}
-            {"Reset Filters"}
+            Reset Filters
           </label>
           <button
             onClick={() => {
@@ -693,8 +698,8 @@ export default function PurchasesList() {
               setSelectedBrand("all");
               setSelectedProduct("all");
               setSelectedFirm("all");
-              // setSelectedSeller("all");
               setSelectedBuyer("all");
+              setSelectedUser("all");
             }}
             className="px-4 py-2 font-medium text-blue-900 bg-orange-300 rounded hover:bg-orange-700 hover:text-white"
           >
@@ -720,10 +725,10 @@ export default function PurchasesList() {
               <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
                 Brand
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Market Price
               </th>
-              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
                 Purchase Price
               </th>
               <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
@@ -747,9 +752,9 @@ export default function PurchasesList() {
         </table>
       </div>
 
-      {/* Summaries (Global total, product averages, buyer totals) */}
+      {/* Summaries */}
       <div className="mt-6 space-y-4">
-        {/* Global total */}
+        {/* Global Total */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Global Totals (Filtered)
@@ -758,60 +763,24 @@ export default function PurchasesList() {
             <strong>Total Paid:</strong> {formatCurrency(totalPaidAll)}
           </p>
         </div>
-        {/* Average purchase price per product (filtered) */}
+        {/* Average Purchase Price per Product */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Average Purchase Price per Product (Filtered)
           </h2>
           {productAverages.map(({ productId, avgPrice }) => (
             <p key={productId} className="text-gray-700">
-              <strong>{getProductNameById(productId)}</strong>: {""}
+              <strong>{getProductNameById(productId)}</strong>:{" "}
               {formatCurrency(avgPrice)}
             </p>
           ))}
         </div>
-        {/* Total paid by each buyer (filtered)
-        <div className="p-4 bg-white rounded shadow">
-          <h2 className="w-1/5 mb-2 text-lg font-semibold text-gray-800">
-            Total Paid by Buyer (Filtered)
-          </h2>
-          <div className="flex flex-col space-y-2">
-            {buyerTotals.map(({ buyerId, total }) => (
-              <p key={buyerId} className="text-gray-700">
-                <strong>{getBuyerNameById(buyerId)}</strong>: {""}
-                <span className="ml-2 font-semibold">Total Paid:</span>
-                <span className="ml-1 text-right">{formatCurrency(total)}</span>
-              </p>
-            ))}
-          </div>
-        </div> */}
-        {/* Total paid by each buyer (filtered) */}
-        {/* <div className="p-4 bg-white rounded shadow">
-          <h2 className="mb-2 text-lg font-semibold text-gray-800">
-            Total Paid by Buyer (Filtered)
-          </h2>
-          <div className="space-y-2">
-            {buyerTotals.map(({ buyerId, total }) => (
-              <div
-                key={buyerId}
-                className="grid items-center w-max-[30%] grid-cols-2 gap-5"
-              >
-                <div>
-                  <strong className="w-1/3">{getBuyerNameById(buyerId)}</strong>
-                  : <span className="w-1/3 ml-2 ">Total Paid:</span>
-                </div>
-                <div className="w-1/3 text-right">{formatCurrency(total)}</div>
-              </div>
-            ))}
-          </div>
-        </div> */}
-        {/* Total paid by each buyer (filtered) */}
-
+        {/* Total Paid by Buyer */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Total Paid by Buyer (Filtered)
           </h2>
-          <div className="w-1/3 space-y-2 ">
+          <div className="w-1/3 space-y-2">
             {[...buyerTotals]
               .sort((a, b) => b.total - a.total)
               .map(({ buyerId, total }) => (
@@ -820,13 +789,8 @@ export default function PurchasesList() {
                   className="flex items-center gap-4 justify-left"
                 >
                   <div className="w-[30%]">
-                    <strong className="w-[30%]">
-                      {getBuyerNameById(buyerId)}:
-                    </strong>
+                    <strong>{getBuyerNameById(buyerId)}:</strong>
                   </div>
-                  {/* <div className="w-[30%]text-right">Total Paid:</div> */}
-                  <div></div>
-                  {/* Fixed width container for right alignment */}
                   <div className="pl-8 w-[40%] text-right">
                     {formatCurrency(total)}
                   </div>
@@ -850,7 +814,6 @@ export default function PurchasesList() {
           >
             <div className="fixed inset-0 bg-black/30" />
           </Transition.Child>
-
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex items-center justify-center min-h-full p-4 text-center">
               <Transition.Child
@@ -862,16 +825,13 @@ export default function PurchasesList() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {/* 
-                  CREATE Purchase Modal Panel
-                */}
+                {/* CREATE Purchase Modal Panel */}
                 <Dialog.Panel className="w-full max-w-md p-6 overflow-hidden text-left bg-white rounded shadow-xl">
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
                     Add New Purchase
                   </Dialog.Title>
-
                   <div className="space-y-4">
-                    {/* Category Filter for modalCategory */}
+                    {/* Modal Category Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Category
@@ -893,7 +853,7 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* Brand Filter for modalBrand */}
+                    {/* Modal Brand Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Brand
@@ -905,7 +865,7 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Brands</option>
-                        {[...availableBrands]
+                        {[...modalFilteredBrands]
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map((br) => (
                             <option key={br._id} value={br._id}>
@@ -915,7 +875,7 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* Product (Filtered) */}
+                    {/* Modal Product Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Product
@@ -927,7 +887,7 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="">-- Select Product --</option>
-                        {[...availableProducts]
+                        {[...modalFilteredProducts]
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map((p) => (
                             <option key={p._id} value={p._id}>
@@ -937,7 +897,7 @@ export default function PurchasesList() {
                       </select>
                     </div>
 
-                    {/* If product chosen, show read-only info (category, brand, market price) */}
+                    {/* If product chosen, show read-only info */}
                     {newPurchase.productId && (
                       <>
                         <div>
@@ -948,7 +908,7 @@ export default function PurchasesList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newPurchase.productId
                               );
@@ -962,7 +922,6 @@ export default function PurchasesList() {
                             })()}
                           />
                         </div>
-
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
                             Selected Brand
@@ -971,7 +930,7 @@ export default function PurchasesList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newPurchase.productId
                               );
@@ -983,7 +942,6 @@ export default function PurchasesList() {
                             })()}
                           />
                         </div>
-
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
                             Market Price (from DB)
@@ -992,7 +950,7 @@ export default function PurchasesList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newPurchase.productId
                               );
@@ -1098,7 +1056,7 @@ export default function PurchasesList() {
                     </button>
                   </div>
                 </Dialog.Panel>
-                {/* End of Dialog.Panel */}
+                {/* End of CREATE Purchase Modal Panel */}
               </Transition.Child>
             </div>
           </div>
@@ -1117,10 +1075,8 @@ export default function PurchasesList() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            {/* Dark overlay */}
             <div className="fixed inset-0 bg-black/30" />
           </Transition.Child>
-
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex items-center justify-center min-h-full p-4 text-center">
               <Transition.Child
@@ -1132,14 +1088,11 @@ export default function PurchasesList() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {/* 
-                  EDIT Purchase Modal Panel
-                */}
+                {/* EDIT Purchase Modal Panel */}
                 <Dialog.Panel className="w-full max-w-md p-6 overflow-hidden text-left bg-white rounded shadow-xl">
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
                     Edit Purchase
                   </Dialog.Title>
-
                   <div className="space-y-4">
                     {/* Quantity */}
                     <div>
@@ -1155,7 +1108,6 @@ export default function PurchasesList() {
                         className="w-full px-3 py-2 border rounded"
                       />
                     </div>
-
                     {/* Purchase Price */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
@@ -1176,27 +1128,6 @@ export default function PurchasesList() {
                         />
                       </div>
                     </div>
-
-                    {/* Buyer */}
-                    <div>
-                      <label className="block mb-1 text-sm font-semibold">
-                        Buyer
-                      </label>
-                      <select
-                        name="buyerId"
-                        value={editPurchase.buyerId}
-                        onChange={handleEditChange}
-                        className="w-full px-3 py-2 border rounded"
-                      >
-                        <option value="">-- Select Buyer --</option>
-                        {users.map((u) => (
-                          <option key={u._id} value={u._id}>
-                            {capitalize(u.username)} ({u.role})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
                     {/* Firm */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
@@ -1216,8 +1147,26 @@ export default function PurchasesList() {
                         ))}
                       </select>
                     </div>
+                    {/* Buyer */}
+                    <div>
+                      <label className="block mb-1 text-sm font-semibold">
+                        Buyer
+                      </label>
+                      <select
+                        name="buyerId"
+                        value={editPurchase.buyerId}
+                        onChange={handleEditChange}
+                        className="w-full px-3 py-2 border rounded"
+                      >
+                        <option value="">-- Select Buyer --</option>
+                        {users.map((u) => (
+                          <option key={u._id} value={u._id}>
+                            {capitalize(u.username)} ({u.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-
                   {/* Modal Footer: Update, Cancel */}
                   <div className="flex justify-end mt-6 space-x-3">
                     <button
@@ -1234,15 +1183,108 @@ export default function PurchasesList() {
                     </button>
                   </div>
                 </Dialog.Panel>
-                {/* End of Dialog.Panel */}
+                {/* End of EDIT Purchase Modal Panel */}
               </Transition.Child>
             </div>
           </div>
         </Dialog>
       </Transition>
+
+      {/* MAIN TABLE */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 text-sm font-medium text-gray-700">
+                No
+              </th>
+              <th className="px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Product
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4 sm:table-cell">
+                Category
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4 lg:table-cell">
+                Brand
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Market Price
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Purchase Price
+              </th>
+              <th className="px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Qty
+              </th>
+              <th className="px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Total
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4 lg:table-cell">
+                Firm
+              </th>
+              <th className="hidden px-2 py-2 text-sm font-medium text-gray-700 sm:px-4 lg:table-cell">
+                Buyer
+              </th>
+              <th className="px-2 py-2 text-sm font-medium text-gray-700 sm:px-4">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">{tableRows}</tbody>
+        </table>
+      </div>
+
+      {/* SUMMARIES */}
+      <div className="mt-6 space-y-4">
+        {/* Global Total */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Global Totals (Filtered)
+          </h2>
+          <p className="text-gray-700">
+            <strong>Total Paid:</strong> {formatCurrency(totalPaidAll)}
+          </p>
+        </div>
+        {/* Average Purchase Price per Product */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Average Purchase Price per Product (Filtered)
+          </h2>
+          {productAverages.map(({ productId, avgPrice }) => (
+            <p key={productId} className="text-gray-700">
+              <strong>{getProductNameById(productId)}</strong>:{" "}
+              {formatCurrency(avgPrice)}
+            </p>
+          ))}
+        </div>
+        {/* Total Paid by Buyer */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Total Paid by Buyer (Filtered)
+          </h2>
+          <div className="w-1/3 space-y-2">
+            {[...buyerTotals]
+              .sort((a, b) => b.total - a.total)
+              .map(({ buyerId, total }) => (
+                <div
+                  key={buyerId}
+                  className="flex items-center gap-4 justify-left"
+                >
+                  <div className="w-[30%]">
+                    <strong>{getBuyerNameById(buyerId)}:</strong>
+                  </div>
+                  <div className="pl-8 w-[40%] text-right">
+                    {formatCurrency(total)}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
 /********************************************************************/
-/* END OF FILE: PurchasesList.jsx ~1080 lines (full logic preserved)*/
+/* END OF FILE: PurchasesList.jsx ~1080 lines (full logic preserved)  */
 /********************************************************************/

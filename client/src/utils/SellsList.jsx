@@ -26,6 +26,7 @@ export default function SellsList() {
   /************************************************************************************
    * 2) STATES
    ************************************************************************************/
+  // Main data states
   const [sells, setSells] = useState([]);
   const [purchases, setPurchases] = useState([]); // to compute average purchase price
   const [products, setProducts] = useState([]);
@@ -34,21 +35,19 @@ export default function SellsList() {
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
 
+  // Loading & error states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // CREATE Sell modal
-  const [modalOpen, setModalOpen] = useState(false);
+  // Modal state for creating a new sell
   const [newSell, setNewSell] = useState({
     productId: "",
     quantity: 1,
     sellPrice: 0,
-    userId: userInfo?._id || "", // the user who is making this record
-    sellerId: "", // the staff/admin responsible for the sell
+    userId: userInfo?._id || "",
+    sellerId: "",
   });
-
-  // EDIT Sell modal
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  // Modal state for editing an existing sell
   const [editSell, setEditSell] = useState({
     _id: null,
     productId: "",
@@ -56,16 +55,24 @@ export default function SellsList() {
     sellPrice: 0,
     sellerId: "",
   });
+  // Modal open/close
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
-  /************************************************************************************
-   * 3) FILTERS
-   ************************************************************************************/
+  // **** NEW: Declare modal filtering states here so they are available for dynamic filtering ****
+  const [modalCategory, setModalCategory] = useState("all");
+  const [modalBrand, setModalBrand] = useState("all");
+
+  // Filters for the table
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState("all");
   const [selectedSeller, setSelectedSeller] = useState("all");
 
-  // Compute available categories based on current brand and product filters
+  /************************************************************************************
+   * 3) DYNAMIC FILTERING FOR TABLE FILTERS
+   ************************************************************************************/
+  // Compute available categories based on current brand and product filters (for table)
   const availableCategories = categories.filter((cat) =>
     products.some((p) => {
       const pCat = p.categoryId?._id || p.categoryId;
@@ -75,8 +82,7 @@ export default function SellsList() {
       return pCat === cat._id;
     })
   );
-
-  // Compute available brands based on current category and product filters
+  // Compute available brands (for table)
   const availableBrands = brands.filter((br) =>
     products.some((p) => {
       const pCat = p.categoryId?._id || p.categoryId;
@@ -86,13 +92,33 @@ export default function SellsList() {
       return pBrand === br._id;
     })
   );
-
-  // Compute available products based on current category and brand filters
+  // Compute available products (for table)
   const availableProducts = products.filter((p) => {
     const pCat = p.categoryId?._id || p.categoryId;
     const pBrand = p.brandId?._id || p.brandId;
     if (selectedCategory !== "all" && pCat !== selectedCategory) return false;
     if (selectedBrand !== "all" && pBrand !== selectedBrand) return false;
+    return true;
+  });
+
+  /************************************************************************************
+   * 3A) DYNAMIC FILTERING FOR ADD SELL MODAL
+   ************************************************************************************/
+  // Filter brands for modal: if a modal category is selected, only show brands that have products in that category.
+  const modalFilteredBrands = brands.filter((br) => {
+    if (modalCategory === "all") return true;
+    return products.some((p) => {
+      const pCat = p.categoryId?._id || p.categoryId;
+      const pBrand = p.brandId?._id || p.brandId;
+      return pCat === modalCategory && pBrand === br._id;
+    });
+  });
+  // Filter products for modal: if a modal category or modal brand is selected, show only matching products.
+  const modalFilteredProducts = products.filter((p) => {
+    const pCat = p.categoryId?._id || p.categoryId;
+    const pBrand = p.brandId?._id || p.brandId;
+    if (modalCategory !== "all" && pCat !== modalCategory) return false;
+    if (modalBrand !== "all" && pBrand !== modalBrand) return false;
     return true;
   });
 
@@ -147,9 +173,6 @@ export default function SellsList() {
   /************************************************************************************
    * 5) CREATE SELL
    ************************************************************************************/
-  const [modalCategory, setModalCategory] = useState("all");
-  const [modalBrand, setModalBrand] = useState("all");
-
   const openModal = () => {
     setNewSell({
       productId: "",
@@ -158,6 +181,7 @@ export default function SellsList() {
       userId: userInfo?._id || "",
       sellerId: "",
     });
+    // Reset modal filters to "all" when modal opens
     setModalCategory("all");
     setModalBrand("all");
     setModalOpen(true);
@@ -169,17 +193,9 @@ export default function SellsList() {
     setNewSell((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Filter products by category/brand in create modal
-  const modalFilteredProducts = products.filter((p) => {
-    const catId = p.categoryId?._id || p.categoryId;
-    const brId = p.brandId?._id || p.brandId;
-
-    if (modalCategory !== "all" && catId !== modalCategory) return false;
-    if (modalBrand !== "all" && brId !== modalBrand) return false;
-    return true;
-  });
-
-  // Save Sell => decrements product quantity on server side
+  /************************************************************************************
+   * 5A) SAVE SELL
+   ************************************************************************************/
   async function saveSell() {
     try {
       const quantity = Number(newSell.quantity) || 1;
@@ -279,7 +295,7 @@ export default function SellsList() {
         alert("Could not find original sell. Please refresh and try again.");
         return;
       }
-      const oldQty = oldSell ? oldSell.quantity : 0;
+      const oldQty = oldSell.quantity || 0;
 
       // Find the product
       const chosenProduct = products.find((p) => p._id === editSell.productId);
@@ -386,23 +402,23 @@ export default function SellsList() {
   function matchesFilter(sell) {
     const product = getProductById(sell.productId);
 
-    // Category
+    // Category filter
     if (selectedCategory !== "all") {
       if (!product) return false;
       const catId = product.categoryId?._id || product.categoryId;
       if (catId !== selectedCategory) return false;
     }
-    // Brand
+    // Brand filter
     if (selectedBrand !== "all") {
       if (!product) return false;
       const brId = product.brandId?._id || product.brandId;
       if (brId !== selectedBrand) return false;
     }
-    // Product
+    // Product filter
     if (selectedProduct !== "all" && sell.productId !== selectedProduct) {
       return false;
     }
-    // Seller
+    // Seller filter
     if (selectedSeller !== "all") {
       let sellerIdValue = "";
       if (sell.sellerId) {
@@ -435,7 +451,7 @@ export default function SellsList() {
       await apiClient.delete(`/sells/${sellId}`);
       setSells((prev) => prev.filter((s) => s._id !== sellId));
 
-      // re-fetch products => updated quantity
+      // Re-fetch products => updated quantity
       const respProd = await apiClient.get("/products?limit=0");
       setProducts(respProd.data.data || []);
     } catch (err) {
@@ -482,11 +498,11 @@ export default function SellsList() {
         </td>
         <td className="px-2 py-2 text-sm text-gray-600 sm:px-4">{qty}</td>
         <td className="px-2 py-2 text-sm font-semibold text-gray-700 sm:px-4">
-          <span className="block sm:hidden">${formatNumber(total)} </span>
+          <span className="block sm:hidden">${formatNumber(total)}</span>
           <span className="hidden sm:block">${total.toFixed(2)}</span>
         </td>
         <td className="px-2 py-2 text-sm font-semibold text-gray-700 sm:px-4">
-          <span className="block sm:hidden">${formatNumber(profit)} </span>
+          <span className="block sm:hidden">${formatNumber(profit)}</span>
           <span className="hidden sm:block">${profit.toFixed(2)}</span>
         </td>
         <td className="hidden px-2 py-2 text-sm text-gray-600 sm:px-4 lg:table-cell">
@@ -518,7 +534,7 @@ export default function SellsList() {
   /************************************************************************************
    * 11) AGGREGATIONS
    ************************************************************************************/
-  // 1) Global totals for the filtered sells
+  // Global totals for the filtered sells
   let totalRevenue = 0;
   let totalProfit = 0;
   filteredSells.forEach((s) => {
@@ -529,7 +545,7 @@ export default function SellsList() {
     totalProfit += (sp - avgPP) * qty;
   });
 
-  // 2) Average sell price per product (filtered)
+  // Average sell price per product (filtered)
   const sellMap = {};
   filteredSells.forEach((s) => {
     if (!sellMap[s.productId]) {
@@ -546,7 +562,7 @@ export default function SellsList() {
     return { productId: prodId, avgSellPrice, avgProfit };
   });
 
-  // 3) Total sold by each seller (filtered)
+  // Total sold by each seller (filtered)
   const sellerTotalsMap = {};
   filteredSells.forEach((s) => {
     let sid;
@@ -690,7 +706,7 @@ export default function SellsList() {
         </div>
         <div>
           <label className="block mb-1 text-sm font-semibold text-gray-600">
-            {"Reset Filters"}
+            Reset Filters
           </label>
           <button
             onClick={() => {
@@ -753,9 +769,9 @@ export default function SellsList() {
         </table>
       </div>
 
-      {/* Summaries (Global totals, product averages, seller totals) */}
+      {/* Summaries */}
       <div className="mt-6 space-y-4">
-        {/* Global totals */}
+        {/* Global Totals */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Global Totals (Filtered)
@@ -767,8 +783,7 @@ export default function SellsList() {
             <strong>Total Profit:</strong> {formatCurrency(totalProfit)}
           </p>
         </div>
-
-        {/* Average sell price & profit per product (filtered) */}
+        {/* Average Sell Price & Profit per Product */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Average Sell Price & Profit per Product (Filtered)
@@ -783,8 +798,7 @@ export default function SellsList() {
             </div>
           ))}
         </div>
-
-        {/* Total sold & profit by seller (filtered) */}
+        {/* Total Sold by Seller */}
         <div className="p-4 bg-white rounded shadow">
           <h2 className="mb-2 text-lg font-semibold text-gray-800">
             Total Sold by Seller (Filtered)
@@ -858,7 +872,7 @@ export default function SellsList() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {/* CREATE Sell Modal Panel */}
+                {/* CREATE SELL MODAL PANEL */}
                 <Dialog.Panel className="w-full max-w-md p-6 overflow-hidden text-left bg-white rounded shadow-xl">
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
                     Add New Sell
@@ -899,17 +913,17 @@ export default function SellsList() {
                         className="w-full px-3 py-2 border rounded"
                       >
                         <option value="all">All Brands</option>
-                        {[...brands]
+                        {[...modalFilteredBrands]
                           .sort((a, b) => a.name.localeCompare(b.name))
-                          .map((b) => (
-                            <option key={b._id} value={b._id}>
-                              {b.name}
+                          .map((br) => (
+                            <option key={br._id} value={br._id}>
+                              {br.name}
                             </option>
                           ))}
                       </select>
                     </div>
 
-                    {/* Product (filtered) */}
+                    {/* Product Filter */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
                         Product
@@ -931,7 +945,7 @@ export default function SellsList() {
                       </select>
                     </div>
 
-                    {/* If product chosen, read-only info about it */}
+                    {/* If product chosen, show read-only info */}
                     {newSell.productId && (
                       <>
                         <div>
@@ -942,7 +956,7 @@ export default function SellsList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newSell.productId
                               );
@@ -956,7 +970,6 @@ export default function SellsList() {
                             })()}
                           />
                         </div>
-
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
                             Selected Brand
@@ -965,7 +978,7 @@ export default function SellsList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newSell.productId
                               );
@@ -977,7 +990,6 @@ export default function SellsList() {
                             })()}
                           />
                         </div>
-
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
                             In Stock
@@ -986,7 +998,7 @@ export default function SellsList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newSell.productId
                               );
@@ -1002,7 +1014,7 @@ export default function SellsList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const chosen = products.find(
                                 (prod) => prod._id === newSell.productId
                               );
@@ -1010,7 +1022,6 @@ export default function SellsList() {
                             })()}
                           />
                         </div>
-
                         <div>
                           <label className="block mb-1 text-sm font-semibold">
                             Avg Purchase Price (computed)
@@ -1019,7 +1030,7 @@ export default function SellsList() {
                             type="text"
                             readOnly
                             className="w-full px-3 py-2 bg-gray-100 border rounded"
-                            value={(function () {
+                            value={(() => {
                               const app = getAveragePurchasePrice(
                                 newSell.productId
                               );
@@ -1087,7 +1098,7 @@ export default function SellsList() {
                     </div>
                   </div>
 
-                  {/* Modal Footer: Save, Cancel */}
+                  {/* Modal Footer */}
                   <div className="flex justify-end mt-6 space-x-3">
                     <button
                       onClick={saveSell}
@@ -1103,7 +1114,7 @@ export default function SellsList() {
                     </button>
                   </div>
                 </Dialog.Panel>
-                {/* End of Dialog.Panel */}
+                {/* End of CREATE Sell Modal Panel */}
               </Transition.Child>
             </div>
           </div>
@@ -1124,7 +1135,6 @@ export default function SellsList() {
           >
             <div className="fixed inset-0 bg-black/30" />
           </Transition.Child>
-
           <div className="fixed inset-0 overflow-y-auto">
             <div className="flex items-center justify-center min-h-full p-4 text-center">
               <Transition.Child
@@ -1141,7 +1151,6 @@ export default function SellsList() {
                   <Dialog.Title className="mb-4 text-lg font-bold text-gray-700">
                     Edit Sell
                   </Dialog.Title>
-
                   <div className="space-y-4">
                     {/* Quantity */}
                     <div>
@@ -1157,7 +1166,6 @@ export default function SellsList() {
                         className="w-full px-3 py-2 border rounded"
                       />
                     </div>
-
                     {/* Sell Price */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
@@ -1178,7 +1186,6 @@ export default function SellsList() {
                         />
                       </div>
                     </div>
-
                     {/* Seller */}
                     <div>
                       <label className="block mb-1 text-sm font-semibold">
@@ -1199,8 +1206,7 @@ export default function SellsList() {
                       </select>
                     </div>
                   </div>
-
-                  {/* Modal Footer: Update, Cancel */}
+                  {/* Modal Footer */}
                   <div className="flex justify-end mt-6 space-x-3">
                     <button
                       onClick={updateSell}
@@ -1216,15 +1222,140 @@ export default function SellsList() {
                     </button>
                   </div>
                 </Dialog.Panel>
-                {/* End of Dialog.Panel */}
+                {/* End of EDIT Sell Modal Panel */}
               </Transition.Child>
             </div>
           </div>
         </Dialog>
       </Transition>
+
+      {/* MAIN TABLE */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                No
+              </th>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                Product
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
+                Category
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
+                Brand
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 xl:table-cell">
+                In Stock
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 xl:table-cell">
+                Avg Purchase Price
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 sm:table-cell">
+                Sell Price
+              </th>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                Qty
+              </th>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                Total
+              </th>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                Profit
+              </th>
+              <th className="hidden px-2 py-3 text-xs font-medium text-gray-700 sm:px-4 lg:table-cell">
+                Seller
+              </th>
+              <th className="px-2 py-3 text-xs font-medium text-gray-700 sm:px-4">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">{tableRows}</tbody>
+        </table>
+      </div>
+
+      {/* SUMMARIES */}
+      <div className="mt-6 space-y-4">
+        {/* Global Totals */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Global Totals (Filtered)
+          </h2>
+          <p className="text-gray-700">
+            <strong>Total Revenue:</strong> {formatCurrency(totalRevenue)}
+          </p>
+          <p className="text-gray-700">
+            <strong>Total Profit:</strong> {formatCurrency(totalProfit)}
+          </p>
+        </div>
+        {/* Average Sell Price & Profit per Product */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Average Sell Price & Profit per Product (Filtered)
+          </h2>
+          {productSellAverages.map(({ productId, avgSellPrice, avgProfit }) => (
+            <div key={productId} className="text-gray-700">
+              <strong>{getProductNameById(productId)}</strong>:
+              <ul className="ml-4 list-disc">
+                <li>Avg Sell Price: {formatCurrency(avgSellPrice)}</li>
+                <li>Avg Profit (per unit): {formatCurrency(avgProfit)}</li>
+              </ul>
+            </div>
+          ))}
+        </div>
+        {/* Total Sold by Seller */}
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="mb-2 text-lg font-semibold text-gray-800">
+            Total Sold by Seller (Filtered)
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="flex border-b">
+                  <th className="w-1/6 py-2 text-left">Seller</th>
+                  <th className="w-1/6 py-2 pr-10 text-right">Sold</th>
+                  <th className="w-1/6 py-2 pr-10 text-right">Profit</th>
+                  <th className="w-3/6 px-2 py-2 text-center"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...sellerTotals]
+                  .sort((a, b) => b.totalSold - a.totalSold)
+                  .map(({ sellerId, totalSold, totalProfit }) => (
+                    <tr key={sellerId} className="flex border-b">
+                      <td className="w-1/6 px-2 py-2 text-left">
+                        {getSellerNameById(sellerId)}
+                      </td>
+                      <td className="w-1/6 px-2 py-2 text-right">
+                        <span className="hidden sm:block">
+                          ${totalSold.toFixed(2)}
+                        </span>
+                        <span className="block sm:hidden">
+                          ${formatNumber(totalSold)}
+                        </span>
+                      </td>
+                      <td className="w-1/6 px-2 py-2 text-right">
+                        <span className="hidden sm:block">
+                          ${totalProfit.toFixed(2)}
+                        </span>
+                        <span className="block sm:hidden">
+                          ${formatNumber(totalProfit)}
+                        </span>
+                      </td>
+                      <td className="w-3/6 px-2 py-2 text-center"></td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
 /********************************************************************/
-/* END OF FILE: SellsList.jsx (with aggregator fix)                  */
+/* END OF FILE: SellsList.jsx (with aggregator fix and dynamic modal filtering) */
 /********************************************************************/
