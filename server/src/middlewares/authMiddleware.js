@@ -1,9 +1,15 @@
+"use strict";
 const jwt = require("jsonwebtoken");
 
-// Middleware for authentication
-exports.authenticate = (req, res, next) => {
-  const authHeader = req.headers?.authorization || null;
+const publicPaths = ["/api/auth/forgotPassword", "/api/auth/resetPassword"];
 
+exports.authenticate = (req, res, next) => {
+  // If the request URL is one of the public paths, skip token verification
+  if (publicPaths.some((path) => req.originalUrl.includes(path))) {
+    return next();
+  }
+
+  const authHeader = req.headers?.authorization;
   if (!authHeader) {
     console.log("No Authorization header provided.");
     return res.status(401).json({ error: true, message: "No token provided." });
@@ -24,25 +30,20 @@ exports.authenticate = (req, res, next) => {
         .status(401)
         .json({ error: true, message: "Invalid or expired token." });
     }
-
-    console.log("Decoded token:", decoded); // Log the decoded token
+    console.log("Decoded token:", decoded);
     req.user = decoded;
     next();
   });
 };
 
-// Middleware for role-based authorization
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    // Ensure user information is set in the request object
     if (!req.user) {
       return res.status(403).json({
         error: true,
         message: "No permission. Authentication required.",
       });
     }
-
-    // Check if the user's role is authorized
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         error: true,
@@ -51,8 +52,6 @@ exports.authorizeRoles = (...roles) => {
         )}`,
       });
     }
-
-    // Proceed to the next middleware
     next();
   };
 };

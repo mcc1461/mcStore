@@ -26,6 +26,9 @@ const {
 const errorHandler = require("./src/middlewares/errorHandler");
 const { findSearchSortPage } = require("./src/middlewares/findSearchSortPage");
 
+const authRoutes = require("./src/routes/authRoutes");
+const userRoutes = require("./src/routes/userRoutes");
+
 // Controllers
 const {
   resetPassword,
@@ -110,8 +113,8 @@ app.all("/api/documents", (req, res) => {
 });
 
 // Protected API Routes
-app.use("/api/auth", require("./src/routes/authRoutes"));
-app.use("/api/users", authenticate, require("./src/routes/userRoutes"));
+app.use("/api/auth", authRoutes);
+app.use("/api/users", require("./src/routes/userRoutes"));
 app.use("/api", authenticate, require("./src/routes"));
 
 // Frontend Catch-all Route (serve client build)

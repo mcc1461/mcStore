@@ -250,7 +250,7 @@ function Register() {
             {/* Hint text directly beneath with minimal margin */}
             {passwordFocused && (
               <p className="mt-0.5 text-xs text-gray-600">
-                Min 8: 1 upper, 1 lower, 1 digit, 1 @$!%*?&
+                Min 8: 1 upper, 1 lower, 1 digit, 1 @$!%*?
               </p>
             )}
           </div>

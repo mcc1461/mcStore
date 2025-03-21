@@ -1,10 +1,10 @@
 "use strict";
-
 const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
 const { S3Client } = require("@aws-sdk/client-s3");
 const multerS3 = require("multer-s3-v3");
+const authController = require("../controllers/authController");
 
 // Create an S3 client using AWS SDK v3
 const s3 = new S3Client({
@@ -27,7 +27,7 @@ const upload = multer({
   storage: multerS3({
     s3: s3,
     bucket: process.env.AWS_S3_BUCKET,
-    acl: "", // Explicitly set to an empty string to disable ACL headers
+    acl: "", // Disable ACL header
     key: (req, file, cb) => {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       cb(
@@ -49,19 +49,16 @@ const upload = multer({
   },
 });
 
-// Import your auth controller (ensure it uses req.file.location for images)
-const auth = require("../controllers/authController");
-console.log("[DEBUG] authController", auth);
-console.log("[DEBUG] auth.register", auth.register);
-
-// Define auth routes using the upload middleware for file handling.
+// Define auth routes
 router.post(
   "/register",
   upload.fields([{ name: "image", maxCount: 1 }]),
-  auth.register
+  authController.register
 );
-router.post("/login", auth.login);
-router.post("/refresh", auth.refresh);
-router.get("/logout", auth.logout);
+router.post("/login", authController.login);
+router.post("/refresh", authController.refresh);
+router.get("/logout", authController.logout);
+router.post("/forgotPassword", authController.requestPasswordReset);
+router.post("/resetPassword", authController.resetPassword);
 
 module.exports = router;

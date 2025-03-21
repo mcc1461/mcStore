@@ -2,100 +2,145 @@
 const jwt = require("jsonwebtoken");
 const argon2 = require("argon2");
 const User = require("../models/userModel");
-const sendResetEmail = require("../helpers/sendResetEmail");
+const sendResetEmail = require("../helpers/sendResetEmail"); // Ensure this helper is defined
 
-const JWT_SECRET = process.env.JWT_SECRET || "mcc1461_default_jwt_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "your_default_jwt_secret";
 const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || "mcc1461_default_refresh_secret";
+  process.env.JWT_REFRESH_SECRET || "your_default_refresh_secret";
 
-// Helper function to generate JWT
-const generateToken = (user, secret, expiresIn) => {
+// Helper function to generate JWT tokens
+const generateToken = (user, secret = JWT_SECRET, expiresIn = "1d") => {
   return jwt.sign(
     {
       _id: user._id,
       username: user.username,
       role: user.role,
     },
-    secret || JWT_SECRET,
+    secret,
     { expiresIn }
   );
 };
 
-// Helper function to validate password complexity
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
 const register = async (req, res) => {
+  const {
+    username,
+    password,
+    email,
+    firstName,
+    lastName,
+    role,
+    role2,
+    roleCode,
+    phone,
+    city,
+    country,
+    bio,
+  } = req.body;
   try {
-    const { username, password, email, firstName, lastName, role, roleCode } =
-      req.body;
-
-    // Check password complexity, etc.
-    if (!passwordRegex.test(password)) {
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
       return res.status(400).json({
-        message:
-          "Password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a number, and a special character.",
+        error: true,
+        message: "Username already exists.",
       });
     }
 
-    // Determine assigned role based on roleCode
-    let assignedRole = "user";
-    if (role === "admin" && roleCode === process.env.ADMIN_CODE) {
-      assignedRole = "admin";
-    } else if (role === "staff" && roleCode === process.env.STAFF_CODE) {
-      assignedRole = "staff";
-    } else if (role === "coordinator" && roleCode === process.env.RC_CODE) {
-      assignedRole = "coordinator";
-    } else if (role !== "user") {
-      return res.status(403).json({
-        message: "Invalid role or role code provided.",
+    const allowedRoles = ["admin", "staff", "coordinator", "user"];
+    let assignedRole = null;
+    const roleLower = role ? role.toLowerCase() : "";
+
+    if (req.user && req.user.role === "admin") {
+      if (!allowedRoles.includes(roleLower)) {
+        return res.status(400).json({
+          error: true,
+          message: "Invalid role.",
+        });
+      }
+      assignedRole = roleLower;
+    } else {
+      assignedRole =
+        roleLower === "admin" && roleCode === process.env.ADMIN_CODE
+          ? "admin"
+          : roleLower === "staff" && roleCode === process.env.STAFF_CODE
+          ? "staff"
+          : roleLower === "coordinator" && roleCode === process.env.RC_CODE
+          ? "coordinator"
+          : roleLower === "user"
+          ? "user"
+          : null;
+    }
+
+    if (!assignedRole) {
+      return res.status(400).json({
+        error: true,
+        message: "Invalid role or role code.",
       });
     }
 
-    // Update: check for file in req.files.image instead of req.file
-    const image =
-      req.files && req.files.image && req.files.image.length > 0
-        ? req.files.image[0].location || req.files.image[0].path
-        : req.body.image
-        ? req.body.image.trim()
-        : null;
+    let imageUrl = null;
+    console.log("Uploaded files:", req.files);
+    if (req.files && req.files.image && req.files.image.length > 0) {
+      const file = req.files.image[0];
+      if (file) {
+        imageUrl =
+          file.location ||
+          (file.key
+            ? `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${file.key}`
+            : null);
+      }
+    } else if (req.body.image) {
+      imageUrl = req.body.image.trim();
+    }
 
     const newUser = new User({
       username,
       password,
-      email,
+      email: email.trim().toLowerCase(),
       firstName,
       lastName,
       role: assignedRole,
-      image, // Use the image URL or path we extracted
+      role2: role2 || null,
+      image: imageUrl,
+      phone: phone || null,
+      city: city || null,
+      country: country || null,
+      bio: bio || null,
     });
 
-    await newUser.save();
+    // Tag regular users if applicable
+    if (req.user && req.user.role === "user") {
+      newUser.tester = true;
+      newUser.testerCreatedAt = new Date();
+    }
 
-    // Generate tokens and return response...
+    await newUser.save();
     const accessToken = generateToken(newUser, JWT_SECRET, "1d");
     const refreshToken = generateToken(newUser, JWT_REFRESH_SECRET, "30d");
 
     return res.status(201).json({
+      error: false,
       message: "User registered successfully.",
-      bearer: {
-        accessToken,
-        refreshToken,
-      },
+      bearer: { accessToken, refreshToken },
       user: {
         id: newUser._id,
-        username: newUser.username,
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        role: newUser.role,
-        image: newUser.image, // Should now contain the correct URL/path
+        username,
+        email,
+        firstName,
+        lastName,
+        role: assignedRole,
+        role2: newUser.role2,
+        image: newUser.image,
+        phone: newUser.phone,
+        city: newUser.city,
+        country: newUser.country,
+        bio: newUser.bio,
       },
     });
   } catch (error) {
-    console.error("Error in registration:", error);
-    return res
-      .status(500)
-      .json({ message: error.message || "Failed to register user." });
+    console.error("Error creating user:", error);
+    return res.status(500).json({ error: true, message: "Server error." });
   }
 };
 
@@ -181,25 +226,31 @@ const logout = (req, res) => {
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    // Normalize email and find user
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res
         .status(404)
         .json({ message: "No account found with this email address." });
     }
 
-    // Create reset token valid for 1 hour
+    // Create a JWT reset token valid for 1 hour
     const resetToken = generateToken(user, JWT_SECRET, "1h");
-
-    // Store token in user document for later verification
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
+    // Construct reset URL (adjust FRONTEND_BASE_URL as needed)
     const resetLink = `${
-      process.env.FRONTEND_BASE_URL || "http://localhost:3061"
-    }/reset-password?token=${resetToken}`;
+      process.env.VITE_APP_API_URL || "http://localhost:3061"
+    }/resetPassword?token=${resetToken}`;
 
+    // Send email with the reset link
     await sendResetEmail(
       user.email,
       "Password Reset Request",
@@ -219,6 +270,12 @@ const requestPasswordReset = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
+    if (!resetToken || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Reset token and new password are required." });
+    }
+
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         message:
@@ -226,6 +283,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
+    // Verify and decode the reset token
     const decoded = jwt.verify(resetToken, JWT_SECRET);
     const user = await User.findById(decoded._id);
     if (!user || user.resetPasswordToken !== resetToken) {
@@ -234,6 +292,7 @@ const resetPassword = async (req, res) => {
         .json({ message: "Invalid or expired reset token." });
     }
 
+    // Update password and clear reset token info
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
