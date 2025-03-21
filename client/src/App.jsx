@@ -14,7 +14,7 @@ import Profile from "./pages/Profile";
 import EditProfileModal from "./pages/EditProfileModal";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import CategoriesList from "./utils/CategoryList";
+import CategoriesList from "./utils/categoryList";
 import FirmList from "./utils/FirmList";
 import BrandList from "./utils/BrandList";
 import ProductList from "./utils/ProductList";
