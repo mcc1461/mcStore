@@ -314,7 +314,7 @@ module.exports = {
 
       const resetLink = `${
         process.env.FRONTEND_BASE_URL || "http://localhost:3061"
-      }/reset-password?token=${resetToken}`;
+      }/resetPassword?token=${resetToken}`;
       // Assume sendResetEmail is defined and imported elsewhere
       await sendResetEmail(
         user.email,
