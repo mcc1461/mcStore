@@ -75,7 +75,7 @@ export default function ForgotPassword() {
         </div>
 
         {/* Input + Button + Link */}
-        <div className="flex flex-col items-center justify-start w-[50%] h-[60%] gap-7">
+        <div className="flex flex-col items-center justify-start w-[85%] sm:w-[50%] h-[60%] gap-7">
           <input
             type="email"
             placeholder="Email Address"
