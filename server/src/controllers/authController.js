@@ -249,9 +249,7 @@ const requestPasswordReset = async (req, res) => {
     // const resetLink = `${
     //   process.env.VITE_APP_API_URL || "http://127.0.0.1:3061"
     // }/resetPassword?token=${resetToken}`;
-    const resetLink = `${
-      "https://softrealizer.com:3061" || "http://127.0.0.1:3061"
-    }/resetPassword?token=${resetToken}`;
+    const resetLink = `${"http://127.0.0.1:3061"}/resetPassword?token=${resetToken}`;
 
     // Send email with the reset link
     await sendResetEmail(
