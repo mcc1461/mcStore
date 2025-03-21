@@ -47,39 +47,53 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex items-center justify-center w-screen h-screen">
+    <div className="flex flex-col items-center justify-center w-screen h-screen p-0 m-0 overflow-auto lg:flex-row lg:justify-center lg:items-center">
       {/* Left side: an image */}
-      <img src={log} alt="Log" className="w-[30%]" />
+      <img
+        src={log}
+        alt="Logo"
+        className="
+                  object-contain
+                  w-3/4
+                  max-h-[25vh]
+                  mb-4
+                  lg:mb-0
+                  lg:w-1/2
+                  lg:max-h-[35vh]
+                "
+      />
 
       {/* Right side: input and button */}
-      <div className="flex flex-col items-center justify-between h-[50%] w-[70%]">
-        <div className="w-[60%]">
+      <div className="flex flex-col items-center justify-between h-[30%] w-[70%]">
+        <div className="w-[50%]">
           <div className="flex items-center justify-between w-full">
             {/* <Logo1 /> */}
-            <p className="text-3xl font-bold">Forgot Password</p>
+            <p className="w-[100%] text-xl font-bold text-center md:text-3xl">
+              Forgot Password
+            </p>
           </div>
         </div>
 
         {/* Input + Button + Link */}
-        <div className="flex flex-col items-center justify-start w-[60%] h-[60%] gap-7">
+        <div className="flex flex-col items-center justify-start w-[50%] h-[60%] gap-7">
           <input
             type="email"
             placeholder="Email Address"
-            className="w-full h-[20%] rounded-xl border-2 border-slate-400 text-center outline-none"
+            className="w-[75%] h-12 h-max-[20%] rounded-xl border-2 border-slate-400 text-center outline-none"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
 
           <button
-            className="flex items-center justify-center w-full h-[20%] text-white font-bold bg-red-500 rounded-xl no-underline"
+            className="flex items-center justify-center w-[75%] h-12 h-max-[20%] text-white font-bold bg-red-500 rounded-xl no-underline"
             onClick={handleForgotPassword}
             disabled={loading}
           >
             {loading ? "Loading..." : "Get Email Reset Link"}
           </button>
 
-          <div className="w-full text-right">
+          <div className="w-[75%] text-right">
             <Link to="/login" className="font-bold text-blue-500 underline">
               Login
             </Link>
