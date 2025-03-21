@@ -59,8 +59,21 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="flex items-center justify-center w-screen h-screen space-y-4">
-      <img src={log} alt="Logo" className="w-[30%] object-contain" />
+    <div className="flex flex-col items-center justify-center w-screen h-screen p-0 m-0 overflow-auto lg:flex-row lg:justify-center lg:items-center">
+      {/* Left side: an image */}
+      <img
+        src={log}
+        alt="Logo"
+        className="
+                     object-contain
+                     w-3/4
+                     max-h-[25vh]
+                     mb-4
+                     lg:mb-0
+                     lg:w-1/2
+                     lg:max-h-[35vh]
+                   "
+      />
       <div className="h-[50%] w-[70%] flex flex-col items-center justify-between">
         <div className="w-[70%] text-center">
           <h1 className="text-4xl font-bold">
